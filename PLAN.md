@@ -77,7 +77,7 @@ Implemented in v0.1 (✓) and backlog (·):
 - ✓ `--once` (one frame to stdout), `--json` (machine-readable snapshot),
   `--demo` (synthetic data for screenshots and tests).
 - ✓ API-equivalent cost with an editable price table (0.5.0).
-- · Cache efficiency trend (cache read share per day).
+- ✓ Cache efficiency trend: cache-read share per bucket (0.6.0).
 - · Threshold notifications (quota ≥ 90 %, unusual burn rate).
 - · Per-session drill-down and CSV export of the current view.
 - · Aider / Gemini CLI / other agents as further parsers.

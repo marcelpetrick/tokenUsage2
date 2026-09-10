@@ -244,3 +244,15 @@ def test_json_is_always_priced(
     # claude-opus-5 via Anthropic: 10 in, 1000 cache read, 100 cache write (5 min), 50 out
     assert data["totals"]["all"]["cost"] == pytest.approx(2425 / 1_000_000)
     assert data["totals"]["all"]["unpriced"] > 0  # Codex models carry no default price
+
+
+def test_json_buckets_carry_their_cache_share(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    code, out, _ = call(
+        ["--demo", "--json", "--tz", "UTC"], {"HOME": str(tmp_path)}, tmp_path, capsys
+    )
+    shares = [bucket["cache_share"] for bucket in json.loads(out)["buckets"]]
+    assert code == 0
+    assert all(0.0 <= share <= 1.0 for share in shares)
+    assert any(share > 0.5 for share in shares)

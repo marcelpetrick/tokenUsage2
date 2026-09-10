@@ -151,6 +151,7 @@ def snapshot_json(snapshot: Snapshot, tz: tzinfo, redact: bool) -> dict:
                 "start": bucket.start.isoformat(),
                 "label": bucket.long,
                 "total": _tally(bucket.total),
+                "cache_share": round(bucket.total.cache_share, 4),
                 "groups": {name: _tally(tally) for name, tally in bucket.groups.items()},
             }
             for bucket in snapshot.buckets

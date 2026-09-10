@@ -262,3 +262,12 @@ def test_cost_view_shows_dollars(demo: DemoSource) -> None:
     assert "API-equivalent cost" in text
     assert "today $" in text
     assert " cost" in text
+
+
+def test_timeline_shows_the_cache_trend(demo: DemoSource) -> None:
+    lines = frame(demo, View(theme="plain"))
+    assert "cache-hit share" in "\n".join(lines)
+    row = next(line for line in lines if line.startswith("│ cache "))
+    assert "█" in row or "▇" in row
+    short = "\n".join(frame(demo, View(theme="plain"), 100, 16))  # timeline too short
+    assert "cache-hit share" not in short

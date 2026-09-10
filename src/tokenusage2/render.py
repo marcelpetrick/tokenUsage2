@@ -551,7 +551,8 @@ def draw_timeline(canvas: Canvas, rect: Rect, snapshot: Snapshot, view: View) ->
     canvas.box(rect, title, "←→ select · d/w/m · g · v")
     inner_x, inner_y = rect.x + 1, rect.y + 1
     inner_w, inner_h = rect.w - 2, rect.h - 2
-    chart_h = inner_h - 2
+    trend = inner_h >= 8  # room for the cache-efficiency row under the labels
+    chart_h = inner_h - (3 if trend else 2)
     buckets = snapshot.buckets
     if chart_h < 2 or not buckets:
         return
@@ -607,11 +608,23 @@ def draw_timeline(canvas: Canvas, rect: Rect, snapshot: Snapshot, view: View) ->
     if totals[snapshot.selected] and value_y >= inner_y:
         value_x = min(select_x, inner_x + inner_w - len(value_text))
         canvas.put(value_x, value_y, value_text, "accent")
-    legend_y = label_y + 1
+    if trend:
+        cache_y = label_y + 1
+        canvas.put(inner_x, cache_y, "cache".rjust(AXIS - 2), "dim")
+        for index, bucket in enumerate(buckets):
+            if not bucket.total.calls:
+                continue
+            share = bucket.total.cache_share
+            level = "ok" if share >= 0.8 else "warn" if share >= 0.5 else "bad"
+            glyph = SPARK[max(1, round(share * 8))]
+            canvas.put(plot_x + index * slot, cache_y, glyph * bar_w, level)
+    legend_y = label_y + (2 if trend else 1)
     x = inner_x + 1
     entries = [("■", view.series(name), clean(name)) for name in snapshot.groups]
     if snapshot.has_hatched:
         entries.append(("▒", "dim", "retained daily total (split unknown)"))
+    if trend and snapshot.groups:
+        entries.append(("▆", "ok", "cache-hit share"))
     if not snapshot.groups:
         canvas.put(inner_x + 1, legend_y, "no usage in this range", "dim")
     for glyph, style, name in entries:

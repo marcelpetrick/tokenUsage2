@@ -10,6 +10,15 @@ All notable changes to tokenUsage2. Versions follow semantic versioning; the
 archive schema version is noted whenever it changes, because an older build
 refuses a newer archive.
 
+## 0.6.0
+
+### Added
+
+- Cache-efficiency trend: a row under the timeline's dates shows each bucket's
+  cache-hit share (cache reads over all prompt tokens) as a height glyph,
+  green from 80 %, yellow from 50 %, red below. `--json` buckets carry
+  `cache_share`.
+
 ## 0.5.0
 
 ### Added
