@@ -10,7 +10,7 @@ A live, read-only terminal dashboard (in the spirit of btop, abtop and
 AgentWhileTrue) that shows how many tokens every local coding agent burns,
 per tool, per account and per backend, as daily, weekly and monthly views.
 
-## 1. What `../tokenUsage` does today (review)
+## 1. What [`tokenUsage`](https://github.com/marcelpetrick/codingWithGPT/tree/master/tokenUsage) does today (review)
 
 `tokenUsage` is a one-shot report pipeline:
 

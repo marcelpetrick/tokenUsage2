@@ -10,6 +10,17 @@ All notable changes to tokenUsage2. Versions follow semantic versioning; the
 archive schema version is noted whenever it changes, because an older build
 refuses a newer archive.
 
+## 0.3.8
+
+### Changed
+
+- Moved from `marcelpetrick/codingWithGPT` (`tokenUsage2/`) into this
+  repository. Every commit was cherry-picked with its author, date and message
+  and carries its own version here: 0.0.1–0.0.9 are the development steps
+  before the first complete release 0.1.0. Links, badges, the CI workflow (no
+  sub-directory filter or working directory any more) and a top-level `LICENSE`
+  are adapted to the standalone layout.
+
 ## 0.3.7
 
 ### Documentation

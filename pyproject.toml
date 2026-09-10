@@ -12,6 +12,7 @@ description = "Live btop-style terminal dashboard for Claude Code, Codex CLI and
 readme = "README.md"
 requires-python = ">=3.14"
 license = "GPL-3.0-or-later"
+license-files = ["LICENSE"]
 authors = [{ name = "Marcel Petrick", email = "mail@marcelpetrick.it" }]
 keywords = ["claude-code", "codex", "opencode", "tokens", "tui", "dashboard", "usage"]
 classifiers = [
@@ -35,7 +36,8 @@ dev = ["pytest==9.1.1", "pytest-cov==7.1.0", "ruff==0.16.6", "build==1.6.0"]
 tokenusage2 = "tokenusage2.cli:main"
 
 [project.urls]
-Source = "https://github.com/marcelpetrick/codingWithGPT/tree/master/tokenUsage2"
+Source = "https://github.com/marcelpetrick/tokenUsage2"
+Issues = "https://github.com/marcelpetrick/tokenUsage2/issues"
 
 [tool.setuptools.dynamic]
 version = { attr = "tokenusage2.version.__version__" }

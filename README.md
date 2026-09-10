@@ -6,13 +6,13 @@ SPDX-License-Identifier: GPL-3.0-or-later
 
 # tokenUsage2
 
-[![tokenUsage2 CI](https://github.com/marcelpetrick/codingWithGPT/actions/workflows/tokenUsage2.yml/badge.svg?branch=master)](https://github.com/marcelpetrick/codingWithGPT/actions/workflows/tokenUsage2.yml)
+[![tokenUsage2 CI](https://github.com/marcelpetrick/tokenUsage2/actions/workflows/tokenUsage2.yml/badge.svg?branch=master)](https://github.com/marcelpetrick/tokenUsage2/actions/workflows/tokenUsage2.yml)
 [![Python 3.14](https://img.shields.io/badge/Python-3.14-3776AB.svg?logo=python&logoColor=white)](https://www.python.org/)
 [![Runtime dependencies: none](https://img.shields.io/badge/runtime%20dependencies-none-2ea44f.svg)](pyproject.toml)
 [![Coverage gate: 90%](https://img.shields.io/badge/coverage%20gate-90%25-2ea44f.svg)](localPipeline.sh)
 [![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
 [![Platform: Linux](https://img.shields.io/badge/platform-Linux-555.svg?logo=linux&logoColor=white)](#requirements)
-[![License: GPL v3 or later](https://img.shields.io/badge/license-GPLv3%20or%20later-blue.svg)](../LICENSE)
+[![License: GPL v3 or later](https://img.shields.io/badge/license-GPLv3%20or%20later-blue.svg)](LICENSE)
 
 A live, btop-style terminal dashboard for the tokens your coding agents burn —
 **Claude Code, Codex CLI and OpenCode**, across **every local account and
@@ -22,7 +22,7 @@ backend**, as daily, weekly and monthly views. Read-only, offline, no API keys.
 
 **Note: this project is generated with AI.**
 
-**License: GPLv3 or later. See [`../LICENSE`](../LICENSE).**
+**License: GPLv3 or later. See [`LICENSE`](LICENSE).**
 
 ![tokenUsage2 dashboard rendered from demo data](media/tokenusage2_demo.png)
 
@@ -158,7 +158,7 @@ ingest changes were checked to produce an identical event fingerprint.
 
 ## Compared with the neighbours
 
-| | [`../tokenUsage`](../tokenUsage) | abtop | AgentWhileTrue | **tokenUsage2** |
+| | [`tokenUsage`](https://github.com/marcelpetrick/codingWithGPT/tree/master/tokenUsage) | abtop | AgentWhileTrue | **tokenUsage2** |
 |-|-|-|-|-|
 | Purpose | one-shot HTML/PNG reports | live per-session monitor | resume agents after quota resets | live usage evaluation |
 | Data | Token Use binary + stats-cache + `threads.tokens_used` | open transcripts of running sessions | rollout quota + statusline bridge | all transcripts, own archive |
@@ -224,9 +224,9 @@ python3.14 -m venv .venv && .venv/bin/pip install -e '.[dev]'
 .venv/bin/python scripts/profile_app.py   # time and cProfile every stage on your real data
 ```
 
-CI ([`.github/workflows/tokenUsage2.yml`](../.github/workflows/tokenUsage2.yml))
-runs `./localPipeline.sh --noRun` on Python 3.14 whenever `tokenUsage2/`
-changes, publishes a demo frame in the job summary and uploads coverage and the
+CI ([`.github/workflows/tokenUsage2.yml`](.github/workflows/tokenUsage2.yml))
+runs `./localPipeline.sh --noRun` on Python 3.14 for every push and pull
+request, publishes a demo frame in the job summary and uploads coverage and the
 built distributions. Architecture and the design rationale are in
 [`PLAN.md`](PLAN.md).
 
