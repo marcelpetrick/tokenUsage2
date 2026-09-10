@@ -24,9 +24,11 @@ backend**, as daily, weekly and monthly views. Read-only, offline, no API keys.
 
 **License: GPLv3 or later. See [`LICENSE`](LICENSE).**
 
-![tokenUsage2 dashboard rendered from demo data](media/tokenusage2_demo.png)
+![tokenUsage2 running live in Konsole](media/tokenUsage2.png)
 
-*Rendered from `--demo` data by [`scripts/screenshot.py`](scripts/screenshot.py) — no real account is shown.*
+*Live on a real workstation: Claude Code, two Codex accounts and OpenCode, one
+account label blacked out. For a synthetic frame, run `--demo` or
+[`scripts/screenshot.py`](scripts/screenshot.py).*
 
 ## Quick start
 
