@@ -26,7 +26,7 @@ def test_version(capsys: pytest.CaptureFixture[str]) -> None:
     with pytest.raises(SystemExit) as stop:
         main(["--version"])
     assert stop.value.code == 0
-    assert "tokenusage2 0.0.9" in capsys.readouterr().out
+    assert "tokenusage2 0.1.0" in capsys.readouterr().out
 
 
 def test_demo_frame(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
