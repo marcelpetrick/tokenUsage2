@@ -10,6 +10,14 @@ All notable changes to tokenUsage2. Versions follow semantic versioning; the
 archive schema version is noted whenever it changes, because an older build
 refuses a newer archive.
 
+## 0.3.9
+
+### Documentation
+
+- `PLAN.md` §6: the delivery plan for the backlog — cache-write TTL split, cost
+  estimates, cache-efficiency trend, alerts, session drill-down, CSV export —
+  and why the Aider / Gemini CLI parsers are deferred.
+
 ## 0.3.8
 
 ### Changed

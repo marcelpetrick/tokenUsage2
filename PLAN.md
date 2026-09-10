@@ -107,3 +107,18 @@ testable as strings.
 3. `localPipeline.sh` (ruff, format, pytest with a coverage gate, smoke run,
    wheel build) and a GitHub Actions workflow running the same script.
 4. README with badges and a screenshot rendered from `--demo`.
+
+## 6. Backlog plan (0.4 → 0.9)
+
+The open ideas from §3, in delivery order — one commit and one version each:
+
+| Version | Item | Approach |
+|---------|------|----------|
+| 0.4.0 | Cache-write TTL split | Claude Code writes most of its cache at the 1-hour TTL (2× the input price) and the rest at 5 minutes (1.25×) — measured 106M vs 3.6M tokens for Opus 5, 15.5M vs 5.2M for Sonnet 5. Record the 1-hour share per request (archive schema 4; Claude transcripts are re-read once) so costs can be exact. |
+| 0.5.0 | API-equivalent cost | A price table per model glob in USD per 1M tokens (input, output, cache read, cache write 5 m / 1 h). Defaults for Anthropic's models (list prices as of 2026-06-24); requests answered by a local backend cost nothing; Codex and OpenCode models are priced only when `[prices]` in the config names them. New metric `cost` (`v`), a cost column in the breakdown, all-time cost from per-model lifetime sums. Retained daily totals stay unpriced — their split is unknown. |
+| 0.6.0 | Cache-efficiency trend | A row under the timeline bars: the cache-read share of prompt tokens per bucket. |
+| 0.7.0 | Alerts | Quota ≥ 90 % (configurable) and a burn rate far above the typical active-minute rate of the last seven days — shown in the status line, optionally through `notify-send` and the terminal bell; each alert fires once per quota window or burn episode. |
+| 0.8.0 | Session drill-down | `session` as a breakdown dimension: project · session id with first and last request. |
+| 0.9.0 | CSV export | `--csv` (timeline rows to stdout) and `e` in the dashboard (timeline and breakdown files under `$XDG_DATA_HOME/tokenusage2/exports`). |
+| — | Aider / Gemini CLI | Deferred: no Gemini CLI data exists on the development machine and the only Aider history holds no token lines (a local model), so no parser could be verified against real records. |
+
