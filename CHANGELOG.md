@@ -10,6 +10,15 @@ All notable changes to tokenUsage2. Versions follow semantic versioning; the
 archive schema version is noted whenever it changes, because an older build
 refuses a newer archive.
 
+## 0.8.0
+
+### Added
+
+- Session drill-down: `b` cycles the breakdown through `session` too — one row
+  per agent session in the selected bucket (project · short session id) with
+  the time of its first and last request. `--breakdown session` and
+  `--group session` work on the command line.
+
 ## 0.7.0
 
 ### Added

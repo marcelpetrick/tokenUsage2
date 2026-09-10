@@ -267,3 +267,14 @@ def test_json_lists_active_alerts(
     code, out, _ = call(args, home.env, tmp_path, capsys)
     assert code == 0
     assert "claude 5h quota at 38%" in json.loads(out)["alerts"]
+
+
+def test_breakdown_by_session(
+    home: FakeHome, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    args = ["--json", "--no-archive", "--tz", "UTC", "--breakdown", "session"]
+    code, out, _ = call(args, home.env, tmp_path, capsys)
+    breakdown = json.loads(out)["breakdown"]
+    assert code == 0
+    assert breakdown["by"] == "session"
+    assert all(" · " in row["name"] and " → " in row["extra"] for row in breakdown["rows"])

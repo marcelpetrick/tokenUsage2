@@ -36,6 +36,7 @@ class GroupBy(StrEnum):
     BACKEND = "backend"
     MODEL = "model"
     PROJECT = "project"
+    SESSION = "session"
 
 
 class Metric(StrEnum):
@@ -278,6 +279,8 @@ class BreakdownRow:
     name: str
     extra: str
     tally: Tally
+    first_ts: float | None = None
+    last_ts: float | None = None
 
 
 @dataclass(slots=True)
@@ -339,6 +342,8 @@ def key_function(
             name = projects[event.project] = project_name(event.project)
         return name
 
+    if group is GroupBy.SESSION:
+        return lambda event: f"{project(event)} · {event.session[:8] or '-'}"
     return project
 
 
@@ -456,6 +461,15 @@ def build_snapshot(
                 )
                 row = breakdown_rows[key] = BreakdownRow(key, extra, Tally())
             row.tally.add(event.usage, rates_of(event))
+            if row.first_ts is None:
+                row.first_ts = event.ts
+            row.last_ts = event.ts
+    if detail is GroupBy.SESSION:
+        for row in breakdown_rows.values():
+            first, last = (
+                datetime.fromtimestamp(ts or 0.0, tz) for ts in (row.first_ts, row.last_ts)
+            )
+            row.extra = f"{first:%H:%M} → {last:%H:%M}"
     breakdown = sorted(
         breakdown_rows.values(), key=lambda row: (-row.tally.value(metric), row.name)
     )

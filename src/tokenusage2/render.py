@@ -106,7 +106,7 @@ HELP_LINES = (
     "← → [ ]    move the bucket cursor (scrolls back through history)",
     "PgUp PgDn  page back / forward     Home  oldest data     End  current bucket",
     "g          colour the timeline by account, tool, backend or model",
-    "b          break the selected bucket down by model, project, backend or account",
+    "b          break the selected bucket down by model, project, session, backend, …",
     "v          metric: all tokens incl. cache, fresh input+output, output, cost (USD)",
     "a          filter to one account (cycles, then back to all)",
     "h          swap the live feed for the hour × weekday heatmap",
@@ -635,7 +635,11 @@ def draw_timeline(canvas: Canvas, rect: Rect, snapshot: Snapshot, view: View) ->
         x = canvas.put(x + 1, legend_y, name, "text") + 2
 
 
-BREAKDOWN_EXTRA = {GroupBy.MODEL: "backend", GroupBy.ACCOUNT: "tool"}
+BREAKDOWN_EXTRA = {
+    GroupBy.MODEL: "backend",
+    GroupBy.ACCOUNT: "tool",
+    GroupBy.SESSION: "first → last",
+}
 
 
 def draw_breakdown(canvas: Canvas, rect: Rect, snapshot: Snapshot, view: View) -> None:

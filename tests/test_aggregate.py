@@ -267,3 +267,24 @@ def test_cost_view_prices_buckets_totals_and_lifetimes() -> None:
     assert next(r for r in tokens.breakdown if r.name == "gpt").tally.unpriced == 5
     assert snap(events, pricing=rates, priced=True).all.cost == pytest.approx(5.0)
     assert snap(events, metric=Metric.COST).all.unpriced == sum(e.usage.total for e in events)
+
+
+def test_breakdown_by_session_shows_first_and_last_request() -> None:
+    def request(ts: float, session: str, project: str) -> Event:
+        return Event(
+            f"s{ts}", ts, Tool.CLAUDE, "a", "m", "anthropic", project, session, Usage(input=10)
+        )
+
+    events = [
+        request(at(0, 9), "abcdef123456", "/w/alpha"),
+        request(at(0, 11, 30), "abcdef123456", "/w/alpha"),
+        request(at(0, 10), "zzz", "/w/beta"),
+    ]
+    snapshot = snap(events, detail=GroupBy.SESSION)
+    assert [(r.name, r.extra, r.tally.calls) for r in snapshot.breakdown] == [
+        ("alpha · abcdef12", "09:00 → 11:30", 2),
+        ("beta · zzz", "10:00 → 10:00", 1),
+    ]
+    assert "alpha · abcdef12" in snap(events, group=GroupBy.SESSION).groups
+    retained = [request(at(0, 8), "", "(retained daily total)")]
+    assert snap(retained, detail=GroupBy.SESSION).breakdown[0].name.endswith(" · -")

@@ -34,7 +34,14 @@ MAX_BUCKETS = {Period.DAY: 120, Period.WEEK: 52, Period.MONTH: 36}
 MIN_BUCKETS = {Period.DAY: 14, Period.WEEK: 8, Period.MONTH: 6}
 INTERVALS = (0.5, 1.0, 2.0, 5.0, 10.0, 30.0)
 GROUPS = (GroupBy.ACCOUNT, GroupBy.TOOL, GroupBy.BACKEND, GroupBy.MODEL, GroupBy.PROJECT)
-DETAILS = (GroupBy.MODEL, GroupBy.PROJECT, GroupBy.BACKEND, GroupBy.ACCOUNT, GroupBy.TOOL)
+DETAILS = (
+    GroupBy.MODEL,
+    GroupBy.PROJECT,
+    GroupBy.SESSION,
+    GroupBy.BACKEND,
+    GroupBy.ACCOUNT,
+    GroupBy.TOOL,
+)
 SEQUENCES = {
     "\x1b[D": "left",
     "\x1bOD": "left",
