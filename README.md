@@ -68,7 +68,7 @@ input + output, and output only.
 | `←` `→` `[` `]` | move the bucket cursor · `PgUp` `PgDn` page · `Home` oldest · `End` now |
 | `g` | colour the timeline by account → tool → backend → model → project |
 | `b` | breakdown by model → project → backend → account → tool |
-| `v` | metric: total incl. cache → fresh → output |
+| `v` | metric: total incl. cache → fresh → output → API-equivalent cost |
 | `a` | filter to one account (cycles, then back to all) |
 | `h` | heatmap ↔ live feed |
 | `s` | sources overlay · `?` / `F1` help · `Esc` closes overlays |
@@ -134,6 +134,17 @@ All tools are normalised to *fresh input · cache read · cache write · output*
 (reasoning is a subset of output). Every request is attributed to its own
 timestamp and bucketed by local midnights, so 23- and 25-hour DST days stay
 one day.
+
+### Cost
+
+The `cost` metric (`v`) and the breakdown's cost column estimate what the tokens
+would cost at list prices — an API-equivalent figure, not an invoice. Requests
+Anthropic's API answered use Anthropic's list prices per model (cache reads
+0.1x input, cache writes 1.25x for the 5-minute and 2x for the 1-hour TTL,
+which is why the split is recorded). Requests a local backend answered cost
+nothing. Codex and OpenCode models are priced once `[prices]` in the config
+names them; until then they show as `—`. Retained daily totals stay unpriced
+because their split is unknown.
 
 ### The archive
 
@@ -204,6 +215,11 @@ scan_home = true              # look for ~/.claude* and ~/.codex*
 
 [backends]
 "qwen3*" = "ollama@gpu-box"   # model glob → backend label
+
+[prices."gpt-*"]              # USD per 1M tokens — example values, use your price list
+input = 1.0
+output = 8.0
+cache_read = 0.1              # optional: cache_read, cache_write, cache_write_1h
 ```
 
 ## Privacy

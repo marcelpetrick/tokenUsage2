@@ -15,7 +15,8 @@ from tokenusage2.config import Config
 from tokenusage2.discover import discover
 from tokenusage2.doctor import doctor_lines
 from tokenusage2.ingest import Ingestor, Progress, ScanReport
-from tokenusage2.model import Account, Event, QuotaWindow
+from tokenusage2.model import Account, Event, QuotaWindow, Tool
+from tokenusage2.pricing import Pricer, Rates
 from tokenusage2.procscan import ProcessScanner, running_by_account
 from tokenusage2.store import Store
 
@@ -36,6 +37,7 @@ class Source(Protocol):
     def sources(self) -> list[str]: ...
     def backend_of(self, event: Event) -> str: ...
     def lifetimes(self) -> Mapping[str, Lifetime] | None: ...
+    def rates(self, tool: Tool, model: str, route: str) -> Rates | None: ...
     def close(self) -> None: ...
 
 
@@ -65,6 +67,7 @@ class LiveSource:
         self.processes = self.scanner.scan()
         self.discovery = discover(home, env, config, self.processes)
         self.ingestor = Ingestor(store, self.discovery, tz, home, env, clock)
+        self.pricer = Pricer(config.prices)
         self._discovered_at = clock()
         self._accounts = self._merge_accounts()
 
@@ -125,6 +128,9 @@ class LiveSource:
 
     def lifetimes(self) -> Mapping[str, Lifetime]:
         return self.ingestor.index.lifetimes()
+
+    def rates(self, tool: Tool, model: str, route: str) -> Rates | None:
+        return self.pricer.rates(tool, model, route)
 
     def close(self) -> None:
         self.store.close()

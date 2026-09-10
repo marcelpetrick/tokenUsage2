@@ -143,7 +143,15 @@ class Controller:
         return None
 
 
-def take_snapshot(source: Source, view: View, *, now: float, tz: tzinfo, count: int) -> Snapshot:
+def take_snapshot(
+    source: Source,
+    view: View,
+    *,
+    now: float,
+    tz: tzinfo,
+    count: int,
+    priced: bool | None = None,
+) -> Snapshot:
     """Build the frame's snapshot, first clamping the cursor to the loaded history."""
     span = data_span(source, view, now, tz)
     view.cursor = min(view.cursor, max(0, (span or 1) - 1))
@@ -164,6 +172,8 @@ def take_snapshot(source: Source, view: View, *, now: float, tz: tzinfo, count: 
         running=source.running(),
         backend=source.backend_of,
         lifetimes=source.lifetimes(),
+        pricing=source.rates,
+        priced=priced,
     )
 
 

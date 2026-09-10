@@ -6,6 +6,8 @@ import itertools
 from datetime import date, datetime, time, timedelta
 from pathlib import Path
 
+import pytest
+
 from conftest import BERLIN
 from tokenusage2.aggregate import (
     GroupBy,
@@ -24,6 +26,7 @@ from tokenusage2.aggregate import (
     usage_value,
 )
 from tokenusage2.model import Account, Event, QuotaWindow, Tool, Usage
+from tokenusage2.pricing import Pricer
 
 ACCOUNTS = [
     Account("a", Tool.CLAUDE, Path("/a"), "alpha"),
@@ -191,7 +194,7 @@ def test_metrics_and_retained_totals() -> None:
     tally.add(Usage(unsplit=100))
     tally.add(Usage(input=10, cache_read=30, cache_write=10, output=5))
     assert tally.calls == 1
-    assert [tally.value(m) for m in Metric] == [155, 15, 5]
+    assert [tally.value(m) for m in Metric] == [155, 15, 5, 0.0]
     assert (tally.hatched(Metric.TOTAL), tally.hatched(Metric.FRESH)) == (100, 0)
     assert tally.cache_share == 30 / 50
     assert Tally().cache_share == 0.0
@@ -235,3 +238,32 @@ def test_events_exactly_at_midnight_open_their_own_bucket() -> None:
     assert snapshot.heatmap[period_start(Period.DAY, TODAY - timedelta(days=6)).weekday()][0] == (
         100
     )
+
+
+def test_cost_view_prices_buckets_totals_and_lifetimes() -> None:
+    events = [
+        ev(at(0), model="claude-opus-5", usage=Usage(input=1_000_000)),
+        ev(at(0, 11), model="north", backend="", usage=Usage(output=10)),
+        ev(at(0), "b", model="gpt", backend="openai", usage=Usage(input=5)),
+    ]
+    rates = Pricer().rates
+    cost = snap(events, metric=Metric.COST, pricing=rates)
+    assert cost.buckets[-1].total.cost == pytest.approx(5.0)
+    assert (cost.today.cost, cost.all.cost, cost.all.unpriced) == (
+        pytest.approx(5.0),
+        pytest.approx(5.0),
+        5,
+    )
+    row = next(r for r in cost.accounts if r.id == "a")
+    assert row.all.cost == pytest.approx(5.0)
+    assert cost.groups == ["alpha"]
+    tokens = snap(events, pricing=rates)
+    assert tokens.buckets[-1].total.cost == 0.0
+    assert {r.name: r.tally.cost for r in tokens.breakdown} == {
+        "claude-opus-5": pytest.approx(5.0),
+        "north": 0.0,
+        "gpt": 0.0,
+    }
+    assert next(r for r in tokens.breakdown if r.name == "gpt").tally.unpriced == 5
+    assert snap(events, pricing=rates, priced=True).all.cost == pytest.approx(5.0)
+    assert snap(events, metric=Metric.COST).all.unpriced == sum(e.usage.total for e in events)

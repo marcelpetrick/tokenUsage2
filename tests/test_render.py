@@ -15,13 +15,16 @@ from tokenusage2.render import (
     THEME_NAMES,
     Column,
     View,
+    amount,
     clean,
     clip,
     compact,
+    cost_text,
     duration,
     fit_columns,
     layout,
     mask,
+    money,
     quota_cell,
     render,
     render_message,
@@ -236,3 +239,26 @@ def test_render_message() -> None:
     assert len(lines) == 5
     assert "title" in lines[1]
     assert "sub" in lines[2]
+
+
+def test_money_amount_and_cost_text() -> None:
+    from tokenusage2.aggregate import Tally
+
+    assert [money(v) for v in (0, 0.004, 1.234, 123.4, 12_345)] == [
+        "$0",
+        "<$0.01",
+        "$1.23",
+        "$123",
+        "$12.3k",
+    ]
+    assert amount(2.5, Metric.COST) == "$2.50"
+    assert amount(2500, Metric.TOTAL) == "2.5k"
+    assert cost_text(Tally(input=5, unpriced=5)) == "—"
+    assert cost_text(Tally(input=5, cost=0.5)) == "$0.50"
+
+
+def test_cost_view_shows_dollars(demo: DemoSource) -> None:
+    text = "\n".join(frame(demo, View(theme="plain", metric=Metric.COST)))
+    assert "API-equivalent cost" in text
+    assert "today $" in text
+    assert " cost" in text

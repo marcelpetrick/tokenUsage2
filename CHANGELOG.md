@@ -10,6 +10,20 @@ All notable changes to tokenUsage2. Versions follow semantic versioning; the
 archive schema version is noted whenever it changes, because an older build
 refuses a newer archive.
 
+## 0.5.0
+
+### Added
+
+- API-equivalent cost. A new `cost` metric (`v`) shows dollars in the header,
+  the accounts table and the timeline; the breakdown gets a cost column. Claude
+  requests Anthropic's API answered use Anthropic's list prices per model
+  (as of 2026-06-24: Opus 5 $5/$25, Sonnet 5 $2/$10, Haiku 4.5 $1/$5 per 1M
+  input/output tokens; cache reads 0.1x, writes 1.25x for 5 minutes and 2x for
+  1 hour); requests a local backend answered cost nothing; other models are
+  priced through `[prices."<model glob>"]` in the config. All-time cost comes
+  from per-model lifetime sums, `--json` is always priced, and unpriced tokens
+  are counted (`unpriced`) instead of being treated as free.
+
 ## 0.4.0
 
 Archive schema 4 — migrated in place; Claude transcripts are read again once.

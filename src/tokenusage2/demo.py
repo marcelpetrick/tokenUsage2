@@ -14,6 +14,9 @@ from pathlib import Path
 from tokenusage2.aggregate import midnight
 from tokenusage2.ingest import Progress, ScanReport
 from tokenusage2.model import Account, Event, QuotaWindow, Tool, Usage
+from tokenusage2.pricing import Pricer, Rates
+
+_PRICER = Pricer()
 
 ACCOUNTS = (
     Account(
@@ -227,6 +230,9 @@ class DemoSource:
 
     def lifetimes(self) -> None:
         """Recounted per snapshot; the demo history is small."""
+
+    def rates(self, tool: Tool, model: str, route: str) -> Rates | None:
+        return _PRICER.rates(tool, model, route)
 
     def sources(self) -> list[str]:
         return [

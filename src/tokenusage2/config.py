@@ -15,6 +15,8 @@ from collections.abc import Mapping
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from tokenusage2.pricing import Rates
+
 _VARIABLE = re.compile(r"\$\{?([A-Za-z_][A-Za-z0-9_]*)\}?")
 
 
@@ -32,6 +34,7 @@ class Config:
     rc_files: tuple[Path, ...] | None = None
     labels: Mapping[str, str] = field(default_factory=dict)
     backends: Mapping[str, str] = field(default_factory=dict)
+    prices: tuple[tuple[str, Rates], ...] = ()
     source: Path | None = None
 
 
@@ -64,6 +67,44 @@ def _strings(data: Mapping[str, object], key: str) -> dict[str, str]:
     return dict(raw)
 
 
+_PRICE_FIELDS = ("input", "output", "cache_read", "cache_write", "cache_write_1h")
+
+
+def _prices(data: Mapping[str, object]) -> tuple[tuple[str, Rates], ...]:
+    """``[prices."<model glob>"]`` tables in USD per 1M tokens, in file order."""
+    raw = data.get("prices", {})
+    if not isinstance(raw, dict):
+        raise ConfigError("[prices] must be a table of model globs")
+    found = []
+    for pattern, entry in raw.items():
+        if not isinstance(entry, dict):
+            raise ConfigError(f"prices.{pattern!r} must be a table")
+        unknown = sorted(set(entry) - set(_PRICE_FIELDS))
+        if unknown:
+            raise ConfigError(f"prices.{pattern!r}: unknown keys {', '.join(unknown)}")
+        values = {}
+        for name, value in entry.items():
+            if isinstance(value, bool) or not isinstance(value, int | float) or value < 0:
+                raise ConfigError(f"prices.{pattern!r}.{name} must be a number >= 0")
+            values[name] = float(value)
+        if "input" not in values or "output" not in values:
+            raise ConfigError(f"prices.{pattern!r} needs at least input and output")
+        write = values.get("cache_write", values["input"])
+        found.append(
+            (
+                pattern,
+                Rates(
+                    values["input"],
+                    values["output"],
+                    values.get("cache_read", values["input"]),
+                    write,
+                    values.get("cache_write_1h", write),
+                ),
+            )
+        )
+    return tuple(found)
+
+
 def load_config(path: Path | None, home: Path, env: Mapping[str, str]) -> Config:
     """Load ``path`` (or the default location). A missing file is an empty config."""
     target = path or default_config_path(home, env)
@@ -92,5 +133,6 @@ def load_config(path: Path | None, home: Path, env: Mapping[str, str]) -> Config
         rc_files=rc_files,
         labels=labels,
         backends=_strings(data, "backends"),
+        prices=_prices(data),
         source=target,
     )

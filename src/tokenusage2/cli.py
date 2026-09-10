@@ -249,7 +249,9 @@ def _run(
         count = bucket_count(
             view, width, height, len(source.accounts()), data_span(source, view, now, tz)
         )
-        snapshot = take_snapshot(source, view, now=now, tz=tz, count=count)
+        snapshot = take_snapshot(
+            source, view, now=now, tz=tz, count=count, priced=True if args.json else None
+        )
         if args.json:
             print(json.dumps(snapshot_json(snapshot, tz, args.redact), indent=2))
             return 0

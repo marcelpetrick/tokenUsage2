@@ -23,6 +23,7 @@ from tokenusage2.aggregate import (
     Period,
     QuotaView,
     Snapshot,
+    Tally,
 )
 from tokenusage2.model import Tool
 
@@ -106,7 +107,7 @@ HELP_LINES = (
     "PgUp PgDn  page back / forward     Home  oldest data     End  current bucket",
     "g          colour the timeline by account, tool, backend or model",
     "b          break the selected bucket down by model, project, backend or account",
-    "v          metric: all tokens incl. cache, fresh input+output, output only",
+    "v          metric: all tokens incl. cache, fresh input+output, output, cost (USD)",
     "a          filter to one account (cycles, then back to all)",
     "h          swap the live feed for the hour × weekday heatmap",
     "s          sources: discovered homes, files, quota snapshots, reconciliation",
@@ -167,6 +168,27 @@ def compact(value: float) -> str:
         if abs(scaled) < 999.5 or suffix == "T":
             return f"{scaled:.1f}{suffix}" if abs(scaled) < 99.95 else f"{scaled:.0f}{suffix}"
     raise AssertionError("unreachable")  # pragma: no cover
+
+
+def money(value: float) -> str:
+    if value <= 0:
+        return "$0"
+    if value < 0.01:
+        return "<$0.01"
+    if value < 99.995:
+        return f"${value:.2f}"
+    if value < 999.5:
+        return f"${value:.0f}"
+    return "$" + compact(value)
+
+
+def amount(value: float, metric: Metric) -> str:
+    """A metric value as shown: dollars in the cost view, compact tokens otherwise."""
+    return money(value) if metric is Metric.COST else compact(value)
+
+
+def cost_text(tally: Tally) -> str:
+    return "—" if tally.total and tally.unpriced >= tally.total else money(tally.cost)
 
 
 def duration(seconds: float) -> str:
@@ -455,10 +477,10 @@ def account_cells(row: AccountRow, snapshot: Snapshot, view: View) -> list[Cell]
         (clean(row.label), "dim" if row.archived else style),
         (clean(identity), "text"),
         (clean(row.plan or "—"), "dim"),
-        (compact(row.today.value(metric)), "text"),
-        (compact(row.week.value(metric)), "text"),
-        (compact(row.month.value(metric)), "text"),
-        (compact(row.all.value(metric)), "dim"),
+        (amount(row.today.value(metric), metric), "text"),
+        (amount(row.week.value(metric), metric), "text"),
+        (amount(row.month.value(metric), metric), "text"),
+        (amount(row.all.value(metric), metric), "dim"),
         (sparkline(row.hourly, 24), style),
         quota_cell(quotas.get("5h"), snapshot.now),
         quota_cell(quotas.get("week"), snapshot.now),
@@ -543,7 +565,7 @@ def draw_timeline(canvas: Canvas, rect: Rect, snapshot: Snapshot, view: View) ->
         canvas.put(inner_x + AXIS - 1, inner_y + row, "│", "border")
     for row in (0, chart_h // 2):
         value = peak * (chart_h - row) / chart_h
-        canvas.put(inner_x, inner_y + row, compact(value).rjust(AXIS - 2), "dim")
+        canvas.put(inner_x, inner_y + row, amount(value, metric).rjust(AXIS - 2), "dim")
         canvas.put(inner_x + AXIS - 1, inner_y + row, "┤", "border")
     canvas.put(inner_x, label_y, "0".rjust(AXIS - 2), "dim")
     canvas.put(inner_x + AXIS - 1, label_y, "└", "border")
@@ -580,7 +602,7 @@ def draw_timeline(canvas: Canvas, rect: Rect, snapshot: Snapshot, view: View) ->
     selected = buckets[snapshot.selected]
     select_x = plot_x + snapshot.selected * slot
     canvas.put(select_x, label_y, selected.short, "hi", limit=inner_x + inner_w - select_x)
-    value_text = compact(totals[snapshot.selected])
+    value_text = amount(totals[snapshot.selected], metric)
     value_y = inner_y + chart_h - 1 - heights[snapshot.selected]
     if totals[snapshot.selected] and value_y >= inner_y:
         value_x = min(select_x, inner_x + inner_w - len(value_text))
@@ -620,6 +642,7 @@ def draw_breakdown(canvas: Canvas, rect: Rect, snapshot: Snapshot, view: View) -
         Column("cache w", 7, ">", 5),
         Column("output", 7, ">", 1),
         Column("total", 7, ">", 0),
+        Column("cost", 7, ">", 2),
         Column("share", 13, "<", 2),
     ]
     fitted = fit_columns(columns, rect.w - 4)
@@ -644,6 +667,7 @@ def draw_breakdown(canvas: Canvas, rect: Rect, snapshot: Snapshot, view: View) -
             (compact(tally.cache_write), "text"),
             (compact(tally.output), "text"),
             (compact(tally.total), "accent"),
+            (cost_text(tally), "text"),
             [("█" * filled, "s1"), ("░" * (8 - filled), "dim"), (f" {share:4.0%}", "text")],
         ]
         draw_cells(canvas, x, y + offset, fitted, columns, cells)
@@ -651,6 +675,9 @@ def draw_breakdown(canvas: Canvas, rect: Rect, snapshot: Snapshot, view: View) -
         canvas.put(x, y + 1, "no usage in this bucket", "dim")
         return
     total = bucket.total
+    priced = Tally()  # the breakdown rows are priced even when the buckets are not
+    for row in snapshot.breakdown:
+        priced.merge(row.tally)
     cells = [(f"Σ {len(snapshot.breakdown)} rows", "title")]
     if extra:
         cells.append(("", "dim"))
@@ -661,6 +688,7 @@ def draw_breakdown(canvas: Canvas, rect: Rect, snapshot: Snapshot, view: View) -
         (compact(total.cache_write), "title"),
         (compact(total.output), "title"),
         (compact(total.total), "accent"),
+        (cost_text(priced), "title"),
         ("", "dim"),
     ]
     draw_cells(canvas, x, rect.y + rect.h - 2, fitted, columns, cells)
@@ -758,10 +786,10 @@ def draw_header(
     right = f" ⚡ {compact(snapshot.rate)} tok/min   {clock} "
     metric = snapshot.metric
     middle = (
-        f"today {compact(snapshot.today.value(metric))}  ·  "
-        f"week {compact(snapshot.week.value(metric))}  ·  "
-        f"month {compact(snapshot.month.value(metric))}  ·  "
-        f"all {compact(snapshot.all.value(metric))}"
+        f"today {amount(snapshot.today.value(metric), metric)}  ·  "
+        f"week {amount(snapshot.week.value(metric), metric)}  ·  "
+        f"month {amount(snapshot.month.value(metric), metric)}  ·  "
+        f"all {amount(snapshot.all.value(metric), metric)}"
     )
     if filter_label:
         middle += f"  ·  [{clean(filter_label)}]"

@@ -7,6 +7,7 @@ from pathlib import Path
 import pytest
 
 from tokenusage2.config import Config, ConfigError, default_config_path, expand, load_config
+from tokenusage2.pricing import Rates
 
 
 def test_missing_default_file_is_an_empty_config(tmp_path: Path) -> None:
@@ -78,3 +79,34 @@ def test_expand() -> None:
     assert expand("${HOME}/c", home, {"HOME": "/ignored"}) == Path("/h/c")
     assert expand("$X/b", home, {"X": "/x"}) == Path("/x/b")
     assert expand("$NOPE/b", home, {}) == Path("$NOPE/b")
+
+
+def test_prices_are_parsed_in_order_with_defaults(tmp_path: Path) -> None:
+    path = tmp_path / "config.toml"
+    path.write_text(
+        '[prices."gpt-*"]\ninput = 1\noutput = 8\ncache_read = 0.1\n'
+        '[prices."qwen*"]\ninput = 0\noutput = 0\n'
+    )
+    config = load_config(path, tmp_path, {})
+    assert config.prices == (
+        ("gpt-*", Rates(1.0, 8.0, 0.1, 1.0, 1.0)),
+        ("qwen*", Rates(0.0, 0.0, 0.0, 0.0, 0.0)),
+    )
+
+
+@pytest.mark.parametrize(
+    "content",
+    [
+        "prices = 3",
+        '[prices]\n"gpt" = 1',
+        '[prices."gpt"]\ninput = 1',
+        '[prices."gpt"]\ninput = 1\noutput = -2',
+        '[prices."gpt"]\ninput = true\noutput = 2',
+        '[prices."gpt"]\ninput = 1\noutput = 2\nfree = 3',
+    ],
+)
+def test_invalid_prices_raise(tmp_path: Path, content: str) -> None:
+    path = tmp_path / "config.toml"
+    path.write_text(content)
+    with pytest.raises(ConfigError):
+        load_config(path, tmp_path, {})

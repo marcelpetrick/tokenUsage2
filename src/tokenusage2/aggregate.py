@@ -17,6 +17,7 @@ from enum import StrEnum
 from pathlib import PurePath
 
 from tokenusage2.model import Account, Event, QuotaWindow, Tool, Usage
+from tokenusage2.pricing import Rates
 
 WINDOW_SECONDS = {"5h": 5 * 3600, "week": 7 * 86400}
 #: Keeps date arithmetic in range however far back a cursor is pushed.
@@ -41,6 +42,7 @@ class Metric(StrEnum):
     TOTAL = "total"
     FRESH = "fresh"
     OUTPUT = "output"
+    COST = "cost"
 
 
 DEFAULT_BUCKETS = {Period.DAY: 30, Period.WEEK: 16, Period.MONTH: 12}
@@ -48,6 +50,7 @@ METRIC_HELP = {
     Metric.TOTAL: "all tokens incl. cache",
     Metric.FRESH: "fresh input + output",
     Metric.OUTPUT: "output tokens",
+    Metric.COST: "API-equivalent cost (USD)",
 }
 
 
@@ -61,8 +64,10 @@ class Tally:
     reasoning: int = 0
     unsplit: int = 0
     cache_write_1h: int = 0
+    cost: float = 0.0
+    unpriced: int = 0
 
-    def add(self, usage: Usage) -> None:
+    def add(self, usage: Usage, rates: Rates | None = None) -> None:
         if not usage.unsplit:
             self.calls += 1
         self.input += usage.input
@@ -72,6 +77,11 @@ class Tally:
         self.reasoning += usage.reasoning
         self.unsplit += usage.unsplit
         self.cache_write_1h += usage.cache_write_1h
+        if rates is None:
+            self.unpriced += usage.total
+        else:
+            self.cost += rates.cost(usage)
+            self.unpriced += usage.unsplit
 
     def remove(self, usage: Usage) -> None:
         if not usage.unsplit:
@@ -83,6 +93,7 @@ class Tally:
         self.reasoning -= usage.reasoning
         self.unsplit -= usage.unsplit
         self.cache_write_1h -= usage.cache_write_1h
+        self.unpriced -= usage.total
 
     def merge(self, other: Tally) -> None:
         self.calls += other.calls
@@ -93,6 +104,8 @@ class Tally:
         self.reasoning += other.reasoning
         self.unsplit += other.unsplit
         self.cache_write_1h += other.cache_write_1h
+        self.cost += other.cost
+        self.unpriced += other.unpriced
 
     def copy(self) -> Tally:
         return replace(self)
@@ -106,7 +119,9 @@ class Tally:
         prompt = self.input + self.cache_read + self.cache_write
         return self.cache_read / prompt if prompt else 0.0
 
-    def value(self, metric: Metric) -> int:
+    def value(self, metric: Metric) -> float:
+        if metric is Metric.COST:
+            return self.cost
         if metric is Metric.FRESH:
             return self.input + self.output
         if metric is Metric.OUTPUT:
@@ -124,6 +139,8 @@ class Lifetime:
 
     tally: Tally = field(default_factory=Tally)
     last_ts: float | None = None
+    #: Per (tool, model, route): all-time cost is priced from these few sums.
+    models: dict[tuple[Tool, str, str], Tally] = field(default_factory=dict)
 
 
 def lifetimes_of(events: Iterable[Event]) -> dict[str, Lifetime]:
@@ -134,12 +151,33 @@ def lifetimes_of(events: Iterable[Event]) -> dict[str, Lifetime]:
         if lifetime is None:
             lifetime = found[event.account] = Lifetime()
         lifetime.tally.add(event.usage)
+        per_model = lifetime.models.get((event.tool, event.model, event.route))
+        if per_model is None:
+            per_model = lifetime.models[event.tool, event.model, event.route] = Tally()
+        per_model.add(event.usage)
         if not event.usage.unsplit and (lifetime.last_ts is None or event.ts > lifetime.last_ts):
             lifetime.last_ts = event.ts
     return found
 
 
+type Pricing = Callable[[Tool, str, str], Rates | None]
+
+
+def lifetime_cost(lifetime: Lifetime, pricing: Pricing) -> tuple[float, int]:
+    """All-time cost and unpriced tokens of an account, from its per-model sums."""
+    cost, unpriced = 0.0, 0
+    for (tool, model, route), tally in lifetime.models.items():
+        rates = pricing(tool, model, route)
+        if rates is None:
+            unpriced += tally.total
+        else:
+            cost += rates.cost(tally)
+            unpriced += tally.unsplit
+    return cost, unpriced
+
+
 def usage_value(usage: Usage, metric: Metric) -> int:
+    """Per-request value for sparklines and the heatmap (tokens, also in cost mode)."""
     if metric is Metric.FRESH:
         return usage.fresh
     if metric is Metric.OUTPUT:
@@ -348,18 +386,28 @@ def build_snapshot(
     running: Mapping[str, int] | None = None,
     backend: Callable[[Event], str] | None = None,
     lifetimes: Mapping[str, Lifetime] | None = None,
+    pricing: Pricing | None = None,
+    priced: bool | None = None,
 ) -> Snapshot:
     """Aggregate ``events`` (sorted by ``ts``) for one dashboard frame.
 
     ``cursor`` selects the bucket that many periods before the current one;
     the visible window scrolls only when the cursor leaves it. ``lifetimes``
     are the all-time totals per account; without them they are recounted.
+    Costs are computed in the cost view (or when ``priced``); the breakdown is
+    always priced.
     """
     if account_filter is not None:
         events = [event for event in events if event.account == account_filter]
     timestamps = [event.ts for event in events]
     names = {account.id: account.label for account in accounts}
     label = backend or logged_route
+    price = pricing or (lambda tool, model, route: None)
+    priced = metric is Metric.COST if priced is None else priced
+
+    def rates_of(event: Event) -> Rates | None:
+        return price(event.tool, event.model, event.route)
+
     today = datetime.fromtimestamp(now, tz).date()
     count = count or DEFAULT_BUCKETS[period]
     cursor = min(max(0, cursor), MAX_CURSOR)
@@ -381,7 +429,7 @@ def build_snapshot(
             tally = tallies.get(key)
             if tally is None:
                 tally = tallies[key] = Tally()
-            tally.add(event.usage)
+            tally.add(event.usage, rates_of(event) if priced else None)
         for tally in tallies.values():
             bucket.total.merge(tally)
 
@@ -407,7 +455,7 @@ def build_snapshot(
                     detail, ""
                 )
                 row = breakdown_rows[key] = BreakdownRow(key, extra, Tally())
-            row.tally.add(event.usage)
+            row.tally.add(event.usage, rates_of(event))
     breakdown = sorted(
         breakdown_rows.values(), key=lambda row: (-row.tally.value(metric), row.name)
     )
@@ -435,10 +483,13 @@ def build_snapshot(
         known = {account_filter: known[account_filter]} if account_filter in known else {}
     overall = {"today": Tally(), "week": Tally(), "month": Tally(), "all": Tally()}
     for account_id, lifetime in known.items():
-        overall["all"].merge(lifetime.tally)
+        all_time = lifetime.tally.copy()
+        if priced:
+            all_time.cost, all_time.unpriced = lifetime_cost(lifetime, price)
+        overall["all"].merge(all_time)
         row = rows.get(account_id)
         if row is not None:
-            row.all = lifetime.tally.copy()
+            row.all = all_time
             row.last_ts = lifetime.last_ts
     # Only the current month, week and day are walked; all-time totals are kept.
     for name, start in (("month", month_start), ("week", week_start), ("today", day_start)):
@@ -448,7 +499,7 @@ def build_snapshot(
             tally = per_account.get(event.account)
             if tally is None:
                 tally = per_account[event.account] = Tally()
-            tally.add(event.usage)
+            tally.add(event.usage, rates_of(event) if priced else None)
         for account_id, tally in per_account.items():
             overall[name].merge(tally)
             row = rows.get(account_id)

@@ -233,3 +233,14 @@ def test_backend_labels_follow_the_config_without_reingesting(
     relabelled = groups(["--config", str(config)])
     assert "gpu-box" in relabelled
     assert "ollama@10.0.0.5" not in relabelled
+
+
+def test_json_is_always_priced(
+    home: FakeHome, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    code, out, _ = call(["--json", "--no-archive", "--tz", "UTC"], home.env, tmp_path, capsys)
+    data = json.loads(out)
+    assert code == 0
+    # claude-opus-5 via Anthropic: 10 in, 1000 cache read, 100 cache write (5 min), 50 out
+    assert data["totals"]["all"]["cost"] == pytest.approx(2425 / 1_000_000)
+    assert data["totals"]["all"]["unpriced"] > 0  # Codex models carry no default price

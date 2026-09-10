@@ -76,7 +76,7 @@ Implemented in v0.1 (✓) and backlog (·):
   reconciliation against Codex `threads.tokens_used` and Claude `stats-cache`.
 - ✓ `--once` (one frame to stdout), `--json` (machine-readable snapshot),
   `--demo` (synthetic data for screenshots and tests).
-- · API-equivalent cost with an editable price table.
+- ✓ API-equivalent cost with an editable price table (0.5.0).
 - · Cache efficiency trend (cache read share per day).
 - · Threshold notifications (quota ≥ 90 %, unusual burn rate).
 - · Per-session drill-down and CSV export of the current view.
