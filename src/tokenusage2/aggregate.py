@@ -60,6 +60,7 @@ class Tally:
     output: int = 0
     reasoning: int = 0
     unsplit: int = 0
+    cache_write_1h: int = 0
 
     def add(self, usage: Usage) -> None:
         if not usage.unsplit:
@@ -70,6 +71,7 @@ class Tally:
         self.output += usage.output
         self.reasoning += usage.reasoning
         self.unsplit += usage.unsplit
+        self.cache_write_1h += usage.cache_write_1h
 
     def remove(self, usage: Usage) -> None:
         if not usage.unsplit:
@@ -80,6 +82,7 @@ class Tally:
         self.output -= usage.output
         self.reasoning -= usage.reasoning
         self.unsplit -= usage.unsplit
+        self.cache_write_1h -= usage.cache_write_1h
 
     def merge(self, other: Tally) -> None:
         self.calls += other.calls
@@ -89,6 +92,7 @@ class Tally:
         self.output += other.output
         self.reasoning += other.reasoning
         self.unsplit += other.unsplit
+        self.cache_write_1h += other.cache_write_1h
 
     def copy(self) -> Tally:
         return replace(self)

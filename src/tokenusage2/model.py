@@ -36,7 +36,9 @@ class Usage:
     constructor is 3.4x slower — but treated as immutable everywhere.
 
     ``input`` is fresh (uncached) input; ``reasoning`` is a subset of
-    ``output``; ``unsplit`` holds retained totals whose split is unknown.
+    ``output``; ``unsplit`` holds retained totals whose split is unknown;
+    ``cache_write_1h`` is the part of ``cache_write`` written with the 1-hour
+    TTL, which is priced at 2x input instead of 1.25x.
     """
 
     input: int = 0
@@ -45,6 +47,7 @@ class Usage:
     output: int = 0
     reasoning: int = 0
     unsplit: int = 0
+    cache_write_1h: int = 0
 
     @property
     def fresh(self) -> int:

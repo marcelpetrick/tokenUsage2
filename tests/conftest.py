@@ -48,6 +48,7 @@ def claude_line(
     cache_write: int = 100,
     out: int = 50,
     cwd: str = "/work/alpha",
+    cache_1h: int = 0,
 ) -> dict:
     record = {
         "type": "assistant",
@@ -63,6 +64,10 @@ def claude_line(
                 "cache_creation_input_tokens": cache_write,
                 "output_tokens": out,
                 "output_tokens_details": {"thinking_tokens": 0},
+                "cache_creation": {
+                    "ephemeral_5m_input_tokens": cache_write - cache_1h,
+                    "ephemeral_1h_input_tokens": cache_1h,
+                },
             },
         },
     }

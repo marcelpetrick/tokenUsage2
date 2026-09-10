@@ -14,6 +14,7 @@ from tokenusage2.model import Tool, Usage
 from tokenusage2.parsers import (
     ClaudeParser,
     CodexParser,
+    cache_write_1h,
     claude_route,
     codex_usage,
     count,
@@ -242,3 +243,18 @@ def test_parse_ts_and_count() -> None:
     assert parse_ts("nope") is None
     assert parse_ts(5) is None
     assert (count(True), count(-3), count(2.9), count("5")) == (0, 0, 2, 0)
+
+
+def test_claude_records_the_cache_ttl_split() -> None:
+    parser = ClaudeParser("acct")
+    line = claude_line("m", "2026-09-10T08:00:00Z", cache_write=100, cache_1h=80)
+    event = parser.feed(encode(line))
+    assert event is not None
+    assert (event.usage.cache_write, event.usage.cache_write_1h) == (100, 80)
+    assert (
+        cache_write_1h(
+            {"cache_creation_input_tokens": 5, "cache_creation": {"ephemeral_1h_input_tokens": 9}}
+        )
+        == 5
+    )
+    assert cache_write_1h({"cache_creation": "junk"}) == 0

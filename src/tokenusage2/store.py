@@ -18,7 +18,7 @@ from pathlib import Path
 
 from tokenusage2.model import Account, Event, QuotaWindow, Tool, Usage
 
-SCHEMA_VERSION = 3
+SCHEMA_VERSION = 4
 _TOOLS = {tool.value: tool for tool in Tool}
 _SCHEMA = """
 CREATE TABLE IF NOT EXISTS meta(key TEXT PRIMARY KEY, value TEXT NOT NULL);
@@ -30,7 +30,8 @@ CREATE TABLE IF NOT EXISTS events(
     key TEXT PRIMARY KEY, ts REAL NOT NULL, tool TEXT NOT NULL, account TEXT NOT NULL,
     model TEXT NOT NULL, route TEXT NOT NULL, project TEXT NOT NULL, session TEXT NOT NULL,
     input INTEGER NOT NULL, cache_read INTEGER NOT NULL, cache_write INTEGER NOT NULL,
-    output INTEGER NOT NULL, reasoning INTEGER NOT NULL, unsplit INTEGER NOT NULL);
+    output INTEGER NOT NULL, reasoning INTEGER NOT NULL, unsplit INTEGER NOT NULL,
+    cache_write_1h INTEGER NOT NULL DEFAULT 0);
 CREATE INDEX IF NOT EXISTS events_account_ts ON events(account, ts);
 CREATE TABLE IF NOT EXISTS quotas(
     account TEXT NOT NULL, window TEXT NOT NULL, used_percent REAL NOT NULL,
@@ -43,15 +44,18 @@ CREATE TABLE IF NOT EXISTS accounts(
 _TOTAL = "{t}.input + {t}.cache_read + {t}.cache_write + {t}.output + {t}.unsplit"
 _UPSERT = f"""
 INSERT INTO events(key, ts, tool, account, model, route, project, session,
-                   input, cache_read, cache_write, output, reasoning, unsplit)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                   input, cache_read, cache_write, output, reasoning, unsplit, cache_write_1h)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 ON CONFLICT(key) DO UPDATE SET
     ts = excluded.ts, model = excluded.model, route = excluded.route,
     project = excluded.project, session = excluded.session,
     input = excluded.input, cache_read = excluded.cache_read,
     cache_write = excluded.cache_write, output = excluded.output,
-    reasoning = excluded.reasoning, unsplit = excluded.unsplit
+    reasoning = excluded.reasoning, unsplit = excluded.unsplit,
+    cache_write_1h = excluded.cache_write_1h
 WHERE {_TOTAL.format(t="excluded")} > {_TOTAL.format(t="events")}
+   OR ({_TOTAL.format(t="excluded")} = {_TOTAL.format(t="events")}
+       AND excluded.cache_write_1h > events.cache_write_1h)
 """
 
 
@@ -90,8 +94,25 @@ def _backend_becomes_route(conn: sqlite3.Connection) -> None:
     )
 
 
+def _cache_write_ttl_split(conn: sqlite3.Connection) -> None:
+    """Schema 3 → 4: record the 1-hour-TTL share of cache writes.
+
+    Claude transcripts are read again once — their file offsets are forgotten —
+    so archived requests pick up the split; the tie-break in the upsert lets
+    the re-read copy replace the one without it.
+    """
+    columns = {row[1] for row in conn.execute("PRAGMA table_info(events)")}
+    if "cache_write_1h" not in columns:
+        conn.execute("ALTER TABLE events ADD COLUMN cache_write_1h INTEGER NOT NULL DEFAULT 0")
+    conn.execute("DELETE FROM files WHERE account LIKE 'claude:%'")
+
+
 #: ``MIGRATIONS[n]`` upgrades an archive from schema ``n`` to ``n + 1``.
-MIGRATIONS = {1: _claude_keys_without_account, 2: _backend_becomes_route}
+MIGRATIONS = {
+    1: _claude_keys_without_account,
+    2: _backend_becomes_route,
+    3: _cache_write_ttl_split,
+}
 
 
 @dataclass(slots=True)
@@ -122,6 +143,7 @@ def _row(event: Event) -> tuple:
         u.output,
         u.reasoning,
         u.unsplit,
+        u.cache_write_1h,
     )
 
 
@@ -202,7 +224,8 @@ class Store:
     def load_events(self) -> list[Event]:
         rows = self.conn.execute(
             "SELECT key, ts, tool, account, model, route, project, session, input, "
-            "cache_read, cache_write, output, reasoning, unsplit FROM events ORDER BY ts"
+            "cache_read, cache_write, output, reasoning, unsplit, cache_write_1h "
+            "FROM events ORDER BY ts"
         )
         return [
             Event(r[0], r[1], _TOOLS[r[2]], r[3], r[4], r[5], r[6], r[7], Usage(*r[8:]))

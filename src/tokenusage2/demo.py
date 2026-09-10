@@ -82,11 +82,15 @@ PROFILES = (
 
 def _usage(tool: Tool, rng: random.Random) -> Usage:
     if tool is Tool.CLAUDE:
+        fresh = rng.randint(1, 400)
+        read = rng.randint(15_000, 160_000)
+        written = rng.choice((0, 0, 0, rng.randint(1_000, 12_000)))
         return Usage(
-            input=rng.randint(1, 400),
-            cache_read=rng.randint(15_000, 160_000),
-            cache_write=rng.choice((0, 0, 0, rng.randint(1_000, 12_000))),
+            input=fresh,
+            cache_read=read,
+            cache_write=written,
             output=rng.randint(40, 2_500),
+            cache_write_1h=written,  # Claude Code writes its cache with the 1-hour TTL
         )
     if tool is Tool.CODEX:
         output = rng.randint(80, 3_500)

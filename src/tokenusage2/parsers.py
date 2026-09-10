@@ -57,6 +57,17 @@ def claude_route(request_id: str) -> str:
     return "anthropic" if request_id.startswith("req_") else ""
 
 
+def cache_write_1h(usage: Mapping[str, object]) -> int:
+    """The 1-hour-TTL share of a Claude cache write, never more than the write."""
+    split = usage.get("cache_creation")
+    if not isinstance(split, dict):
+        return 0
+    return min(
+        count(split.get("ephemeral_1h_input_tokens")),
+        count(usage.get("cache_creation_input_tokens")),
+    )
+
+
 def _loads(line: bytes | str) -> dict | None:
     try:
         data = json.loads(line)
@@ -95,6 +106,7 @@ class ClaudeParser:
             input=count(usage.get("input_tokens")),
             cache_read=count(usage.get("cache_read_input_tokens")),
             cache_write=count(usage.get("cache_creation_input_tokens")),
+            cache_write_1h=cache_write_1h(usage),
             output=count(usage.get("output_tokens")),
             reasoning=count(details.get("thinking_tokens")) if isinstance(details, dict) else 0,
         )

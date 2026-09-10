@@ -10,6 +10,18 @@ All notable changes to tokenUsage2. Versions follow semantic versioning; the
 archive schema version is noted whenever it changes, because an older build
 refuses a newer archive.
 
+## 0.4.0
+
+Archive schema 4 — migrated in place; Claude transcripts are read again once.
+
+### Added
+
+- Every request records the part of its cache write made with the 1-hour TTL
+  (`cache_write_1h`), which Anthropic prices at 2x input instead of 1.25x.
+  Claude Code writes most of its cache that way (measured 106M 1-hour vs 3.6M
+  5-minute tokens for Opus 5), so cost estimates need the split. A re-read copy
+  that knows the split replaces an archived copy of the same total without it.
+
 ## 0.3.11
 
 ### Documentation

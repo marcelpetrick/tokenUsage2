@@ -106,7 +106,11 @@ class EventIndex:
 
     def upsert(self, event: Event) -> bool:
         old = self._by_key.get(event.key)
-        if old is not None and event.usage.total <= old.usage.total:
+        # The larger copy wins; on a tie, the copy that knows its cache TTL split.
+        if old is not None and (event.usage.total, event.usage.cache_write_1h) <= (
+            old.usage.total,
+            old.usage.cache_write_1h,
+        ):
             return False
         if old is not None:
             self._remove(old)

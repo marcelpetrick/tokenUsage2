@@ -300,7 +300,7 @@ def test_schema_1_archives_are_migrated(tmp_path: Path) -> None:
         "claude:msg_a:req_1",
         "codex:codex:~/.codex:t:5",
     ]
-    assert migrated.get_meta("schema") == "3"
+    assert migrated.get_meta("schema") == "4"
     migrated.close()
 
 
@@ -372,5 +372,46 @@ def test_schema_2_archives_keep_only_the_logged_route(tmp_path: Path) -> None:
         )
     store = Store(path)
     assert [event.route for event in store.load_events()] == ["anthropic", "", "openai"]
-    assert store.get_meta("schema") == "3"
+    assert store.get_meta("schema") == "4"
+    store.close()
+
+
+def test_the_copy_that_knows_its_cache_ttl_split_wins_a_tie() -> None:
+    plain = Event("k", 1.0, Tool.CLAUDE, "a", "m", "", "p", "s", Usage(cache_write=10))
+    split = replace(plain, usage=Usage(cache_write=10, cache_write_1h=8))
+    index = EventIndex([plain])
+    assert index.upsert(split)
+    assert not index.upsert(plain)
+    store = Store(None)
+    store.upsert_events([plain])
+    assert store.upsert_events([split]) == 1
+    assert store.upsert_events([plain]) == 0
+    assert store.load_events()[0].usage.cache_write_1h == 8
+    store.close()
+
+
+def test_schema_3_archives_gain_the_ttl_split_and_reread_claude(tmp_path: Path) -> None:
+    path = tmp_path / "v3.sqlite"
+    columns = (
+        "key TEXT PRIMARY KEY, ts REAL, tool TEXT, account TEXT, model TEXT, route TEXT, "
+        "project TEXT, session TEXT, input INTEGER, cache_read INTEGER, cache_write INTEGER, "
+        "output INTEGER, reasoning INTEGER, unsplit INTEGER"
+    )
+    with closing(sqlite3.connect(path)) as connection:
+        connection.executescript(
+            "CREATE TABLE meta(key TEXT PRIMARY KEY, value TEXT NOT NULL);"
+            "INSERT INTO meta VALUES ('schema', '3');"
+            f"CREATE TABLE events({columns});"
+            "INSERT INTO events VALUES ('claude:a:req_1', 1, 'claude', 'claude:~/.claude', 'm',"
+            " 'anthropic', '', '', 1, 0, 10, 0, 0, 0);"
+            "CREATE TABLE files(path TEXT PRIMARY KEY, account TEXT NOT NULL, inode INTEGER NOT"
+            " NULL, size INTEGER NOT NULL, mtime_ns INTEGER NOT NULL, offset INTEGER NOT NULL,"
+            " ctx TEXT NOT NULL);"
+            "INSERT INTO files VALUES ('/c.jsonl', 'claude:~/.claude', 1, 2, 3, 2, '{}');"
+            "INSERT INTO files VALUES ('/x.jsonl', 'codex:~/.codex', 1, 2, 3, 2, '{}');"
+        )
+    store = Store(path)
+    assert store.get_meta("schema") == "4"
+    assert store.load_events()[0].usage.cache_write_1h == 0
+    assert list(store.load_file_states()) == ["/x.jsonl"]
     store.close()
