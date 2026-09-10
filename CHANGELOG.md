@@ -10,6 +10,17 @@ All notable changes to tokenUsage2. Versions follow semantic versioning; the
 archive schema version is noted whenever it changes, because an older build
 refuses a newer archive.
 
+## 0.7.0
+
+### Added
+
+- Alerts: a 5 h or weekly quota at or above 90 %, and a burn rate above five
+  times the typical active minute of the last seven days (never below 250k
+  tokens/min). The active alert replaces the status in the footer; new alerts
+  can also raise a `notify-send` desktop notification and the terminal bell.
+  Each fires once per quota window or fifteen-minute burn episode. Configure
+  with `[alerts]`; `--json` lists the active alerts.
+
 ## 0.6.0
 
 ### Added

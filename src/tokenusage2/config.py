@@ -25,6 +25,17 @@ class ConfigError(ValueError):
 
 
 @dataclass(frozen=True, slots=True)
+class AlertSettings:
+    """When to raise an alert, and how."""
+
+    quota_percent: float = 90.0
+    burn_factor: float = 5.0
+    burn_floor: float = 250_000.0
+    notify: bool = False
+    bell: bool = False
+
+
+@dataclass(frozen=True, slots=True)
 class Config:
     claude_homes: tuple[Path, ...] = ()
     codex_homes: tuple[Path, ...] = ()
@@ -35,6 +46,7 @@ class Config:
     labels: Mapping[str, str] = field(default_factory=dict)
     backends: Mapping[str, str] = field(default_factory=dict)
     prices: tuple[tuple[str, Rates], ...] = ()
+    alerts: AlertSettings = field(default_factory=AlertSettings)
     source: Path | None = None
 
 
@@ -68,6 +80,34 @@ def _strings(data: Mapping[str, object], key: str) -> dict[str, str]:
 
 
 _PRICE_FIELDS = ("input", "output", "cache_read", "cache_write", "cache_write_1h")
+
+
+def _alerts(data: Mapping[str, object]) -> AlertSettings:
+    """``[alerts]``: quota_percent, burn_factor, burn_floor, notify, bell."""
+    raw = data.get("alerts", {})
+    if not isinstance(raw, dict):
+        raise ConfigError("[alerts] must be a table")
+    known = {"quota_percent", "burn_factor", "burn_floor", "notify", "bell"}
+    unknown = sorted(set(raw) - known)
+    if unknown:
+        raise ConfigError(f"[alerts]: unknown keys {', '.join(unknown)}")
+    values: dict[str, object] = {}
+    for name in ("notify", "bell"):
+        if name in raw:
+            if not isinstance(raw[name], bool):
+                raise ConfigError(f"alerts.{name} must be true or false")
+            values[name] = raw[name]
+    limits = {"quota_percent": (0.0, 100.0), "burn_factor": (0.0, None), "burn_floor": (0.0, None)}
+    for name, (low, high) in limits.items():
+        if name not in raw:
+            continue
+        value = raw[name]
+        valid = not isinstance(value, bool) and isinstance(value, int | float)
+        if not valid or value < low or (high is not None and value > high):
+            bound = f"between {low:g} and {high:g}" if high is not None else f">= {low:g}"
+            raise ConfigError(f"alerts.{name} must be a number {bound}")
+        values[name] = float(value)
+    return AlertSettings(**values)
 
 
 def _prices(data: Mapping[str, object]) -> tuple[tuple[str, Rates], ...]:
@@ -134,5 +174,6 @@ def load_config(path: Path | None, home: Path, env: Mapping[str, str]) -> Config
         labels=labels,
         backends=_strings(data, "backends"),
         prices=_prices(data),
+        alerts=_alerts(data),
         source=target,
     )

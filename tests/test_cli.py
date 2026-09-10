@@ -256,3 +256,14 @@ def test_json_buckets_carry_their_cache_share(
     assert code == 0
     assert all(0.0 <= share <= 1.0 for share in shares)
     assert any(share > 0.5 for share in shares)
+
+
+def test_json_lists_active_alerts(
+    home: FakeHome, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    config = tmp_path / "config.toml"
+    config.write_text("[alerts]\nquota_percent = 30\n")
+    args = ["--json", "--no-archive", "--tz", "UTC", "--config", str(config)]
+    code, out, _ = call(args, home.env, tmp_path, capsys)
+    assert code == 0
+    assert "claude 5h quota at 38%" in json.loads(out)["alerts"]

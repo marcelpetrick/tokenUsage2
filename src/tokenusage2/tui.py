@@ -17,6 +17,7 @@ from datetime import datetime, tzinfo
 from typing import Protocol, TextIO
 
 from tokenusage2.aggregate import GroupBy, Metric, Period, Snapshot, build_snapshot, periods_back
+from tokenusage2.alerts import Alert, AlertTracker, evaluate, notify, typical_rate
 from tokenusage2.ingest import ScanReport
 from tokenusage2.live import Source
 from tokenusage2.render import THEME_NAMES, View, layout, render, render_message
@@ -212,6 +213,7 @@ class Screen(Protocol):
     def size(self) -> tuple[int, int]: ...
     def draw(self, lines: Sequence[str]) -> None: ...
     def read_keys(self, timeout: float) -> list[str]: ...
+    def bell(self) -> None: ...
 
 
 def _terminate(signum: int, frame: object) -> None:
@@ -250,6 +252,10 @@ class Terminal:
         self.stdout.write("\x1b[H" + "\r\n".join(lines))
         self.stdout.flush()
 
+    def bell(self) -> None:
+        self.stdout.write("\a")
+        self.stdout.flush()
+
     def read_keys(self, timeout: float) -> list[str]:
         ready, _, _ = select.select([self.fd], [], [], timeout)
         if not ready:
@@ -279,6 +285,9 @@ def _loop(
 ) -> int:
     controller = Controller(view)
     width, height = screen.size()
+    settings = source.alert_settings()
+    tracker = AlertTracker()
+    alerts: list[Alert] = []
 
     def progress(done: int, total: int) -> None:
         screen.draw(
@@ -333,6 +342,11 @@ def _loop(
             snapshot = take_snapshot(source, view, now=now, tz=tz, count=count)
             memo = key
             dirty = True
+            alerts = evaluate(snapshot, settings, typical_rate(source.events(), now))
+            for alert in tracker.update(alerts):
+                notify(alert, settings)
+                if settings.bell:
+                    screen.bell()
         else:
             snapshot.now = now
         if dirty or int(now) != drawn_second:
@@ -346,6 +360,7 @@ def _loop(
                     status=status_text(report, source, view),
                     sources=source.sources() if view.sources else (),
                     mode="PAUSED" if view.paused else source.mode,
+                    alert=alerts[0].text if alerts else "",
                 )
             )
             drawn_second, dirty = int(now), False

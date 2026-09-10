@@ -813,7 +813,11 @@ def draw_header(
             canvas.put(len(left) + (room - len(middle)) // 2, 0, middle, "header")
 
 
-def draw_footer(canvas: Canvas, rect: Rect, status: str) -> None:
+def draw_footer(canvas: Canvas, rect: Rect, status: str, alert: str = "") -> None:
+    """Key hints on the left; the status — or an active alert — on the right."""
+    style = "dim"
+    if alert:
+        status, style = f"▲ {clean(alert)}", "bad"
     status = clip(status, max(0, rect.w // 2))
     limit = rect.w - len(status) - 2
     x = 1
@@ -822,7 +826,7 @@ def draw_footer(canvas: Canvas, rect: Rect, status: str) -> None:
             break
         x = canvas.put(x, rect.y, key, "accent")
         x = canvas.put(x + 1, rect.y, description, "dim") + 2
-    canvas.put(rect.w - len(status) - 1, rect.y, status, "dim")
+    canvas.put(rect.w - len(status) - 1, rect.y, status, style)
 
 
 def draw_overlay(canvas: Canvas, title: str, lines: Sequence[str]) -> None:
@@ -846,6 +850,7 @@ def render(
     status: str = "",
     sources: Sequence[str] = (),
     mode: str = "LIVE",
+    alert: str = "",
 ) -> list[str]:
     """One full frame as ``height`` lines of exactly ``width`` cells."""
     canvas = Canvas(width, height)
@@ -874,7 +879,7 @@ def render(
             draw_heatmap(canvas, frame.right, snapshot)
         else:
             draw_feed(canvas, frame.right, snapshot, tz, names)
-    draw_footer(canvas, frame.footer, status)
+    draw_footer(canvas, frame.footer, status, alert)
     if view.help:
         draw_overlay(canvas, "Keys", HELP_LINES)
     elif view.sources:

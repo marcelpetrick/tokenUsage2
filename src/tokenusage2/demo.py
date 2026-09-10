@@ -12,6 +12,7 @@ from datetime import datetime, timedelta, tzinfo
 from pathlib import Path
 
 from tokenusage2.aggregate import midnight
+from tokenusage2.config import AlertSettings
 from tokenusage2.ingest import Progress, ScanReport
 from tokenusage2.model import Account, Event, QuotaWindow, Tool, Usage
 from tokenusage2.pricing import Pricer, Rates
@@ -117,6 +118,7 @@ class DemoSource:
         self.rng = random.Random(seed)
         self._counter = 0
         self._last = clock()
+        self._origin = self._last  # quota windows reset relative to the start
         self._events = self._history(self._last, days)
         self._generation = 1
 
@@ -203,7 +205,7 @@ class DemoSource:
         return self._generation
 
     def quotas(self) -> list[QuotaWindow]:
-        now = self._last
+        now, origin = self._last, self._origin
         values = (
             ("claude:~/.claude", 38, 49, 6000, 3 * 86400 + 4 * 3600),
             ("codex:~/.codex", 81, 13, 4100, 5 * 86400),
@@ -211,8 +213,8 @@ class DemoSource:
         )
         quotas = []
         for account, short, week, short_reset, week_reset in values:
-            quotas.append(QuotaWindow(account, "5h", short, now + short_reset, now - 30, "demo"))
-            quotas.append(QuotaWindow(account, "week", week, now + week_reset, now - 30, "demo"))
+            quotas.append(QuotaWindow(account, "5h", short, origin + short_reset, now - 30, "demo"))
+            quotas.append(QuotaWindow(account, "week", week, origin + week_reset, now - 30, "demo"))
         return quotas
 
     def accounts(self) -> list[Account]:
@@ -233,6 +235,9 @@ class DemoSource:
 
     def rates(self, tool: Tool, model: str, route: str) -> Rates | None:
         return _PRICER.rates(tool, model, route)
+
+    def alert_settings(self) -> AlertSettings:
+        return AlertSettings()
 
     def sources(self) -> list[str]:
         return [

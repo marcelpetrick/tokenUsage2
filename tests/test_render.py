@@ -271,3 +271,8 @@ def test_timeline_shows_the_cache_trend(demo: DemoSource) -> None:
     assert "█" in row or "▇" in row
     short = "\n".join(frame(demo, View(theme="plain"), 100, 16))  # timeline too short
     assert "cache-hit share" not in short
+
+
+def test_footer_shows_an_active_alert(demo: DemoSource) -> None:
+    lines = frame(demo, View(theme="plain"), alert="codex 5h quota at 95%")
+    assert lines[-1].rstrip().endswith("▲ codex 5h quota at 95%")

@@ -6,7 +6,14 @@ from pathlib import Path
 
 import pytest
 
-from tokenusage2.config import Config, ConfigError, default_config_path, expand, load_config
+from tokenusage2.config import (
+    AlertSettings,
+    Config,
+    ConfigError,
+    default_config_path,
+    expand,
+    load_config,
+)
 from tokenusage2.pricing import Rates
 
 
@@ -106,6 +113,33 @@ def test_prices_are_parsed_in_order_with_defaults(tmp_path: Path) -> None:
     ],
 )
 def test_invalid_prices_raise(tmp_path: Path, content: str) -> None:
+    path = tmp_path / "config.toml"
+    path.write_text(content)
+    with pytest.raises(ConfigError):
+        load_config(path, tmp_path, {})
+
+
+def test_alert_settings(tmp_path: Path) -> None:
+    path = tmp_path / "config.toml"
+    path.write_text("[alerts]\nquota_percent = 80\nburn_factor = 3\nnotify = true\n")
+    assert load_config(path, tmp_path, {}).alerts == AlertSettings(
+        quota_percent=80.0, burn_factor=3.0, notify=True
+    )
+    assert load_config(None, tmp_path, {}).alerts == AlertSettings()
+
+
+@pytest.mark.parametrize(
+    "content",
+    [
+        "alerts = 1",
+        "[alerts]\nquota_percent = 120",
+        "[alerts]\nburn_factor = -1",
+        "[alerts]\nnotify = 'yes'",
+        "[alerts]\nquota_percent = true",
+        "[alerts]\nsiren = true",
+    ],
+)
+def test_invalid_alert_settings_raise(tmp_path: Path, content: str) -> None:
     path = tmp_path / "config.toml"
     path.write_text(content)
     with pytest.raises(ConfigError):

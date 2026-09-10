@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import Protocol
 
 from tokenusage2.aggregate import Lifetime
-from tokenusage2.config import Config
+from tokenusage2.config import AlertSettings, Config
 from tokenusage2.discover import discover
 from tokenusage2.doctor import doctor_lines
 from tokenusage2.ingest import Ingestor, Progress, ScanReport
@@ -38,6 +38,7 @@ class Source(Protocol):
     def backend_of(self, event: Event) -> str: ...
     def lifetimes(self) -> Mapping[str, Lifetime] | None: ...
     def rates(self, tool: Tool, model: str, route: str) -> Rates | None: ...
+    def alert_settings(self) -> AlertSettings: ...
     def close(self) -> None: ...
 
 
@@ -131,6 +132,9 @@ class LiveSource:
 
     def rates(self, tool: Tool, model: str, route: str) -> Rates | None:
         return self.pricer.rates(tool, model, route)
+
+    def alert_settings(self) -> AlertSettings:
+        return self.config.alerts
 
     def close(self) -> None:
         self.store.close()

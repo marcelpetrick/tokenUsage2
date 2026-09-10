@@ -15,6 +15,7 @@ import pytest
 
 from conftest import BERLIN, NOW
 from tokenusage2.aggregate import GroupBy, Metric, Period
+from tokenusage2.config import AlertSettings
 from tokenusage2.demo import DemoSource
 from tokenusage2.render import View
 from tokenusage2.tui import (
@@ -94,12 +95,16 @@ class FakeScreen:
         self.batches = list(batches)
         self.frames: list[list[str]] = []
         self.current = (140, 42)
+        self.bells = 0
 
     def size(self) -> tuple[int, int]:
         return self.current
 
     def draw(self, lines: Sequence[str]) -> None:
         self.frames.append(list(lines))
+
+    def bell(self) -> None:
+        self.bells += 1
 
     def read_keys(self, timeout: float) -> list[str]:
         if not self.batches:
@@ -155,6 +160,7 @@ def test_terminal_session_restores_the_tty() -> None:
         with Terminal(stdin, stdout) as terminal:
             assert terminal.size() == (80, 24)
             terminal.draw(["ab", "cd"])
+            terminal.bell()
             os.write(master, b"\x1b[Dq")
             assert terminal.read_keys(1.0) == ["left", "q"]
             assert terminal.read_keys(0.0) == []
@@ -175,3 +181,19 @@ def test_sigterm_handler_exits_cleanly() -> None:
     with pytest.raises(SystemExit) as stop:
         _terminate(15, None)
     assert stop.value.code == 143
+
+
+def test_run_loop_raises_each_alert_once(monkeypatch: pytest.MonkeyPatch) -> None:
+    ticks = itertools.count()
+
+    def clock() -> float:
+        return NOW + next(ticks) * 0.7
+
+    source = DemoSource(BERLIN, clock=clock, days=20)
+    monkeypatch.setattr(
+        source, "alert_settings", lambda: AlertSettings(quota_percent=80, bell=True)
+    )
+    screen = FakeScreen([[], [], ["v"], []])
+    assert run(source, View(theme="plain"), BERLIN, screen=screen, clock=clock) == 0
+    assert screen.bells == 1  # codex 5h at 81 % — once, not on every frame
+    assert any("▲ codex 5h quota at 81%" in "\n".join(lines) for lines in screen.frames)

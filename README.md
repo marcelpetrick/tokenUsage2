@@ -57,8 +57,13 @@ appended, so a restart takes about 0.2 s.
 | **Heatmap** | Hour-of-day × weekday activity over the last four weeks (replaces the feed on `h`). |
 | **Sources** | Discovered homes and *how* each was found, file/event counts, archive path, quota freshness, backend hints, and a reconciliation against each tool's own totals (`s`, or `--doctor`). |
 
-Three metrics are available: all tokens including cache (the raw total), fresh
-input + output, and output only.
+Four metrics are available: all tokens including cache (the raw total), fresh
+input + output, output only, and the API-equivalent cost.
+
+**Alerts** appear in the status line when a 5 h or weekly quota reaches 90 %
+or the burn rate climbs far above the typical active minute of the last seven
+days — optionally also as a desktop notification (`notify-send`) and a terminal
+bell. Each fires once per quota window or burn episode; `--json` lists them.
 
 ## Keys
 
@@ -220,6 +225,13 @@ scan_home = true              # look for ~/.claude* and ~/.codex*
 input = 1.0
 output = 8.0
 cache_read = 0.1              # optional: cache_read, cache_write, cache_write_1h
+
+[alerts]
+quota_percent = 90           # a 5 h or weekly quota at or above this
+burn_factor = 5              # a burn rate above 5x the typical active minute …
+burn_floor = 250000          # … and above this many tokens per minute
+notify = true                # desktop notification through notify-send
+bell = false                 # terminal bell
 ```
 
 ## Privacy

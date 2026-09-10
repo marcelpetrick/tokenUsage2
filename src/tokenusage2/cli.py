@@ -17,6 +17,7 @@ from pathlib import Path
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from tokenusage2.aggregate import GroupBy, Metric, Period, Snapshot, Tally
+from tokenusage2.alerts import evaluate, typical_rate
 from tokenusage2.config import ConfigError, load_config
 from tokenusage2.demo import DemoSource
 from tokenusage2.live import LiveSource, Source
@@ -253,8 +254,11 @@ def _run(
         snapshot = take_snapshot(
             source, view, now=now, tz=tz, count=count, priced=True if args.json else None
         )
+        alerts = evaluate(snapshot, source.alert_settings(), typical_rate(source.events(), now))
         if args.json:
-            print(json.dumps(snapshot_json(snapshot, tz, args.redact), indent=2))
+            data = snapshot_json(snapshot, tz, args.redact)
+            data["alerts"] = [alert.text for alert in alerts]
+            print(json.dumps(data, indent=2))
             return 0
         colored = args.color == "always" or (args.color == "auto" and sys.stdout.isatty())
         if not colored:
@@ -267,6 +271,7 @@ def _run(
             tz=tz,
             status=status_text(report, source, view),
             mode=source.mode,
+            alert=alerts[0].text if alerts else "",
         )
         print("\n".join(lines))
         return 0
