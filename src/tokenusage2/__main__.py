@@ -2,4 +2,6 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-__version__ = "0.0.8"
+from tokenusage2.cli import main
+
+raise SystemExit(main())
