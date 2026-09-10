@@ -120,5 +120,6 @@ The open ideas from §3, in delivery order — one commit and one version each:
 | 0.7.0 | Alerts | Quota ≥ 90 % (configurable) and a burn rate far above the typical active-minute rate of the last seven days — shown in the status line, optionally through `notify-send` and the terminal bell; each alert fires once per quota window or burn episode. |
 | 0.8.0 | Session drill-down | `session` as a breakdown dimension: project · session id with first and last request. |
 | 0.9.0 | CSV export | `--csv` (timeline rows to stdout) and `e` in the dashboard (timeline and breakdown files under `$XDG_DATA_HOME/tokenusage2/exports`). |
+| 0.10.0 | Releases | A GitHub Actions workflow on every push to `master`: when `version.py` names a version without a `v<version>` tag, it runs the pipeline, builds sdist and wheel, and creates the tag and a GitHub release whose notes are that version's `CHANGELOG.md` section. A release badge in the README shows the newest one. |
 | — | Aider / Gemini CLI | Deferred: no Gemini CLI data exists on the development machine and the only Aider history holds no token lines (a local model), so no parser could be verified against real records. |
 

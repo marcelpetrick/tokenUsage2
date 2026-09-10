@@ -10,6 +10,12 @@ All notable changes to tokenUsage2. Versions follow semantic versioning; the
 archive schema version is noted whenever it changes, because an older build
 refuses a newer archive.
 
+## 0.3.10
+
+### Documentation
+
+- `PLAN.md` §6: automatic GitHub releases per version, with a release badge.
+
 ## 0.3.9
 
 ### Documentation
