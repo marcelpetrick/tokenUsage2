@@ -101,7 +101,7 @@ bell. Each fires once per quota window or burn episode; `--json` lists them.
 
 A home only becomes an account when its content proves it (`projects/` for
 Claude Code, `sessions/` or `auth.json` for Codex, the database file for
-OpenCode). Candidates come from, in priority order:
+OpenCode). Candidates come from:
 
 1. **The config file** — extra homes you want included.
 2. **The environment** — `CLAUDE_CONFIG_DIR`, `CODEX_HOME`.
@@ -116,6 +116,12 @@ OpenCode). Candidates come from, in priority order:
    `$XDG_DATA_HOME/opencode/opencode.db`.
 6. **A scan of `$HOME`** for `.claude*` / `.codex*` directories (and
    `claude*` / `codex*` under `$XDG_CONFIG_HOME`).
+
+One directory reached through several spellings — a symlink, a path in a
+running agent's environment — is one account. Its id is where the directory
+really lives, and its name comes from its steadiest spelling: the config file,
+rc files, default locations and the scan come before the environment and
+running processes. So neither changes with which agents happen to be running.
 
 Identities come from the tools' own files: Claude's `oauthAccount` in
 `.claude.json`, and the e-mail and plan claims of Codex's `id_token` JWT in

@@ -76,6 +76,21 @@ def test_duplicate_labels_get_suffixes(tmp_path: Path) -> None:
     assert [account.label for account in found.accounts] == ["claude", "claude-2"]
 
 
+def test_a_symlinked_home_keeps_its_id_and_name_while_agents_run(tmp_path: Path) -> None:
+    disk = tmp_path / "disk" / "claude"
+    (disk / "projects").mkdir(parents=True)
+    home = tmp_path / "home"
+    home.mkdir()
+    (home / ".claude-work").symlink_to(disk, target_is_directory=True)
+    running = AgentProcess(42, Tool.CLAUDE, {"CLAUDE_CONFIG_DIR": str(disk)})
+    expected = [(f"claude:{disk.resolve()}", "claude-work", home / ".claude-work", "scan")]
+    for processes in ((), (running,)):
+        found = discover(home, {}, Config(), processes)
+        assert [(a.id, a.label, a.home, a.origin) for a in found.accounts] == expected
+    named = discover(home, {}, Config(labels={str(disk): "work"}), [running])
+    assert [account.label for account in named.accounts] == ["work"]
+
+
 def test_backend_hints_resolve_locals_and_drop_credentials(home: FakeHome) -> None:
     hints = {
         hint.launcher: hint

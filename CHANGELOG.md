@@ -10,6 +10,27 @@ All notable changes to tokenUsage2. Versions follow semantic versioning; the
 archive schema version is noted whenever it changes, because an older build
 refuses a newer archive.
 
+## 0.11.0
+
+### Fixed
+
+- A home reached through several spellings — a symlink, a path in a running
+  agent's environment — is one account. Its id is now where the directory
+  really lives, and its name comes from its steadiest spelling (config, rc
+  files, default locations and the scan before the environment and running
+  processes). Both used to follow whichever spelling was found first, so a
+  symlinked home changed id whenever an agent started or stopped: its history
+  split across two accounts, its files were read again, and its Codex records
+  were counted under both ids.
+- On the first start, the ids an archive holds for such a home are merged into
+  its current id; Codex, OpenCode and retained-total keys are rewritten and
+  records held twice are dropped.
+
+### Changed
+
+- Accounts found only through the environment or a running process are listed
+  after the others.
+
 ## 0.10.9
 
 ### Fixed

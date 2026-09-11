@@ -18,15 +18,17 @@ from conftest import (
     NOW,
     FakeHome,
     claude_line,
+    codex_meta,
     codex_tokens,
+    codex_turn,
     line,
     write_jsonl,
 )
 from tokenusage2.aggregate import lifetimes_of
 from tokenusage2.config import Config
-from tokenusage2.discover import discover
+from tokenusage2.discover import BackendMap, Discovery, discover
 from tokenusage2.ingest import EventIndex, Ingestor, walk_jsonl
-from tokenusage2.model import Event, Tool, Usage
+from tokenusage2.model import Account, Event, QuotaWindow, Tool, Usage
 from tokenusage2.store import FileState, Store, StoreError
 
 CLAUDE = "claude:~/.claude"
@@ -506,3 +508,60 @@ def test_schema_4_archives_count_copies_again_by_key(tmp_path: Path) -> None:
     assert list(migrated.load_file_states()) == ["/x.jsonl"]
     assert migrated.copy_counts() == {}
     migrated.close()
+
+
+def test_renaming_an_account_rewrites_keys_and_drops_what_the_new_id_holds() -> None:
+    store = Store(None)
+    shared = Event("codex:old:t:5", 1.0, Tool.CODEX, "old", "m", "openai", "p", "t", Usage(input=5))
+    store.upsert_events(
+        [
+            shared,
+            replace(shared, key="codex:new:t:5", account="new"),
+            replace(shared, key="codex:old:t:9", ts=2.0),
+            Event("claude:m:", 3.0, Tool.CLAUDE, "old", "m", "", "p", "s", Usage(input=1)),
+        ]
+    )
+    store.save_file_state(FileState("/r.jsonl", "old", 1, 2, 3, 2, {}))
+    store.upsert_quotas([QuotaWindow("old", "5h", 10.0, None, 1.0, "statusline")])
+    store.add_copies([("old", "claude:x:", "other"), ("other", "claude:y:", "old")])
+    store.set_meta("statscache:old", "stale")
+    store.rename_account("old", "new")
+    assert sorted((event.key, event.account) for event in store.load_events()) == [
+        ("claude:m:", "new"),
+        ("codex:new:t:5", "new"),
+        ("codex:new:t:9", "new"),
+    ]
+    assert store.load_file_states()["/r.jsonl"].account == "new"
+    assert [quota.account for quota in store.load_quotas()] == ["new"]
+    assert store.copy_counts() == {"new": {"other": 1}, "other": {"new": 1}}
+    assert store.get_meta("statscache:old") is None
+    store.close()
+
+
+def test_old_ids_of_a_symlinked_home_are_merged_into_its_id(tmp_path: Path) -> None:
+    disk = tmp_path / "disk" / "codex"
+    write_jsonl(
+        disk / "sessions" / "rollout-2026-09-10T10-00-00-t.jsonl",
+        [
+            codex_meta("t"),
+            codex_turn("gpt-5.6-sol"),
+            codex_tokens("2026-09-10T10:00:05Z", 1100, inp=1000, cached=600, out=100),
+        ],
+    )
+    home = tmp_path / "home"
+    home.mkdir()
+    (home / ".codex-lab").symlink_to(disk, target_is_directory=True)
+    archive = tmp_path / "archive.sqlite"
+    legacy = Account("codex:~/.codex-lab", Tool.CODEX, home / ".codex-lab", "codex-lab")
+    with closing(Store(archive)) as store:  # what 0.10 archived while no agent ran
+        Ingestor(store, Discovery((legacy,), (), BackendMap(), (), ()), BERLIN, home, {}).scan()
+    found = discover(home, {}, Config())
+    (account,) = found.accounts
+    assert account.id == f"codex:{disk.resolve()}"
+    with closing(Store(archive)) as store:
+        ingestor = Ingestor(store, found, BERLIN, home, {})
+        assert ingestor.scan().bytes_read == 0
+        assert [(event.key, event.account) for event in ingestor.index.events()] == [
+            (f"codex:{account.id}:t:1100", account.id)
+        ]
+        assert [stored.id for stored in store.load_accounts()] == [account.id]

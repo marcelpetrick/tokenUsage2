@@ -17,6 +17,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from tokenusage2.model import Account, Event, QuotaWindow, Tool, Usage
+from tokenusage2.parsers import BACKFILL_PREFIX
 
 SCHEMA_VERSION = 5
 _TOOLS = {tool.value: tool for tool in Tool}
@@ -162,6 +163,10 @@ def _row(event: Event) -> tuple:
     )
 
 
+#: Record keys that continue with the account id (see parsers).
+_ACCOUNT_KEYS = ("codex:", "opencode:", BACKFILL_PREFIX)
+
+
 class Store:
     def __init__(self, path: Path | None) -> None:
         self.path = path
@@ -257,6 +262,34 @@ class Store:
         for account, owner, records in rows:
             counts.setdefault(account, {})[owner] = records
         return counts
+
+    def rename_account(self, old: str, new: str) -> None:
+        """Move everything recorded for account ``old`` to ``new``.
+
+        Codex, OpenCode and retained-total keys embed the account and are
+        rewritten; a record ``new`` already holds is dropped under ``old``, so
+        a history split across both ids counts once.
+        """
+        conn = self.conn
+        for prefix in _ACCOUNT_KEYS:
+            before, after = f"{prefix}{old}:", f"{prefix}{new}:"
+            conn.execute(
+                "UPDATE OR IGNORE events SET key = ? || substr(key, ?) WHERE substr(key, 1, ?) = ?",
+                (after, len(before) + 1, len(before), before),
+            )
+            conn.execute("DELETE FROM events WHERE substr(key, 1, ?) = ?", (len(before), before))
+        conn.execute("UPDATE events SET account = ? WHERE account = ?", (new, old))
+        conn.execute("UPDATE files SET account = ? WHERE account = ?", (new, old))
+        for table in ("quotas", "copies"):
+            conn.execute(f"UPDATE OR IGNORE {table} SET account = ? WHERE account = ?", (new, old))
+            conn.execute(f"DELETE FROM {table} WHERE account = ?", (old,))
+        conn.execute("UPDATE copies SET owner = ? WHERE owner = ?", (new, old))
+        conn.execute("DELETE FROM copies WHERE account = owner")
+        conn.execute("DELETE FROM accounts WHERE id = ?", (old,))
+        conn.execute(
+            "DELETE FROM meta WHERE key IN (?, ?)",
+            (f"statscache:{old}", f"opencode-watermark:{old}"),
+        )
 
     def load_events(self) -> list[Event]:
         rows = self.conn.execute(

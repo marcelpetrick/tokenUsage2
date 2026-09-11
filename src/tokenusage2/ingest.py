@@ -208,6 +208,7 @@ class Ingestor:
         self.home = home
         self.env = env
         self.clock = clock
+        self._merge_spellings(discovery.accounts)
         self.index = EventIndex(store.load_events(), ordered=True)
         self.quotas = {(q.account, q.window): q for q in store.load_quotas()}
         self._files = store.load_file_states()
@@ -218,6 +219,19 @@ class Ingestor:
         self._copies_changed = False
         self.discovery = discovery
         self.set_discovery(discovery)
+
+    def _merge_spellings(self, accounts: Iterable[Account]) -> None:
+        """Fold every archived id of a home into the id it is discovered under now.
+
+        Before 0.11 an account was named after whichever spelling of its home
+        was found first, so a symlinked home could collect several ids.
+        """
+        current = {(account.tool, account.home.resolve()): account.id for account in accounts}
+        for stored in self.store.load_accounts():
+            new = current.get((stored.tool, stored.home.resolve()))
+            if new is not None and new != stored.id:
+                self.store.rename_account(stored.id, new)
+        self.store.commit()
 
     def set_discovery(self, discovery: Discovery) -> None:
         self.discovery = discovery

@@ -4,13 +4,19 @@
 
 """Find every local Claude Code, Codex and OpenCode home — nothing is hardcoded.
 
-Candidates come from, in priority order: the config file, the environment
-(``CLAUDE_CONFIG_DIR``, ``CODEX_HOME``), the environment of running agent
-processes (read from ``/proc``), assignments in shell rc files (for
-launchers such as ``codex-work() { CODEX_HOME=~/.codex-work codex; }``), the
-tools' default locations, and a scan of ``$HOME`` for ``.claude*``/``.codex*``
-directories. A candidate only becomes an account when its content proves it:
-a ``projects/`` tree for Claude Code, ``sessions/`` or ``auth.json`` for Codex.
+Candidates come from the config file, the environment (``CLAUDE_CONFIG_DIR``,
+``CODEX_HOME``), the environment of running agent processes (read from
+``/proc``), assignments in shell rc files (for launchers such as
+``codex-work() { CODEX_HOME=~/.codex-work codex; }``), the tools' default
+locations, and a scan of ``$HOME`` for ``.claude*``/``.codex*`` directories.
+A candidate only becomes an account when its content proves it: a
+``projects/`` tree for Claude Code, ``sessions/`` or ``auth.json`` for Codex.
+
+One directory reached through several spellings (a symlink, a path in a
+process environment) is one account. Its id is where the directory really
+lives; its name and home come from its steadiest spelling — config, rc files,
+default locations and the scan before the environment and running processes —
+so neither changes with which agents happen to run.
 
 Shell rc files are also mined for ``ANTHROPIC_BASE_URL`` launchers, which tells
 which Ollama host or proxy served a locally routed model.
@@ -356,8 +362,22 @@ def _scan(directory: Path, prefix: str) -> list[Path]:
     return [Path(e.path) for e in entries if e.name.startswith(prefix) and e.is_dir()]
 
 
-def _label(path: Path, home: Path, config: Config, xdg_config: Path) -> str:
+#: Candidate sources, steadiest first: the first four are there on every start,
+#: the environment and running processes only sometimes.
+_STEADINESS = ("config", "rc", "default", "scan", "env", "process")
+
+
+def _steadiness(origin: str) -> int:
+    return _STEADINESS.index(re.split(r"[: ]", origin, maxsplit=1)[0])
+
+
+def _label(path: Path, resolved: Path, home: Path, config: Config, xdg_config: Path) -> str:
     configured = config.labels.get(str(path)) or config.labels.get(display_path(path, home))
+    if not configured:  # a label given for the directory a symlink points to
+        configured = next(
+            (label for key, label in config.labels.items() if Path(key).resolve() == resolved),
+            None,
+        )
     if configured:
         return configured
     name = path.name.lstrip(".") or path.name
@@ -421,11 +441,13 @@ def discover(
         Tool.OPENCODE: Path.is_file,
     }
     ignored = {path.resolve() for path in config.ignore}
+    real_home = home.resolve()
     accounts: list[Account] = []
     seen: set[Path] = set()
     labels: set[str] = set()
     for tool in Tool:
-        for path, origin in candidates[tool]:
+        # The steadiest spelling of a directory comes first and names its account.
+        for path, origin in sorted(candidates[tool], key=lambda found: _steadiness(found[1])):
             resolved = path.resolve()
             if resolved in seen:
                 continue
@@ -444,14 +466,18 @@ def discover(
                 identity, plan = codex_identity(path)
             else:
                 identity, plan = None, None
-            label = "opencode" if tool is Tool.OPENCODE else _label(path, home, config, xdg_config)
+            label = (
+                "opencode"
+                if tool is Tool.OPENCODE
+                else _label(path, resolved, home, config, xdg_config)
+            )
             base, suffix = label, 2
             while label in labels:
                 label, suffix = f"{base}-{suffix}", suffix + 1
             labels.add(label)
             accounts.append(
                 Account(
-                    id=f"{tool}:{display_path(path, home)}",
+                    id=f"{tool}:{display_path(resolved, real_home)}",
                     tool=tool,
                     home=path,
                     label=label,
