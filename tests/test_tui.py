@@ -229,3 +229,23 @@ def test_export_view_reports_problems(tmp_path: Path) -> None:
     blocker.write_text("")
     message = export_view(source, view, BERLIN, now=NOW, count=5, directory=blocker / "x")
     assert message.startswith("export failed")
+
+
+def test_export_notice_wins_over_an_active_alert(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    ticks = itertools.count()
+
+    def clock() -> float:
+        return NOW + next(ticks) * 0.7
+
+    source = DemoSource(BERLIN, clock=clock, days=20)
+    monkeypatch.setattr(source, "alert_settings", lambda: AlertSettings(quota_percent=80))
+    screen = FakeScreen([["e"], []])
+    assert (
+        run(source, View(theme="plain"), BERLIN, screen=screen, clock=clock, export_dir=tmp_path)
+        == 0
+    )
+    frames = ["\n".join(lines) for lines in screen.frames]
+    assert any("▲ codex 5h quota" in frame for frame in frames)
+    assert any("exported timeline-" in frame for frame in frames)

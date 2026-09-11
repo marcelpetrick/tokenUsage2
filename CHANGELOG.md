@@ -10,6 +10,14 @@ All notable changes to tokenUsage2. Versions follow semantic versioning; the
 archive schema version is noted whenever it changes, because an older build
 refuses a newer archive.
 
+## 0.10.4
+
+### Fixed
+
+- The export confirmation never showed while an alert was active, because the
+  alert replaces the footer status. A fresh notice now takes the footer for its
+  ten seconds.
+
 ## 0.10.3
 
 ### Fixed

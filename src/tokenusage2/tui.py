@@ -393,7 +393,8 @@ def _loop(
                     status=notice if now < notice_until else status_text(report, source, view),
                     sources=source.sources() if view.sources else (),
                     mode="PAUSED" if view.paused else source.mode,
-                    alert=alerts[0].text if alerts else "",
+                    # a fresh notice (an export) takes the footer for its ten seconds
+                    alert="" if now < notice_until else (alerts[0].text if alerts else ""),
                 )
             )
             drawn_second, dirty = int(now), False
