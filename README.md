@@ -26,6 +26,10 @@ backend**, as daily, weekly and monthly views. Read-only, offline, no API keys.
 
 **License: GPLv3 or later. See [`LICENSE`](LICENSE).**
 
+**History:** started in [codingWithGPT](https://github.com/marcelpetrick/codingWithGPT)
+and moved here with its full history (see `CHANGELOG.md` 0.3.8); all work
+continues in this repository.
+
 ![tokenUsage2 running live in Konsole](media/tokenUsage2.png)
 
 *Live on a real workstation: Claude Code, two Codex accounts and OpenCode, one

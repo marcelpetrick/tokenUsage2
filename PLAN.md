@@ -123,5 +123,6 @@ The open ideas from §3, in delivery order — one commit and one version each:
 | 0.8.0 | Session drill-down | `session` as a breakdown dimension: project · session id with first and last request. |
 | 0.9.0 | CSV export | `--csv` (timeline rows to stdout) and `e` in the dashboard (timeline and breakdown files under `$XDG_DATA_HOME/tokenusage2/exports`). |
 | 0.10.0 | Releases | A GitHub Actions workflow on every push to `master`: when `version.py` names a version without a `v<version>` tag, it runs the pipeline, builds sdist and wheel, and creates the tag and a GitHub release whose notes are that version's `CHANGELOG.md` section. A release badge in the README shows the newest one. |
+| 0.10.1 | Hand-over | `codingWithGPT/tokenUsage2/`, where the project started, keeps only a README that points here and says that all further work happens in this repository; its CI workflow goes with the code. |
 | — | Aider / Gemini CLI | Deferred: no Gemini CLI data exists on the development machine and the only Aider history holds no token lines (a local model), so no parser could be verified against real records. |
 
