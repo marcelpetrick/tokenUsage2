@@ -10,6 +10,17 @@ All notable changes to tokenUsage2. Versions follow semantic versioning; the
 archive schema version is noted whenever it changes, because an older build
 refuses a newer archive.
 
+## 0.10.0
+
+### Added
+
+- Automatic GitHub releases: a workflow on every push to `master` releases a
+  version that has no tag yet — it runs the pipeline, builds sdist and wheel,
+  and creates the tag `v<version>` and a release whose notes are that version's
+  section of this changelog (`scripts/release_notes.py`). A test guards that
+  the current version always has a section. The README shows the latest
+  release and the workflow's status as badges.
+
 ## 0.9.0
 
 ### Added

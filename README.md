@@ -7,6 +7,8 @@ SPDX-License-Identifier: GPL-3.0-or-later
 # tokenUsage2
 
 [![tokenUsage2 CI](https://github.com/marcelpetrick/tokenUsage2/actions/workflows/tokenUsage2.yml/badge.svg?branch=master)](https://github.com/marcelpetrick/tokenUsage2/actions/workflows/tokenUsage2.yml)
+[![Latest release](https://img.shields.io/github/v/release/marcelpetrick/tokenUsage2?sort=semver&display_name=tag)](https://github.com/marcelpetrick/tokenUsage2/releases/latest)
+[![Release workflow](https://github.com/marcelpetrick/tokenUsage2/actions/workflows/release.yml/badge.svg?branch=master)](https://github.com/marcelpetrick/tokenUsage2/actions/workflows/release.yml)
 [![Python 3.14](https://img.shields.io/badge/Python-3.14-3776AB.svg?logo=python&logoColor=white)](https://www.python.org/)
 [![Runtime dependencies: none](https://img.shields.io/badge/runtime%20dependencies-none-2ea44f.svg)](pyproject.toml)
 [![Coverage gate: 90%](https://img.shields.io/badge/coverage%20gate-90%25-2ea44f.svg)](localPipeline.sh)
@@ -259,7 +261,10 @@ python3.14 -m venv .venv && .venv/bin/pip install -e '.[dev]'
 CI ([`.github/workflows/tokenUsage2.yml`](.github/workflows/tokenUsage2.yml))
 runs `./localPipeline.sh --noRun` on Python 3.14 for every push and pull
 request, publishes a demo frame in the job summary and uploads coverage and the
-built distributions. Architecture and the design rationale are in
+built distributions. Every push to `master` whose version has no tag yet also
+becomes a [GitHub release](https://github.com/marcelpetrick/tokenUsage2/releases)
+with sdist, wheel and that version's changelog section as the notes
+([`release.yml`](.github/workflows/release.yml)). Architecture and the design rationale are in
 [`PLAN.md`](PLAN.md).
 
 ## Requirements

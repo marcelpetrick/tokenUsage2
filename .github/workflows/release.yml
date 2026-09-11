@@ -1,0 +1,78 @@
+# SPDX-FileCopyrightText: 2026 Marcel Petrick
+#
+# SPDX-License-Identifier: GPL-3.0-or-later
+
+# -----------------------------------------------------------------------------
+# tokenUsage2 releases
+#
+# Every commit bumps the version. A push to master whose version has no tag
+# yet becomes a GitHub release: the local pipeline runs, sdist and wheel are
+# built, and the tag v<version> plus a release are created, with that
+# version's CHANGELOG.md section as the notes. A push whose version is already
+# released does nothing.
+# -----------------------------------------------------------------------------
+name: Release
+
+on:
+  push:
+    branches: [master]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: Release the pushed version
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Check out the repository with its tags
+        uses: actions/checkout@v7.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python 3.14
+        uses: actions/setup-python@v7.0.0
+        with:
+          python-version: "3.14"
+          cache: pip
+          cache-dependency-path: pyproject.toml
+
+      - name: Read the version and look for its tag
+        id: version
+        run: |
+          version=$(python -c 'import runpy; print(runpy.run_path("src/tokenusage2/version.py")["__version__"])')
+          echo "version=${version}" >> "$GITHUB_OUTPUT"
+          if git rev-parse -q --verify "refs/tags/v${version}" >/dev/null; then
+            echo "released=true" >> "$GITHUB_OUTPUT"
+            echo "v${version} is already released; nothing to do."
+          else
+            echo "released=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Install the pinned development tools
+        if: steps.version.outputs.released == 'false'
+        run: python -m pip install --disable-pip-version-check -e '.[dev]'
+
+      - name: Run the local pipeline (tests, lint, build)
+        if: steps.version.outputs.released == 'false'
+        run: ./localPipeline.sh --noRun
+
+      - name: Write the release notes from the changelog
+        if: steps.version.outputs.released == 'false'
+        run: python scripts/release_notes.py "${{ steps.version.outputs.version }}" > release-notes.md
+
+      - name: Create the tag and the GitHub release
+        if: steps.version.outputs.released == 'false'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "v${{ steps.version.outputs.version }}" dist/* \
+            --target "${{ github.sha }}" \
+            --title "tokenUsage2 ${{ steps.version.outputs.version }}" \
+            --notes-file release-notes.md
