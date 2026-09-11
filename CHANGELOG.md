@@ -10,6 +10,16 @@ All notable changes to tokenUsage2. Versions follow semantic versioning; the
 archive schema version is noted whenever it changes, because an older build
 refuses a newer archive.
 
+## 0.10.7
+
+### Fixed
+
+- A `TZ` the system accepts no longer stops the dashboard. `TZ=:/etc/localtime`
+  (common under systemd and in containers) used to exit with "unknown time
+  zone"; it is now read as the zone file it names. A POSIX rule such as
+  `CET-1CEST,M3.5.0,M10.5.0/3` falls back to the system zone, as an unset `TZ`
+  does. Only `--tz` must still name an IANA zone.
+
 ## 0.10.6
 
 ### Build

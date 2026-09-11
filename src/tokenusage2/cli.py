@@ -11,6 +11,7 @@ import shutil
 import sys
 import time
 from collections.abc import Callable, Mapping, Sequence
+from contextlib import suppress
 from dataclasses import asdict
 from datetime import datetime, tzinfo
 from pathlib import Path
@@ -91,15 +92,36 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def resolve_tz(name: str | None, env: Mapping[str, str]) -> tzinfo:
-    candidate = name or env.get("TZ", "").lstrip(":")
-    if candidate:
-        return ZoneInfo(candidate)
+def _zone_file(path: Path, key: str) -> tzinfo | None:
     try:
-        with Path("/etc/localtime").open("rb") as handle:
-            return ZoneInfo.from_file(handle, key="localtime")
-    except OSError, ValueError:  # pragma: no cover - depends on the host
-        return datetime.now().astimezone().tzinfo or ZoneInfo("UTC")
+        with path.open("rb") as handle:
+            return ZoneInfo.from_file(handle, key=key)
+    except OSError, ValueError:
+        return None
+
+
+def resolve_tz(
+    name: str | None, env: Mapping[str, str], localtime: Path = Path("/etc/localtime")
+) -> tzinfo:
+    """The zone for day boundaries. Only ``--tz`` must name an IANA zone.
+
+    ``TZ`` never stops the dashboard: a zone name or a zone file
+    (``TZ=:/etc/localtime``) is used, and anything else — a POSIX rule such as
+    ``CET-1CEST,M3.5.0,M10.5.0/3`` — falls back to the system zone, as an unset
+    ``TZ`` does.
+    """
+    if name:
+        return ZoneInfo(name)
+    value = env.get("TZ", "").removeprefix(":")
+    if value.startswith("/"):
+        zone = _zone_file(Path(value), value)
+        if zone is not None:
+            return zone
+    elif value:
+        with suppress(ZoneInfoNotFoundError, ValueError):
+            return ZoneInfo(value)
+    system = _zone_file(localtime, "localtime")
+    return system or datetime.now().astimezone().tzinfo or ZoneInfo("UTC")
 
 
 def default_archive(home: Path, env: Mapping[str, str]) -> Path:
@@ -197,7 +219,7 @@ def main(
     try:
         tz = resolve_tz(args.tz, env)
     except ZoneInfoNotFoundError, ValueError:
-        print(f"tokenusage2: unknown time zone: {args.tz or env.get('TZ')}", file=sys.stderr)
+        print(f"tokenusage2: unknown time zone: {args.tz}", file=sys.stderr)
         return 2
     if args.interval <= 0:
         print("tokenusage2: --interval must be positive", file=sys.stderr)

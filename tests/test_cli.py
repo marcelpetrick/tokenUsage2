@@ -6,7 +6,9 @@ import json
 import runpy
 import shutil
 import sys
+from datetime import datetime, timedelta
 from pathlib import Path
+from zoneinfo import TZPATH, ZoneInfoNotFoundError
 
 import pytest
 
@@ -194,6 +196,42 @@ def test_resolve_tz() -> None:
     assert str(resolve_tz(None, {"TZ": ":Europe/Berlin"})) == "Europe/Berlin"
     assert str(resolve_tz("UTC", {})) == "UTC"
     assert resolve_tz(None, {}) is not None
+    with pytest.raises(ZoneInfoNotFoundError):
+        resolve_tz("Mars/Olympus", {"TZ": "UTC"})
+
+
+def test_tz_zone_files_and_posix_rules_are_accepted(tmp_path: Path) -> None:
+    berlin = next(
+        (
+            Path(base, "Europe", "Berlin")
+            for base in TZPATH
+            if Path(base, "Europe", "Berlin").exists()
+        ),
+        None,
+    )
+    if berlin is None:
+        pytest.skip("no system time zone database")
+    summer = datetime(2026, 7, 1, 12)
+    by_file = resolve_tz(None, {"TZ": f":{berlin}"})
+    assert by_file.utcoffset(summer) == timedelta(hours=2)
+    rule = resolve_tz(None, {"TZ": "CET-1CEST,M3.5.0,M10.5.0/3"}, localtime=berlin)
+    assert (str(rule), rule.utcoffset(summer)) == ("localtime", timedelta(hours=2))
+    missing = tmp_path / "missing"
+    assert resolve_tz(None, {"TZ": f":{missing}"}, localtime=missing) is not None
+
+
+@pytest.mark.parametrize("tz", [":/etc/localtime", "CET-1CEST,M3.5.0,M10.5.0/3", ":/missing"])
+def test_the_environment_tz_never_stops_the_dashboard(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str], tz: str
+) -> None:
+    code, out, err = call(
+        ["--demo", "--once", "--width", "100", "--height", "30"],
+        {"HOME": str(tmp_path), "TZ": tz},
+        tmp_path,
+        capsys,
+    )
+    assert (code, err) == (0, "")
+    assert "DEMO" in out
 
 
 def test_module_entry_point(
