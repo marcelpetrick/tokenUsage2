@@ -10,6 +10,13 @@ All notable changes to tokenUsage2. Versions follow semantic versioning; the
 archive schema version is noted whenever it changes, because an older build
 refuses a newer archive.
 
+## 0.10.3
+
+### Fixed
+
+- Two exports within the same second overwrote each other; the second pair
+  now gets a `-2` suffix.
+
 ## 0.10.2
 
 ### Fixed

@@ -77,8 +77,14 @@ def to_csv(rows: Iterable[Mapping[str, object]], fields: Sequence[str]) -> str:
 def export(snapshot: Snapshot, directory: Path, stamp: str) -> tuple[Path, Path]:
     """Write ``timeline-<stamp>.csv`` and ``breakdown-<stamp>.csv`` into ``directory``."""
     directory.mkdir(parents=True, exist_ok=True, mode=0o700)
-    timeline = directory / f"timeline-{stamp}.csv"
-    breakdown = directory / f"breakdown-{stamp}.csv"
+    suffix, attempt = "", 1
+    while any(
+        (directory / f"{kind}-{stamp}{suffix}.csv").exists() for kind in ("timeline", "breakdown")
+    ):
+        attempt += 1
+        suffix = f"-{attempt}"  # a second export within the same second keeps the first
+    timeline = directory / f"timeline-{stamp}{suffix}.csv"
+    breakdown = directory / f"breakdown-{stamp}{suffix}.csv"
     timeline.write_text(to_csv(timeline_rows(snapshot), TIMELINE_FIELDS), encoding="utf-8")
     breakdown.write_text(to_csv(breakdown_rows(snapshot), BREAKDOWN_FIELDS), encoding="utf-8")
     return timeline, breakdown

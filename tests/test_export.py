@@ -81,3 +81,10 @@ def test_export_writes_both_files(tmp_path: Path) -> None:
     assert timeline.name == "timeline-20260910-150000.csv"
     assert timeline.read_text().splitlines()[0] == ",".join(TIMELINE_FIELDS)
     assert breakdown.read_text().count("\n") == 2
+
+
+def test_a_second_export_in_the_same_second_keeps_the_first(tmp_path: Path) -> None:
+    first = export(snapshot(), tmp_path, "stamp")
+    second = export(snapshot(), tmp_path, "stamp")
+    assert [path.name for path in first] == ["timeline-stamp.csv", "breakdown-stamp.csv"]
+    assert [path.name for path in second] == ["timeline-stamp-2.csv", "breakdown-stamp-2.csv"]
