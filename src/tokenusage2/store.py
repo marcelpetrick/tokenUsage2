@@ -18,7 +18,7 @@ from pathlib import Path
 
 from tokenusage2.model import Account, Event, QuotaWindow, Tool, Usage
 
-SCHEMA_VERSION = 4
+SCHEMA_VERSION = 5
 _TOOLS = {tool.value: tool for tool in Tool}
 _SCHEMA = """
 CREATE TABLE IF NOT EXISTS meta(key TEXT PRIMARY KEY, value TEXT NOT NULL);
@@ -40,6 +40,9 @@ CREATE TABLE IF NOT EXISTS quotas(
 CREATE TABLE IF NOT EXISTS accounts(
     id TEXT PRIMARY KEY, tool TEXT NOT NULL, label TEXT NOT NULL, home TEXT NOT NULL,
     identity TEXT, plan TEXT, last_seen REAL NOT NULL);
+CREATE TABLE IF NOT EXISTS copies(
+    account TEXT NOT NULL, key TEXT NOT NULL, owner TEXT NOT NULL,
+    PRIMARY KEY(account, key)) WITHOUT ROWID;
 """
 _TOTAL = "{t}.input + {t}.cache_read + {t}.cache_write + {t}.output + {t}.unsplit"
 _UPSERT = f"""
@@ -107,11 +110,22 @@ def _cache_write_ttl_split(conn: sqlite3.Connection) -> None:
     conn.execute("DELETE FROM files WHERE account LIKE 'claude:%'")
 
 
+def _copies_by_distinct_key(conn: sqlite3.Connection) -> None:
+    """Schema 4 → 5: count the records a home shares with another once per key.
+
+    The old tallies grew with every re-read of a copied file, so they are
+    dropped, and Claude transcripts are read again once to rebuild them.
+    """
+    conn.execute("DELETE FROM meta WHERE key = 'duplicates'")
+    conn.execute("DELETE FROM files WHERE account LIKE 'claude:%'")
+
+
 #: ``MIGRATIONS[n]`` upgrades an archive from schema ``n`` to ``n + 1``.
 MIGRATIONS = {
     1: _claude_keys_without_account,
     2: _backend_becomes_route,
     3: _cache_write_ttl_split,
+    4: _copies_by_distinct_key,
 }
 
 
@@ -220,6 +234,28 @@ class Store:
             "DELETE FROM events WHERE key LIKE ? ESCAPE '\\' AND ts >= ?", (escaped + "%", min_ts)
         )
         return cursor.rowcount
+
+    def add_copies(self, copies: Iterable[tuple[str, str, str]]) -> None:
+        """Record ``(account, key, owner)``: ``account`` holds a record ``owner`` counts."""
+        self.conn.executemany(
+            "INSERT INTO copies VALUES (?, ?, ?) "
+            "ON CONFLICT(account, key) DO UPDATE SET owner = excluded.owner",
+            copies,
+        )
+
+    def drop_copies(self, held: Iterable[tuple[str, str]]) -> None:
+        """Forget ``(account, key)`` copies whose account now owns the record."""
+        self.conn.executemany("DELETE FROM copies WHERE account = ? AND key = ?", held)
+
+    def copy_counts(self) -> dict[str, dict[str, int]]:
+        """``{account: {owner: records}}``, one per distinct record key."""
+        counts: dict[str, dict[str, int]] = {}
+        rows = self.conn.execute(
+            "SELECT account, owner, COUNT(*) FROM copies GROUP BY account, owner"
+        )
+        for account, owner, records in rows:
+            counts.setdefault(account, {})[owner] = records
+        return counts
 
     def load_events(self) -> list[Event]:
         rows = self.conn.execute(

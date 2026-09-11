@@ -250,7 +250,7 @@ def test_doctor_flags_a_copied_home(
     shutil.copytree(home.root / ".claude", home.root / ".claude-backup")
     code, out, _ = call(["--doctor", "--no-archive", "--tz", "UTC"], home.env, tmp_path, capsys)
     assert code == 0
-    assert "3 records already counted under claude" in out
+    assert "2 records already counted under claude" in out  # one per record key
     assert "treated as a copy of claude" in out
 
 

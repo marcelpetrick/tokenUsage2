@@ -27,7 +27,7 @@ from tokenusage2.config import Config
 from tokenusage2.discover import discover
 from tokenusage2.ingest import EventIndex, Ingestor, walk_jsonl
 from tokenusage2.model import Event, Tool, Usage
-from tokenusage2.store import Store, StoreError
+from tokenusage2.store import FileState, Store, StoreError
 
 CLAUDE = "claude:~/.claude"
 CODEX = "codex:~/.codex"
@@ -259,7 +259,7 @@ def test_a_copied_claude_home_is_counted_once(
     sums = totals(ingestor)
     assert sums[CLAUDE] == 1160 + 700 + 5000
     assert BACKUP not in sums
-    assert ingestor.duplicates == {BACKUP: {CLAUDE: 3}}
+    assert ingestor.duplicates == {BACKUP: {CLAUDE: 2}}  # msg_a's two copies share a key
     assert ingestor.mirror_of(BACKUP) == CLAUDE
     assert ingestor.mirror_of(CLAUDE) is None
     assert make(archive).duplicates == ingestor.duplicates
@@ -300,7 +300,7 @@ def test_schema_1_archives_are_migrated(tmp_path: Path) -> None:
         "claude:msg_a:req_1",
         "codex:codex:~/.codex:t:5",
     ]
-    assert migrated.get_meta("schema") == "4"
+    assert migrated.get_meta("schema") == "5"
     migrated.close()
 
 
@@ -372,7 +372,7 @@ def test_schema_2_archives_keep_only_the_logged_route(tmp_path: Path) -> None:
         )
     store = Store(path)
     assert [event.route for event in store.load_events()] == ["anthropic", "", "openai"]
-    assert store.get_meta("schema") == "4"
+    assert store.get_meta("schema") == "5"
     store.close()
 
 
@@ -411,7 +411,70 @@ def test_schema_3_archives_gain_the_ttl_split_and_reread_claude(tmp_path: Path) 
             "INSERT INTO files VALUES ('/x.jsonl', 'codex:~/.codex', 1, 2, 3, 2, '{}');"
         )
     store = Store(path)
-    assert store.get_meta("schema") == "4"
+    assert store.get_meta("schema") == "5"
     assert store.load_events()[0].usage.cache_write_1h == 0
     assert list(store.load_file_states()) == ["/x.jsonl"]
     store.close()
+
+
+def retained(ingestor: Ingestor, account: str) -> int:
+    return sum(e.usage.unsplit for e in ingestor.index.events() if e.account == account)
+
+
+def test_rereading_a_copy_does_not_count_its_records_again(home: FakeHome, make: Factory) -> None:
+    backup = home.root / ".claude-backup"
+    shutil.copytree(home.root / ".claude", backup)
+    (backup / "stats-cache.json").write_text(
+        json.dumps({"dailyModelTokens": [{"date": "2026-08-20", "tokensByModel": {"m": 777}}]})
+    )
+    write_jsonl(  # records only the backup holds
+        backup / "projects" / "-work-alpha" / "own.jsonl",
+        [claude_line(f"own{n}", "2026-09-10T11:00:00Z", request=f"req_o{n}") for n in range(3)],
+    )
+    ingestor = make()
+    ingestor.scan()
+    assert (ingestor.duplicates, ingestor.mirror_of(BACKUP)) == ({BACKUP: {CLAUDE: 2}}, None)
+    assert retained(ingestor, BACKUP) == 777
+    transcript = backup / "projects" / "-work-alpha" / "s1.jsonl"
+    for _ in range(2):  # what rsync does: the same bytes under a new inode
+        replacement = transcript.with_suffix(".tmp")
+        replacement.write_bytes(transcript.read_bytes())
+        replacement.replace(transcript)
+        assert ingestor.scan().bytes_read == transcript.stat().st_size
+    assert (ingestor.duplicates, ingestor.mirror_of(BACKUP)) == ({BACKUP: {CLAUDE: 2}}, None)
+    assert retained(ingestor, BACKUP) == 777
+
+
+def test_a_larger_copy_elsewhere_takes_the_record_and_leaves_a_copy(
+    home: FakeHome, make: Factory
+) -> None:
+    backup = home.root / ".claude-backup"
+    shutil.copytree(home.root / ".claude", backup)
+    larger = claude_line(
+        "msg_b", "2026-09-10T09:00:00Z", model="north-mini:q4", request=None, out=900
+    )
+    with (backup / "projects" / "-work-alpha" / "s1.jsonl").open("a") as handle:
+        handle.write(line(larger))
+    ingestor = make()
+    ingestor.scan()
+    owner = ingestor.index.get("claude:msg_b:")
+    assert owner is not None
+    assert owner.account == BACKUP
+    assert ingestor.duplicates == {BACKUP: {CLAUDE: 1}, CLAUDE: {BACKUP: 1}}
+
+
+def test_schema_4_archives_count_copies_again_by_key(tmp_path: Path) -> None:
+    path = tmp_path / "v4.sqlite"
+    store = Store(path)
+    store.save_file_state(FileState("/c.jsonl", CLAUDE, 1, 2, 3, 2, {}))
+    store.save_file_state(FileState("/x.jsonl", CODEX, 1, 2, 3, 2, {}))
+    store.set_meta("duplicates", json.dumps({BACKUP: {CLAUDE: 30}}))
+    store.set_meta("schema", "4")
+    store.commit()
+    store.close()
+    migrated = Store(path)
+    assert migrated.get_meta("schema") == "5"
+    assert migrated.get_meta("duplicates") is None
+    assert list(migrated.load_file_states()) == ["/x.jsonl"]
+    assert migrated.copy_counts() == {}
+    migrated.close()

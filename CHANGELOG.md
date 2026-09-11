@@ -10,6 +10,21 @@ All notable changes to tokenUsage2. Versions follow semantic versioning; the
 archive schema version is noted whenever it changes, because an older build
 refuses a newer archive.
 
+## 0.10.8
+
+Archive schema 5 — migrated in place; Claude transcripts are read again once.
+
+### Fixed
+
+- Records a home shares with another are counted once per record key. The
+  count grew with every re-read of a copied file (a new inode from rsync, a
+  schema upgrade), so a home with records of its own was soon taken for a mere
+  copy and its retained daily totals were dropped. The counts now live in the
+  archive's `copies` table; the upgrade rebuilds them, and totals dropped by a
+  wrong copy verdict come back.
+- When the larger copy of a record turns up in another home, the bookkeeping
+  follows it: the home that held the record now holds the copy.
+
 ## 0.10.7
 
 ### Fixed

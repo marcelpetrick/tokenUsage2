@@ -212,11 +212,10 @@ class Ingestor:
         self.quotas = {(q.account, q.window): q for q in store.load_quotas()}
         self._files = store.load_file_states()
         self.last_report = ScanReport()
-        #: Records one home already held for another: ``{account: {other: count}}``.
-        self.duplicates: dict[str, dict[str, int]] = json.loads(
-            store.get_meta("duplicates") or "{}"
-        )
-        self._duplicates_changed = False
+        #: Records one home already held for another, ``{account: {other: count}}``,
+        #: counted once per record key however often a file is read again.
+        self.duplicates = store.copy_counts()
+        self._copies_changed = False
         self.discovery = discovery
         self.set_discovery(discovery)
 
@@ -251,32 +250,43 @@ class Ingestor:
             self._ingest_file(account, path, report)
             if progress is not None and (number % 16 == 0 or number == len(jobs)):
                 progress(number, len(jobs))
+        if self._copies_changed:  # the retained totals below ask mirror_of
+            self.duplicates = self.store.copy_counts()
+            self._copies_changed = False
         for account in self.discovery.accounts:
             if account.tool is Tool.OPENCODE:
                 self._ingest_opencode(account, report)
             elif account.tool is Tool.CLAUDE:
                 self._backfill(account, report)
                 self._claude_quotas(account, report)
-        if self._duplicates_changed:
-            self.store.set_meta("duplicates", json.dumps(self.duplicates, sort_keys=True))
-            self._duplicates_changed = False
         self.store.commit()
         report.seconds = time.perf_counter() - started
         self.last_report = report
         return report
 
     def _apply(self, events: Iterable[Event]) -> int:
-        accepted = []
+        accepted: list[Event] = []
+        #: ``(account, key)`` → the owner of the record that account holds a copy
+        #: of, or None once the account owns it; in order, so the last change wins.
+        copies: dict[tuple[str, str], str | None] = {}
         for event in events:
             previous = self.index.get(event.key)
+            other = previous.account if previous is not None else event.account
             if self.index.upsert(event):
                 accepted.append(event)
-            elif previous is not None and previous.account != event.account:
-                copies = self.duplicates.setdefault(event.account, {})
-                copies[previous.account] = copies.get(previous.account, 0) + 1
-                self._duplicates_changed = True
+                if other != event.account:  # the larger copy is here now
+                    copies[other, event.key] = event.account
+                    copies[event.account, event.key] = None
+            elif other != event.account:
+                copies[event.account, event.key] = other
         if accepted:
             self.store.upsert_events(accepted)
+        if copies:
+            self.store.drop_copies(held for held, owner in copies.items() if owner is None)
+            self.store.add_copies(
+                (account, key, owner) for (account, key), owner in copies.items() if owner
+            )
+            self._copies_changed = True
         return len(accepted)
 
     def mirror_of(self, account: str) -> str | None:
