@@ -10,6 +10,15 @@ All notable changes to tokenUsage2. Versions follow semantic versioning; the
 archive schema version is noted whenever it changes, because an older build
 refuses a newer archive.
 
+## 0.10.2
+
+### Fixed
+
+- `--json` and `--csv` exported only as many buckets as a 160-column
+  timeline fits — the terminal-size fallback when piped — which was 75 of 154
+  days on a real archive. Exports now cover the whole history; `--once` still
+  sizes its frame to the terminal.
+
 ## 0.10.1
 
 ### Documentation

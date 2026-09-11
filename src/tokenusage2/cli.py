@@ -16,7 +16,7 @@ from datetime import datetime, tzinfo
 from pathlib import Path
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
-from tokenusage2.aggregate import GroupBy, Metric, Period, Snapshot, Tally
+from tokenusage2.aggregate import DEFAULT_BUCKETS, GroupBy, Metric, Period, Snapshot, Tally
 from tokenusage2.alerts import evaluate, typical_rate
 from tokenusage2.config import ConfigError, load_config
 from tokenusage2.demo import DemoSource
@@ -256,9 +256,11 @@ def _run(
         width, height = shutil.get_terminal_size((160, 48))
         width, height = args.width or width, args.height or height
         now = clock()
-        count = bucket_count(
-            view, width, height, len(source.accounts()), data_span(source, view, now, tz)
-        )
+        span = data_span(source, view, now, tz)
+        if args.once:
+            count = bucket_count(view, width, height, len(source.accounts()), span)
+        else:  # an export covers the whole history, whatever the terminal size
+            count = max(1, span or DEFAULT_BUCKETS[view.period])
         snapshot = take_snapshot(
             source,
             view,

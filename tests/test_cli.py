@@ -289,3 +289,15 @@ def test_csv_prints_the_timeline(tmp_path: Path, capsys: pytest.CaptureFixture[s
     assert lines[0].startswith("period,bucket_start,bucket,group_by,group,calls,")
     assert len(lines) > 10
     assert any(",claude," in line for line in lines)
+
+
+def test_exports_cover_the_whole_history(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    env = {"HOME": str(tmp_path)}
+    code, out, _ = call(["--demo", "--json", "--tz", "UTC"], env, tmp_path, capsys)
+    assert code == 0
+    # 90 days of demo history plus today — not the 75 a 160-column frame fits
+    assert len(json.loads(out)["buckets"]) == 91
+    code, out, _ = call(["--demo", "--csv", "--tz", "UTC"], env, tmp_path, capsys)
+    assert len({line.split(",")[1] for line in out.splitlines()[1:]}) == 91
