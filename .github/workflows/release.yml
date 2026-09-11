@@ -58,11 +58,7 @@ jobs:
             echo "released=false" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Install the pinned development tools
-        if: steps.version.outputs.released == 'false'
-        run: python -m pip install --disable-pip-version-check -e '.[dev]'
-
-      - name: Run the local pipeline (tests, lint, build)
+      - name: Run the local pipeline (setup, checks, build, wheel check)
         if: steps.version.outputs.released == 'false'
         run: ./localPipeline.sh --noRun
 

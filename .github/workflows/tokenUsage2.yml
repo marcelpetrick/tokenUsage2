@@ -5,10 +5,12 @@
 # -----------------------------------------------------------------------------
 # tokenUsage2 CI
 #
-# Runs exactly the verification that runs locally: ./localPipeline.sh --noRun
-# (ruff lint, ruff format check, pytest with the branch-coverage gate, a demo
-# smoke run and the sdist/wheel build). --noRun suppresses the final interactive
-# dashboard launch, which is what that option exists for.
+# Runs exactly the verification that runs locally: ./localPipeline.sh --noRun.
+# The script sets up .venv with the pinned development tools, runs ruff lint and
+# format check, ShellCheck, pytest with the branch-coverage gate and a demo
+# smoke run, builds sdist and wheel, installs the wheel into a clean venv and
+# checks the installed command; every stage is timed and a verdict closes the
+# run. --noRun suppresses the final interactive dashboard launch.
 # -----------------------------------------------------------------------------
 name: tokenUsage2
 
@@ -42,19 +44,21 @@ jobs:
           cache: pip
           cache-dependency-path: pyproject.toml
 
-      - name: Install the pinned development tools
-        run: python -m pip install --disable-pip-version-check -e '.[dev]'
-
       - name: Run the local pipeline
-        run: ./localPipeline.sh --noRun
+        run: ./localPipeline.sh --noRun --report-dir build/pipeline-logs
 
-      - name: Show the demo dashboard in the job summary
+      - name: Show the pipeline verdict and the demo dashboard in the job summary
         if: always()
         run: |
           {
+            echo '### tokenUsage2 — local pipeline'
+            echo '```'
+            cat build/pipeline-logs/summary.txt || echo 'the pipeline wrote no summary'
+            echo '```'
             echo '### tokenUsage2 — demo frame'
             echo '```'
-            python -m tokenusage2 --demo --once --color never --tz UTC --width 150 --height 44
+            .venv/bin/tokenusage2 --demo --once --color never --tz UTC --width 150 --height 44 \
+              || echo 'no working .venv/bin/tokenusage2'
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
 
@@ -68,3 +72,4 @@ jobs:
           path: |
             coverage.xml
             dist/
+            build/pipeline-logs/

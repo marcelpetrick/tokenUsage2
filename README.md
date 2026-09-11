@@ -39,13 +39,21 @@ account label blacked out. For a synthetic frame, run `--demo` or
 ## Quick start
 
 ```bash
-cd tokenUsage2
-python3.14 -m venv .venv && .venv/bin/pip install -e .
-.venv/bin/tokenusage2            # live dashboard
+git clone https://github.com/marcelpetrick/tokenUsage2.git && cd tokenUsage2
+./localPipeline.sh               # set up .venv, run every check, build, then launch
+.venv/bin/tokenusage2            # afterwards: the live dashboard
 .venv/bin/tokenusage2 --doctor   # what was found, and does it add up?
 ```
 
-Without installing anything: `PYTHONPATH=src python3.14 -m tokenusage2`.
+`localPipeline.sh` needs nothing but Python 3.14 on the `PATH` (or
+`PYTHON=/path/to/python3.14`): it creates `.venv`, installs the project with
+its pinned development tools (through uv when it is installed, pip otherwise),
+runs every quality gate, builds and verifies the wheel, times each stage and
+ends with a verdict — see [Development](#development). Once it says
+`VERDICT: PASS`, `.venv/bin/tokenusage2` is all you run.
+
+By hand: `python3.14 -m venv .venv && .venv/bin/pip install -e .`. Without
+installing anything: `PYTHONPATH=src python3.14 -m tokenusage2`.
 
 The first start indexes every transcript once (about 2 s for 1.5 GB of logs)
 into a local archive; every later start and refresh only reads what was
@@ -254,18 +262,28 @@ bell = false                 # terminal bell
 ## Development
 
 ```bash
-python3.14 -m venv .venv && .venv/bin/pip install -e '.[dev]'
-./localPipeline.sh          # ruff lint + format check, pytest with a 90 % branch-coverage
-                            # gate, demo smoke run, sdist/wheel build, then launch
-./localPipeline.sh --noRun  # the same without the final launch (what CI runs)
-./localPipeline.sh --fix    # apply ruff fixes first
+./localPipeline.sh                    # set up, check, build, verify, then launch
+./localPipeline.sh --noRun            # the same without the launch (what CI and releases run)
+./localPipeline.sh --fix              # apply ruff lint and format fixes first
+./localPipeline.sh --verbose          # stream every stage's output, not only failures
+./localPipeline.sh --report-dir build/pipeline-logs   # keep every stage log plus summary.txt
 .venv/bin/python scripts/profile_app.py   # time and cProfile every stage on your real data
 ```
 
+The pipeline's twelve stages: find Python 3.14 → create or reuse `.venv` →
+install the project editable with the pinned tools → ruff lint → ruff format
+check → ShellCheck on the script itself (skipped when it is not installed) →
+pytest with the 90 % branch-coverage gate → one `--demo` frame → sdist and
+wheel → install that wheel into a clean throwaway venv and run it → check that
+`.venv/bin/tokenusage2` reports the current version → launch. A failing stage
+prints the tail of its log and skips the stages that depend on it. Every stage
+is timed, and the run ends with a summary and a verdict; the exit status is 0
+only on `PASS`.
+
 CI ([`.github/workflows/tokenUsage2.yml`](.github/workflows/tokenUsage2.yml))
 runs `./localPipeline.sh --noRun` on Python 3.14 for every push and pull
-request, publishes a demo frame in the job summary and uploads coverage and the
-built distributions. Every push to `master` whose version has no tag yet also
+request, puts the pipeline's summary table and a demo frame in the job summary
+and uploads coverage, the stage logs and the built distributions. Every push to `master` whose version has no tag yet also
 becomes a [GitHub release](https://github.com/marcelpetrick/tokenUsage2/releases)
 with sdist, wheel and that version's changelog section as the notes
 ([`release.yml`](.github/workflows/release.yml)). Architecture and the design rationale are in

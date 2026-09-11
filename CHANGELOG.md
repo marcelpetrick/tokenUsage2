@@ -10,6 +10,23 @@ All notable changes to tokenUsage2. Versions follow semantic versioning; the
 archive schema version is noted whenever it changes, because an older build
 refuses a newer archive.
 
+## 0.10.6
+
+### Build
+
+- `localPipeline.sh` goes from a fresh clone to a verified, runnable
+  `.venv/bin/tokenusage2`. It finds Python 3.14, creates `.venv` and installs
+  the pinned development tools (uv when present, pip otherwise). It runs ruff
+  lint and format, ShellCheck, the tests with the coverage gate and a demo
+  frame. It builds sdist and wheel, installs the wheel into a clean venv and
+  runs it, and checks the installed command's version. Every stage is timed;
+  a summary table and a PASS/FAIL verdict close the run.
+- New options `--verbose` and `--report-dir PATH`. An unknown option is
+  rejected with exit status 2.
+- CI and the release workflow no longer install the tools themselves; they run
+  the same script. CI adds the pipeline summary to the job summary and uploads
+  the stage logs.
+
 ## 0.10.5
 
 ### Documentation
