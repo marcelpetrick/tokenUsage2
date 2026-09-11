@@ -80,7 +80,7 @@ Implemented in v0.1 (✓) and backlog (·):
 - ✓ Cache efficiency trend: cache-read share per bucket (0.6.0).
 - ✓ Threshold notifications: quota ≥ 90 %, unusual burn rate (0.7.0).
 - ✓ Per-session drill-down (0.8.0).
-- · CSV export of the current view.
+- ✓ CSV export of the current view (0.9.0).
 - · Aider / Gemini CLI / other agents as further parsers.
 
 ## 4. Architecture

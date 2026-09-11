@@ -10,6 +10,15 @@ All notable changes to tokenUsage2. Versions follow semantic versioning; the
 archive schema version is noted whenever it changes, because an older build
 refuses a newer archive.
 
+## 0.9.0
+
+### Added
+
+- CSV export. `--csv` prints the timeline — one row per bucket and group with
+  the full token split, cost and unpriced tokens — and `e` in the dashboard
+  writes the timeline and the selected bucket's breakdown as timestamped files
+  to `$XDG_DATA_HOME/tokenusage2/exports`; the footer names them.
+
 ## 0.8.0
 
 ### Added

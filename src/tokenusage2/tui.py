@@ -14,10 +14,12 @@ import tty
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from datetime import datetime, tzinfo
+from pathlib import Path
 from typing import Protocol, TextIO
 
 from tokenusage2.aggregate import GroupBy, Metric, Period, Snapshot, build_snapshot, periods_back
 from tokenusage2.alerts import Alert, AlertTracker, evaluate, notify, typical_rate
+from tokenusage2.export import export
 from tokenusage2.ingest import ScanReport
 from tokenusage2.live import Source
 from tokenusage2.render import THEME_NAMES, View, layout, render, render_message
@@ -105,6 +107,8 @@ class Controller:
             return "quit"
         if key == "r":
             return "rescan"
+        if key == "e":
+            return "export"
         if key == "esc":
             view.help = view.sources = False
         elif key in {"?", "f1"}:
@@ -277,24 +281,46 @@ def run(
     *,
     screen: Screen | None = None,
     clock: Callable[[], float] = time.time,
+    export_dir: Path | None = None,
 ) -> int:
     if screen is None:
         try:
             with Terminal() as terminal:
-                return _loop(source, view, tz, terminal, clock)
+                return _loop(source, view, tz, terminal, clock, export_dir)
         except KeyboardInterrupt:
             return 0
-    return _loop(source, view, tz, screen, clock)
+    return _loop(source, view, tz, screen, clock, export_dir)
+
+
+def export_view(
+    source: Source, view: View, tz: tzinfo, *, now: float, count: int, directory: Path | None
+) -> str:
+    """Write the current view as CSV files; returns the message for the status line."""
+    if directory is None:
+        return "export needs a data directory"
+    snapshot = take_snapshot(source, view, now=now, tz=tz, count=count, priced=True)
+    stamp = datetime.fromtimestamp(now, tz).strftime("%Y%m%d-%H%M%S")
+    try:
+        timeline, breakdown = export(snapshot, directory, stamp)
+    except OSError as error:
+        return f"export failed: {error.strerror}"
+    return f"exported {timeline.name} and {breakdown.name} to {directory}"
 
 
 def _loop(
-    source: Source, view: View, tz: tzinfo, screen: Screen, clock: Callable[[], float]
+    source: Source,
+    view: View,
+    tz: tzinfo,
+    screen: Screen,
+    clock: Callable[[], float],
+    export_dir: Path | None = None,
 ) -> int:
     controller = Controller(view)
     width, height = screen.size()
     settings = source.alert_settings()
     tracker = AlertTracker()
     alerts: list[Alert] = []
+    notice, notice_until = "", 0.0
 
     def progress(done: int, total: int) -> None:
         screen.draw(
@@ -364,7 +390,7 @@ def _loop(
                     width,
                     height,
                     tz=tz,
-                    status=status_text(report, source, view),
+                    status=notice if now < notice_until else status_text(report, source, view),
                     sources=source.sources() if view.sources else (),
                     mode="PAUSED" if view.paused else source.mode,
                     alert=alerts[0].text if alerts else "",
@@ -375,6 +401,11 @@ def _loop(
             action = controller.handle(pressed, [account.id for account in accounts], count)
             if action == "quit":
                 return 0
+            if action == "export":
+                notice = export_view(
+                    source, view, tz, now=clock(), count=count, directory=export_dir
+                )
+                notice_until = clock() + 10
             if action == "rescan":
                 source.rediscover()
                 report = source.scan()

@@ -77,6 +77,7 @@ bell. Each fires once per quota window or burn episode; `--json` lists them.
 | `a` | filter to one account (cycles, then back to all) |
 | `h` | heatmap ↔ live feed |
 | `s` | sources overlay · `?` / `F1` help · `Esc` closes overlays |
+| `e` | export the timeline and the breakdown as CSV (to `$XDG_DATA_HOME/tokenusage2/exports`) |
 | `t` | theme: default, midnight, amber, plain |
 | `x` | redact e-mail addresses |
 | `r` | rescan now (re-runs discovery) · `p` pause · `+` `-` refresh interval |
@@ -188,7 +189,7 @@ ingest changes were checked to produce an identical event fingerprint.
 ## Command line
 
 ```text
-tokenusage2 [--once | --json | --doctor] [--demo]
+tokenusage2 [--once | --json | --csv | --doctor] [--demo]
             [--period day|week|month] [--group account|tool|backend|model|project]
             [--breakdown …] [--metric total|fresh|output] [--account LABEL]
             [--theme default|midnight|amber|plain] [--interval SECONDS]
@@ -197,7 +198,8 @@ tokenusage2 [--once | --json | --doctor] [--demo]
 ```
 
 - `--once` prints one frame (great in scripts or `watch`), `--json` a
-  machine-readable snapshot, `--doctor` the sources report.
+  machine-readable snapshot, `--csv` the timeline as CSV, `--doctor` the
+  sources report.
 - `--demo` uses deterministic synthetic data, for screenshots and trying it out.
 - `NO_COLOR` selects the plain theme.
 

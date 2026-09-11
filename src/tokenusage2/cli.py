@@ -20,6 +20,7 @@ from tokenusage2.aggregate import GroupBy, Metric, Period, Snapshot, Tally
 from tokenusage2.alerts import evaluate, typical_rate
 from tokenusage2.config import ConfigError, load_config
 from tokenusage2.demo import DemoSource
+from tokenusage2.export import TIMELINE_FIELDS, timeline_rows, to_csv
 from tokenusage2.live import LiveSource, Source
 from tokenusage2.render import THEME_NAMES, View, mask, render
 from tokenusage2.store import Store, StoreError
@@ -36,6 +37,7 @@ def build_parser() -> argparse.ArgumentParser:
     mode = parser.add_mutually_exclusive_group()
     mode.add_argument("--once", action="store_true", help="print one frame and exit")
     mode.add_argument("--json", action="store_true", help="print a JSON snapshot and exit")
+    mode.add_argument("--csv", action="store_true", help="print the timeline as CSV and exit")
     mode.add_argument(
         "--doctor",
         action="store_true",
@@ -103,6 +105,11 @@ def resolve_tz(name: str | None, env: Mapping[str, str]) -> tzinfo:
 def default_archive(home: Path, env: Mapping[str, str]) -> Path:
     base = Path(env.get("XDG_DATA_HOME") or home / ".local" / "share")
     return base / "tokenusage2" / "archive.sqlite"
+
+
+def default_exports(home: Path, env: Mapping[str, str]) -> Path:
+    base = Path(env.get("XDG_DATA_HOME") or home / ".local" / "share")
+    return base / "tokenusage2" / "exports"
 
 
 def _tally(tally: Tally) -> dict:
@@ -209,7 +216,7 @@ def main(
             return 2
         source = LiveSource(store, home, env, config, tz, proc, clock)
     try:
-        return _run(args, source, env, tz, clock)
+        return _run(args, source, env, tz, clock, default_exports(home, env))
     finally:
         source.close()
 
@@ -220,6 +227,7 @@ def _run(
     env: Mapping[str, str],
     tz: tzinfo,
     clock: Callable[[], float],
+    export_dir: Path,
 ) -> int:
     try:
         account = _account_id(source, args.account)
@@ -243,7 +251,7 @@ def _run(
         source.scan()
         print("\n".join(source.sources()))
         return 0
-    if args.json or args.once:
+    if args.json or args.once or args.csv:
         report = source.scan()
         width, height = shutil.get_terminal_size((160, 48))
         width, height = args.width or width, args.height or height
@@ -252,9 +260,17 @@ def _run(
             view, width, height, len(source.accounts()), data_span(source, view, now, tz)
         )
         snapshot = take_snapshot(
-            source, view, now=now, tz=tz, count=count, priced=True if args.json else None
+            source,
+            view,
+            now=now,
+            tz=tz,
+            count=count,
+            priced=True if args.json or args.csv else None,
         )
         alerts = evaluate(snapshot, source.alert_settings(), typical_rate(source.events(), now))
+        if args.csv:
+            print(to_csv(timeline_rows(snapshot), TIMELINE_FIELDS), end="")
+            return 0
         if args.json:
             data = snapshot_json(snapshot, tz, args.redact)
             data["alerts"] = [alert.text for alert in alerts]
@@ -277,8 +293,9 @@ def _run(
         return 0
     if not (sys.stdout.isatty() and sys.stdin.isatty()):
         print(
-            "tokenusage2: the live dashboard needs a terminal; use --once, --json or --doctor",
+            "tokenusage2: the live dashboard needs a terminal; "
+            "use --once, --json, --csv or --doctor",
             file=sys.stderr,
         )
         return 2
-    return run(source, view, tz, clock=clock)
+    return run(source, view, tz, clock=clock, export_dir=export_dir)

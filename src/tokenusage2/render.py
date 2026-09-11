@@ -111,6 +111,7 @@ HELP_LINES = (
     "a          filter to one account (cycles, then back to all)",
     "h          swap the live feed for the hour × weekday heatmap",
     "s          sources: discovered homes, files, quota snapshots, reconciliation",
+    "e          export the timeline and the breakdown as CSV files",
     "t          theme (default, midnight, amber, plain)",
     "x          redact e-mail addresses",
     "r          rescan now (also re-runs discovery)",

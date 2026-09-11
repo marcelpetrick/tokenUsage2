@@ -10,6 +10,7 @@ import struct
 import termios
 import time
 from collections.abc import Sequence
+from pathlib import Path
 
 import pytest
 
@@ -24,6 +25,7 @@ from tokenusage2.tui import (
     _terminate,
     bucket_count,
     decode_keys,
+    export_view,
     run,
     take_snapshot,
 )
@@ -41,6 +43,7 @@ def test_controller_maps_every_key() -> None:
     control = Controller(view)
     assert control.handle("q", []) == "quit"
     assert control.handle("r", []) == "rescan"
+    assert control.handle("e", []) == "export"
     control.handle("w", [])
     assert view.period is Period.WEEK
     control.handle("left", [])
@@ -197,3 +200,32 @@ def test_run_loop_raises_each_alert_once(monkeypatch: pytest.MonkeyPatch) -> Non
     assert run(source, View(theme="plain"), BERLIN, screen=screen, clock=clock) == 0
     assert screen.bells == 1  # codex 5h at 81 % — once, not on every frame
     assert any("▲ codex 5h quota at 81%" in "\n".join(lines) for lines in screen.frames)
+
+
+def test_e_exports_the_view_as_csv(tmp_path: Path) -> None:
+    ticks = itertools.count()
+
+    def clock() -> float:
+        return NOW + next(ticks) * 0.7
+
+    source = DemoSource(BERLIN, clock=clock, days=20)
+    screen = FakeScreen([["e"], []])
+    assert (
+        run(source, View(theme="plain"), BERLIN, screen=screen, clock=clock, export_dir=tmp_path)
+        == 0
+    )
+    files = sorted(path.name.split("-")[0] for path in tmp_path.iterdir())
+    assert files == ["breakdown", "timeline"]
+    assert any("exported timeline-" in "\n".join(lines) for lines in screen.frames)
+
+
+def test_export_view_reports_problems(tmp_path: Path) -> None:
+    source = DemoSource(BERLIN, clock=lambda: NOW, days=5)
+    view = View()
+    assert export_view(source, view, BERLIN, now=NOW, count=5, directory=None).startswith(
+        "export needs"
+    )
+    blocker = tmp_path / "file"
+    blocker.write_text("")
+    message = export_view(source, view, BERLIN, now=NOW, count=5, directory=blocker / "x")
+    assert message.startswith("export failed")

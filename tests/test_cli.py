@@ -278,3 +278,14 @@ def test_breakdown_by_session(
     assert code == 0
     assert breakdown["by"] == "session"
     assert all(" · " in row["name"] and " → " in row["extra"] for row in breakdown["rows"])
+
+
+def test_csv_prints_the_timeline(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    code, out, _ = call(
+        ["--demo", "--csv", "--tz", "UTC"], {"HOME": str(tmp_path)}, tmp_path, capsys
+    )
+    lines = out.splitlines()
+    assert code == 0
+    assert lines[0].startswith("period,bucket_start,bucket,group_by,group,calls,")
+    assert len(lines) > 10
+    assert any(",claude," in line for line in lines)
