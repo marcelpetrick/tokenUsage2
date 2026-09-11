@@ -463,6 +463,34 @@ def test_a_larger_copy_elsewhere_takes_the_record_and_leaves_a_copy(
     assert ingestor.duplicates == {BACKUP: {CLAUDE: 1}, CLAUDE: {BACKUP: 1}}
 
 
+def test_the_archive_moves_a_record_with_its_larger_copy(
+    home: FakeHome, make: Factory, tmp_path: Path
+) -> None:
+    backup = home.root / ".claude-backup"
+    shutil.copytree(home.root / ".claude", backup)
+    larger = claude_line(
+        "msg_b", "2026-09-10T09:00:00Z", model="north-mini:q4", request=None, out=900
+    )
+    with (backup / "projects" / "-work-alpha" / "s1.jsonl").open("a") as handle:
+        handle.write(line(larger))
+    archive = tmp_path / "archive.sqlite"
+    make(archive).scan()
+    with closing(Store(archive)) as store:
+        archived = {event.key: event.account for event in store.load_events()}
+    assert archived["claude:msg_b:"] == BACKUP
+    restarted = make(archive).index.get("claude:msg_b:")
+    assert restarted is not None
+    assert restarted.account == BACKUP
+
+
+def test_store_moves_a_record_to_the_account_of_its_larger_copy() -> None:
+    small = Event("claude:m:", 1.0, Tool.CLAUDE, "a", "m", "", "p", "s", Usage(input=1))
+    store = Store(None)
+    store.upsert_events([small, replace(small, account="b", usage=Usage(input=5))])
+    assert [(event.account, event.usage.input) for event in store.load_events()] == [("b", 5)]
+    store.close()
+
+
 def test_schema_4_archives_count_copies_again_by_key(tmp_path: Path) -> None:
     path = tmp_path / "v4.sqlite"
     store = Store(path)

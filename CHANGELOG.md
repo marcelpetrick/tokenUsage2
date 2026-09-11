@@ -10,6 +10,15 @@ All notable changes to tokenUsage2. Versions follow semantic versioning; the
 archive schema version is noted whenever it changes, because an older build
 refuses a newer archive.
 
+## 0.10.9
+
+### Fixed
+
+- When the larger copy of a Claude record turns up in another home, the
+  archive now moves the record to that home too. It kept the old account, so
+  the record counted for one home until the next start and for the other one
+  after it.
+
 ## 0.10.8
 
 Archive schema 5 — migrated in place; Claude transcripts are read again once.

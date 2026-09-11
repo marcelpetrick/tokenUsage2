@@ -50,6 +50,7 @@ INSERT INTO events(key, ts, tool, account, model, route, project, session,
                    input, cache_read, cache_write, output, reasoning, unsplit, cache_write_1h)
 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 ON CONFLICT(key) DO UPDATE SET
+    tool = excluded.tool, account = excluded.account,
     ts = excluded.ts, model = excluded.model, route = excluded.route,
     project = excluded.project, session = excluded.session,
     input = excluded.input, cache_read = excluded.cache_read,
