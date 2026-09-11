@@ -10,6 +10,9 @@
 # built, and the tag v<version> plus a release are created, with that
 # version's CHANGELOG.md section as the notes. A push whose version is already
 # released does nothing.
+#
+# Only the pushed head is released: when one push carries several version
+# bumps, the newest version is released and the older ones stay untagged.
 # -----------------------------------------------------------------------------
 name: Release
 
