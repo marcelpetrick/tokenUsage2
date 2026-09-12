@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 
 import json
+import os
 import shutil
 import sqlite3
 from collections.abc import Callable, Iterator
@@ -164,6 +165,37 @@ def test_backfill_retreats_when_older_transcripts_appear(home: FakeHome, make: F
     ingestor.scan()
     assert not any(e.key.startswith("claude-daily:") for e in ingestor.index.events())
     assert not any(e.key.startswith("claude-daily:") for e in ingestor.store.load_events())
+
+
+def test_retained_totals_are_scaled_to_requests_and_replaced(
+    home: FakeHome, make: Factory, tmp_path: Path
+) -> None:
+    write_jsonl(
+        home.root / ".claude" / "projects" / "-work-alpha" / "old.jsonl",
+        [claude_line("msg_old", "2026-09-09T08:00:00Z")],
+    )
+    cache = home.root / ".claude" / "stats-cache.json"
+
+    def write_cache(opus: int) -> None:
+        days = [
+            {"date": "2026-08-01", "tokensByModel": {"claude-opus-4-7": 5000}},
+            # 2026-09-10 holds msg_a (1160 tokens) and msg_b (700) in full.
+            {"date": "2026-09-10", "tokensByModel": {"claude-opus-5": opus, "north-mini:q4": 1400}},
+        ]
+        previous = cache.stat().st_mtime_ns
+        cache.write_text(json.dumps({"lastComputedDate": "2026-09-11", "dailyModelTokens": days}))
+        os.utime(cache, ns=(previous + 10**9, previous + 10**9))
+
+    write_cache(2320)  # every request counted twice
+    archive = tmp_path / "archive.sqlite"
+    ingestor = make(archive)
+    ingestor.scan()
+    assert retained(ingestor, CLAUDE) == 2500
+    assert ingestor.store.get_meta(f"statscache-scale:{CLAUDE}") == "0.500000:1"
+    write_cache(6040)  # the cache now counts four lines per request
+    ingestor.scan()
+    assert retained(ingestor, CLAUDE) == 1250
+    assert sum(event.usage.unsplit for event in ingestor.store.load_events()) == 1250
 
 
 def test_opencode_is_read_past_its_watermark(home: FakeHome, make: Factory) -> None:
@@ -525,6 +557,7 @@ def test_renaming_an_account_rewrites_keys_and_drops_what_the_new_id_holds() -> 
     store.upsert_quotas([QuotaWindow("old", "5h", 10.0, None, 1.0, "statusline")])
     store.add_copies([("old", "claude:x:", "other"), ("other", "claude:y:", "old")])
     store.set_meta("statscache:old", "stale")
+    store.set_meta("statscache-scale:old", "0.5:3")
     store.rename_account("old", "new")
     assert sorted((event.key, event.account) for event in store.load_events()) == [
         ("claude:m:", "new"),
@@ -535,6 +568,7 @@ def test_renaming_an_account_rewrites_keys_and_drops_what_the_new_id_holds() -> 
     assert [quota.account for quota in store.load_quotas()] == ["new"]
     assert store.copy_counts() == {"new": {"other": 1}, "other": {"new": 1}}
     assert store.get_meta("statscache:old") is None
+    assert store.get_meta("statscache-scale:old") is None
     store.close()
 
 

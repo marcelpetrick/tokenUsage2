@@ -150,7 +150,7 @@ Codex reports its provider per session (`model_provider`), OpenCode per message.
 | Tool | Source | Rule |
 |------|--------|------|
 | Claude Code | `<home>/projects/**/*.jsonl` | Every content block rewrites the same message, and streaming copies still carry `output_tokens: 0`: one request per `(message.id, requestId)` across all homes, keeping the **largest** copy — a copied home adds nothing and is flagged by `--doctor`. |
-| Claude Code | `<home>/stats-cache.json` | Daily totals, used only for days *before* the first surviving transcript; the split is unknown, so they count toward the raw total only and are drawn hatched. |
+| Claude Code | `<home>/stats-cache.json` | Daily totals, used only for days *before* the first surviving transcript; the split is unknown, so they count toward the raw total only and are drawn hatched. The cache adds up every transcript line — about two per request — so its totals are scaled by the ratio measured on the whole days it shares with transcripts. |
 | Claude Code | statusline snapshots (`<home>/*rate-limit*.json`, `$XDG_STATE_HOME/*/quota/claude.json`) | 5 h / weekly quota, newest snapshot wins. Claude Code only exposes quota to a statusline hook, e.g. the one installed by `abtop --setup`. |
 | Codex CLI | `<home>/sessions/**/rollout-*.jsonl`, `archived_sessions/` | `token_count` events; rate-limit refreshes repeat the same cumulative total, so one increment per `(thread, cumulative total)`. `input_tokens` includes the cached part and is split. Matches Codex's own `threads.tokens_used` (±0–2 %). |
 | Codex CLI | the same events | `rate_limits` per account — live 5 h and weekly quota for each `CODEX_HOME`. |

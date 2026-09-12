@@ -234,6 +234,15 @@ class Store:
         self.conn.executemany(_UPSERT, (_row(event) for event in events))
         return self.conn.total_changes - before
 
+    def replace_events(self, events: Iterable[Event]) -> None:
+        """Write ``events`` over whatever their keys hold, larger or not."""
+        self.conn.executemany(
+            "INSERT OR REPLACE INTO events(key, ts, tool, account, model, route, project, session,"
+            " input, cache_read, cache_write, output, reasoning, unsplit, cache_write_1h)"
+            " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            (_row(event) for event in events),
+        )
+
     def delete_events(self, key_prefix: str, min_ts: float) -> int:
         escaped = key_prefix.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
         cursor = self.conn.execute(
@@ -287,8 +296,8 @@ class Store:
         conn.execute("DELETE FROM copies WHERE account = owner")
         conn.execute("DELETE FROM accounts WHERE id = ?", (old,))
         conn.execute(
-            "DELETE FROM meta WHERE key IN (?, ?)",
-            (f"statscache:{old}", f"opencode-watermark:{old}"),
+            "DELETE FROM meta WHERE key IN (?, ?, ?)",
+            (f"statscache:{old}", f"statscache-scale:{old}", f"opencode-watermark:{old}"),
         )
 
     def load_events(self) -> list[Event]:

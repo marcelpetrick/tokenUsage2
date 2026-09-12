@@ -11,7 +11,7 @@ that head is searched — never the multi-megabyte content that follows.
 """
 
 import json
-from collections.abc import Mapping
+from collections.abc import Iterable, Iterator, Mapping
 from datetime import UTC, date, datetime, time, tzinfo
 from pathlib import Path
 from typing import Protocol
@@ -305,31 +305,76 @@ def parse_opencode_message(account: str, row_id: str, data: str | bytes) -> Even
     )
 
 
-def parse_stats_cache(
-    account: str,
-    data: Mapping[str, object],
-    before: date | None,
-    tz: tzinfo,
-) -> list[Event]:
-    """Claude's retained daily totals, only for days before the first transcript.
-
-    The split into input/cache/output is not retained, so the tokens are
-    recorded as ``unsplit`` and drawn hatched.
-    """
-    events = []
+def stats_cache_days(data: Mapping[str, object]) -> Iterator[tuple[date, dict]]:
+    """``(date, tokensByModel)`` of every well-formed ``dailyModelTokens`` entry."""
     days = data.get("dailyModelTokens")
     for day in days if isinstance(days, list) else []:
         if not isinstance(day, dict) or not isinstance(day.get("tokensByModel"), dict):
             continue
         try:
-            when = date.fromisoformat(str(day.get("date")))
+            yield date.fromisoformat(str(day.get("date"))), day["tokensByModel"]
         except ValueError:
             continue
+
+
+def stats_cache_scale(data: Mapping[str, object], requests: Iterable[Event]) -> tuple[float, int]:
+    """Tokens the requests really used per token the stats cache counts, and on how many days.
+
+    Claude Code's stats cache adds up every transcript line, and a response is
+    written once per content block, so its daily totals run about twice the
+    requests behind them. The ratio is measured on the days the cache shares
+    with ``requests`` (deduplicated transcript records): after the first
+    request's day, which cleanup may have cut, and before the day the cache was
+    last computed, which may be partial. It is never above 1, and ``(1.0, 0)``
+    when nothing overlaps.
+    """
+    used: dict[tuple[date, str], int] = {}
+    for request in requests:
+        day = datetime.fromtimestamp(request.ts, UTC).date()
+        used[day, request.model] = used.get((day, request.model), 0) + request.usage.total
+    if not used:
+        return 1.0, 0
+    first = min(day for day, _ in used)
+    try:
+        computed: date | None = date.fromisoformat(str(data.get("lastComputedDate")))
+    except ValueError:
+        computed = None
+    cached = measured = 0
+    days: set[date] = set()
+    for when, models in stats_cache_days(data):
+        if when <= first or (computed is not None and when >= computed):
+            continue
+        for model, tokens in models.items():
+            if (when, str(model)) in used and count(tokens):
+                cached += count(tokens)
+                measured += used[when, str(model)]
+                days.add(when)
+    if not cached:
+        return 1.0, 0
+    return min(1.0, measured / cached), len(days)
+
+
+def parse_stats_cache(
+    account: str,
+    data: Mapping[str, object],
+    before: date | None,
+    tz: tzinfo,
+    scale: float = 1.0,
+) -> list[Event]:
+    """Claude's retained daily totals, only for days before the first transcript.
+
+    The split into input/cache/output is not retained, so the tokens are
+    recorded as ``unsplit`` and drawn hatched. ``scale`` (see
+    ``stats_cache_scale``) turns the cache's per-line count into requests.
+    """
+    events = []
+    for when, models in stats_cache_days(data):
         if before is not None and when >= before:
             continue
         noon = datetime.combine(when, time(12), tzinfo=tz).timestamp()
-        for model, tokens in day["tokensByModel"].items():
-            if count(tokens) == 0:
+        for model, raw in models.items():
+            tokens = round(count(raw) * scale)
+            if tokens == 0:
                 continue
             model = str(model)
             events.append(
@@ -342,7 +387,7 @@ def parse_stats_cache(
                     route="anthropic" if model.startswith("claude-") else "",
                     project="(retained daily total)",
                     session="",
-                    usage=Usage(unsplit=count(tokens)),
+                    usage=Usage(unsplit=tokens),
                 )
             )
     return events

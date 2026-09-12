@@ -10,6 +10,18 @@ All notable changes to tokenUsage2. Versions follow semantic versioning; the
 archive schema version is noted whenever it changes, because an older build
 refuses a newer archive.
 
+## 0.11.2
+
+### Fixed
+
+- Claude's retained daily totals are no longer about twice too large. Claude
+  Code's `stats-cache.json` adds up every transcript line, and a response is
+  written once per content block, so the days before the first transcript
+  counted most requests two or more times. The totals are now scaled by the
+  ratio of deduplicated requests to cached tokens, measured on the whole days
+  the cache shares with transcripts; the scale is re-measured whenever the
+  cache changes, and already archived totals are corrected on the first start.
+
 ## 0.11.1
 
 ### Build

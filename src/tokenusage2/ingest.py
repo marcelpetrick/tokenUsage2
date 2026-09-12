@@ -29,6 +29,7 @@ from tokenusage2.parsers import (
     parse_claude_quota,
     parse_opencode_message,
     parse_stats_cache,
+    stats_cache_scale,
 )
 from tokenusage2.store import FileState, Store
 
@@ -120,6 +121,14 @@ class EventIndex:
             old.usage.cache_write_1h,
         ):
             return False
+        return self._put(old, event)
+
+    def replace(self, event: Event) -> bool:
+        """Store ``event`` under its key even when it is smaller; False if nothing changes."""
+        old = self._by_key.get(event.key)
+        return old != event and self._put(old, event)
+
+    def _put(self, old: Event | None, event: Event) -> bool:
         if old is not None:
             self._remove(old)
         self._by_key[event.key] = event
@@ -409,7 +418,8 @@ class Ingestor:
         first = self.index.earliest(account.id)
         before = datetime.fromtimestamp(first, self.tz).date() if first is not None else None
         mirror = self.mirror_of(account.id)
-        signature = f"{stat.st_size}:{stat.st_mtime_ns}:{before}:{mirror}"
+        # The version prefix re-derives totals archived by an older rule once.
+        signature = f"v2:{stat.st_size}:{stat.st_mtime_ns}:{before}:{mirror}"
         mark = f"statscache:{account.id}"
         if self.store.get_meta(mark) == signature:
             return
@@ -430,13 +440,22 @@ class Ingestor:
             cutoff = datetime.combine(before, clock_time(0), tzinfo=self.tz).timestamp()
             self.index.discard(prefix, cutoff)
             self.store.delete_events(prefix, cutoff)
-        events = parse_stats_cache(
-            account.id,
-            data if isinstance(data, dict) else {},
-            before,
-            self.tz,
-        )
-        report.events_changed += self._apply(events)
+        data = data if isinstance(data, dict) else {}
+        requests = [
+            event
+            for event in self.index.events()
+            if event.account == account.id and not event.key.startswith(BACKFILL_PREFIX)
+        ]
+        scale, days = stats_cache_scale(data, requests)
+        # Replaced, not merged by size: a smaller scale must be able to lower a total.
+        changed = [
+            event
+            for event in parse_stats_cache(account.id, data, before, self.tz, scale)
+            if self.index.replace(event)
+        ]
+        self.store.replace_events(changed)
+        report.events_changed += len(changed)
+        self.store.set_meta(f"statscache-scale:{account.id}", f"{scale:.6f}:{days}")
         self.store.set_meta(mark, signature)
 
     def quota_files(self, account: Account) -> list[Path]:

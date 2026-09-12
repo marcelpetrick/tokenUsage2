@@ -10,7 +10,7 @@ import pytest
 
 from conftest import BERLIN, NOW, claude_line, codex_meta, codex_tokens, codex_turn
 from tokenusage2.discover import BackendMap
-from tokenusage2.model import Tool, Usage
+from tokenusage2.model import Event, Tool, Usage
 from tokenusage2.parsers import (
     ClaudeParser,
     CodexParser,
@@ -22,6 +22,7 @@ from tokenusage2.parsers import (
     parse_opencode_message,
     parse_stats_cache,
     parse_ts,
+    stats_cache_scale,
     thread_from_filename,
 )
 
@@ -217,6 +218,42 @@ def test_stats_cache_backfill_only_before_the_first_transcript() -> None:
     assert events[0].key == "claude-daily:acct:2026-09-01:claude-opus-4-7"
     assert len(parse_stats_cache("acct", data, None, BERLIN)) == 3
     assert parse_stats_cache("acct", {"dailyModelTokens": 3}, None, BERLIN) == []
+
+
+def test_stats_cache_scale_is_measured_on_whole_shared_days() -> None:
+    def request(ts: str, model: str, total: int) -> Event:
+        moment = parse_ts(ts)
+        assert moment is not None
+        return Event(
+            f"claude:{ts}", moment, Tool.CLAUDE, "a", model, "", "", "", Usage(input=total)
+        )
+
+    requests = [
+        request("2026-09-01T23:30:00Z", "m", 100),  # the first day: cleanup may have cut it
+        request("2026-09-02T10:00:00Z", "m", 300),
+        request("2026-09-02T11:00:00Z", "q", 50),
+        request("2026-09-03T10:00:00Z", "m", 999),  # the day last computed: maybe partial
+    ]
+    data = {
+        "lastComputedDate": "2026-09-03",
+        "dailyModelTokens": [
+            {"date": "2026-09-01", "tokensByModel": {"m": 1000}},
+            {"date": "2026-09-02", "tokensByModel": {"m": 600, "q": 100, "gone": 5000}},
+            {"date": "2026-09-03", "tokensByModel": {"m": 1}},
+        ],
+    }
+    assert stats_cache_scale(data, requests) == (0.5, 1)
+    assert stats_cache_scale(data, []) == (1.0, 0)
+    assert stats_cache_scale({"dailyModelTokens": []}, requests) == (1.0, 0)
+    smaller = {"dailyModelTokens": [{"date": "2026-09-03", "tokensByModel": {"m": 1}}]}
+    assert stats_cache_scale(smaller, requests) == (1.0, 1)  # never scaled up
+    scaled = parse_stats_cache("a", data, None, BERLIN, 0.5)
+    assert [(e.model, e.usage.unsplit) for e in scaled] == [
+        ("m", 500),
+        ("m", 300),
+        ("q", 50),
+        ("gone", 2500),
+    ]
 
 
 def test_claude_quota_snapshot() -> None:
