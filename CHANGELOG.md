@@ -10,6 +10,12 @@ All notable changes to tokenUsage2. Versions follow semantic versioning; the
 archive schema version is noted whenever it changes, because an older build
 refuses a newer archive.
 
+## 0.11.1
+
+### Build
+
+- The pinned development tools move to ruff 0.16.7 and build 1.6.1.
+
 ## 0.11.0
 
 ### Fixed
