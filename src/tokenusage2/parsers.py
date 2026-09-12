@@ -12,7 +12,7 @@ that head is searched — never the multi-megabyte content that follows.
 
 import json
 from collections.abc import Iterable, Iterator, Mapping
-from datetime import UTC, date, datetime, time, tzinfo
+from datetime import UTC, date, datetime, time
 from pathlib import Path
 from typing import Protocol
 
@@ -366,20 +366,20 @@ def parse_stats_cache(
     account: str,
     data: Mapping[str, object],
     before: date | None,
-    tz: tzinfo,
     scale: float = 1.0,
 ) -> list[Event]:
-    """Claude's retained daily totals, only for days before the first transcript.
+    """Claude's retained daily totals, only for UTC days before the first transcript's.
 
-    The split into input/cache/output is not retained, so the tokens are
-    recorded as ``unsplit`` and drawn hatched. ``scale`` (see
-    ``stats_cache_scale``) turns the cache's per-line count into requests.
+    The cache's dates are UTC days, so each total is placed at UTC noon. The
+    split into input/cache/output is not retained, so the tokens are recorded
+    as ``unsplit`` and drawn hatched. ``scale`` (see ``stats_cache_scale``)
+    turns the cache's per-line count into requests.
     """
     events = []
     for when, models in stats_cache_days(data):
         if before is not None and when >= before:
             continue
-        noon = datetime.combine(when, time(12), tzinfo=tz).timestamp()
+        noon = datetime.combine(when, time(12), tzinfo=UTC).timestamp()
         for model, raw in models.items():
             tokens = round(count(raw) * scale)
             if tokens == 0:

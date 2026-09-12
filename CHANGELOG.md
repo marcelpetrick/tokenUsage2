@@ -10,6 +10,16 @@ All notable changes to tokenUsage2. Versions follow semantic versioning; the
 archive schema version is noted whenever it changes, because an older build
 refuses a newer archive.
 
+## 0.11.8
+
+### Fixed
+
+- Claude's retained daily totals are read as the UTC days they are. They were
+  taken for local days, so east of UTC the first transcript's UTC day could be
+  backfilled although a transcript already covered part of it, and west of
+  UTC a day could be lost. The cutoff is now the first transcript's UTC day,
+  each total is placed at UTC noon, and archived totals move once.
+
 ## 0.11.7
 
 ### Fixed

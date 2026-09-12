@@ -16,7 +16,7 @@ import time
 from collections.abc import Callable, Iterable, Iterator, Mapping
 from contextlib import closing
 from dataclasses import dataclass, field
-from datetime import datetime, tzinfo
+from datetime import UTC, datetime, tzinfo
 from datetime import time as clock_time
 from pathlib import Path
 
@@ -416,10 +416,11 @@ class Ingestor:
         except OSError:
             return
         first = self.index.earliest(account.id)
-        before = datetime.fromtimestamp(first, self.tz).date() if first is not None else None
+        # The cache's dates are UTC days: the first transcript's UTC day may be cut.
+        before = datetime.fromtimestamp(first, UTC).date() if first is not None else None
         mirror = self.mirror_of(account.id)
         # The version prefix re-derives totals archived by an older rule once.
-        signature = f"v2:{stat.st_size}:{stat.st_mtime_ns}:{before}:{mirror}"
+        signature = f"v3:{stat.st_size}:{stat.st_mtime_ns}:{before}:{mirror}"
         mark = f"statscache:{account.id}"
         if self.store.get_meta(mark) == signature:
             return
@@ -437,7 +438,7 @@ class Ingestor:
             return
         prefix = f"{BACKFILL_PREFIX}{account.id}:"
         if before is not None:
-            cutoff = datetime.combine(before, clock_time(0), tzinfo=self.tz).timestamp()
+            cutoff = datetime.combine(before, clock_time(0), tzinfo=UTC).timestamp()
             self.index.discard(prefix, cutoff)
             self.store.delete_events(prefix, cutoff)
         data = data if isinstance(data, dict) else {}
@@ -450,7 +451,7 @@ class Ingestor:
         # Replaced, not merged by size: a smaller scale must be able to lower a total.
         changed = [
             event
-            for event in parse_stats_cache(account.id, data, before, self.tz, scale)
+            for event in parse_stats_cache(account.id, data, before, scale)
             if self.index.replace(event)
         ]
         self.store.replace_events(changed)

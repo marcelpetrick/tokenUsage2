@@ -9,6 +9,7 @@ import sqlite3
 from collections.abc import Callable, Iterator
 from contextlib import closing
 from dataclasses import replace
+from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
@@ -209,6 +210,23 @@ def test_retained_totals_are_scaled_to_requests_and_replaced(
     ingestor.scan()
     assert retained(ingestor, CLAUDE) == 1250
     assert sum(event.usage.unsplit for event in ingestor.store.load_events()) == 1250
+
+
+def test_retained_days_are_utc_days(home: FakeHome, make: Factory) -> None:
+    write_jsonl(  # 23:30 UTC on 9 September is already 10 September in Berlin
+        home.root / ".claude" / "projects" / "-work-alpha" / "old.jsonl",
+        [claude_line("msg_old", "2026-09-09T23:30:00Z")],
+    )
+    days = [
+        {"date": "2026-09-08", "tokensByModel": {"m": 100}},
+        {"date": "2026-09-09", "tokensByModel": {"m": 999}},  # the transcript's UTC day
+    ]
+    (home.root / ".claude" / "stats-cache.json").write_text(json.dumps({"dailyModelTokens": days}))
+    ingestor = make()
+    ingestor.scan()
+    assert [
+        (e.model, e.usage.unsplit, e.ts) for e in ingestor.index.events() if e.usage.unsplit
+    ] == [("m", 100, datetime(2026, 9, 8, 12, tzinfo=UTC).timestamp())]
 
 
 def test_opencode_is_read_past_its_watermark(home: FakeHome, make: Factory) -> None:

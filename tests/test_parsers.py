@@ -3,12 +3,12 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 
 import json
-from datetime import date
+from datetime import UTC, date, datetime
 from pathlib import Path
 
 import pytest
 
-from conftest import BERLIN, NOW, claude_line, codex_meta, codex_tokens, codex_turn
+from conftest import NOW, claude_line, codex_meta, codex_tokens, codex_turn
 from tokenusage2.discover import BackendMap
 from tokenusage2.model import Event, Tool, Usage
 from tokenusage2.parsers import (
@@ -224,14 +224,15 @@ def test_stats_cache_backfill_only_before_the_first_transcript() -> None:
             "junk",
         ]
     }
-    events = parse_stats_cache("acct", data, date(2026, 9, 10), BERLIN)
+    events = parse_stats_cache("acct", data, date(2026, 9, 10))
     assert [(e.model, e.route, e.usage.unsplit) for e in events] == [
         ("claude-opus-4-7", "anthropic", 5000),
         ("qwen:7b", "", 7),
     ]
     assert events[0].key == "claude-daily:acct:2026-09-01:claude-opus-4-7"
-    assert len(parse_stats_cache("acct", data, None, BERLIN)) == 3
-    assert parse_stats_cache("acct", {"dailyModelTokens": 3}, None, BERLIN) == []
+    assert events[0].ts == datetime(2026, 9, 1, 12, tzinfo=UTC).timestamp()  # a UTC day
+    assert len(parse_stats_cache("acct", data, None)) == 3
+    assert parse_stats_cache("acct", {"dailyModelTokens": 3}, None) == []
 
 
 def test_stats_cache_scale_is_measured_on_whole_shared_days() -> None:
@@ -261,7 +262,7 @@ def test_stats_cache_scale_is_measured_on_whole_shared_days() -> None:
     assert stats_cache_scale({"dailyModelTokens": []}, requests) == (1.0, 0)
     smaller = {"dailyModelTokens": [{"date": "2026-09-03", "tokensByModel": {"m": 1}}]}
     assert stats_cache_scale(smaller, requests) == (1.0, 1)  # never scaled up
-    scaled = parse_stats_cache("a", data, None, BERLIN, 0.5)
+    scaled = parse_stats_cache("a", data, None, 0.5)
     assert [(e.model, e.usage.unsplit) for e in scaled] == [
         ("m", 500),
         ("m", 300),
