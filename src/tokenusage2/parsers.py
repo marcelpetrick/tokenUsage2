@@ -246,12 +246,14 @@ class CodexParser:
         if not isinstance(total, dict) or not isinstance(last, dict):
             return None
         cumulative = count(total.get("total_tokens"))
-        if cumulative < self.ctx.get("cumulative", 0):
-            self.ctx["resets"] = self.ctx.get("resets", 0) + 1
-        self.ctx["cumulative"] = cumulative
         tokens = codex_usage(last)
         if cumulative == 0 or tokens.total == 0:
             return None
+        # Restarts are found on the increments themselves, as the schema-7 upgrade
+        # finds them in the archive, so both give an increment the same key.
+        if cumulative < self.ctx.get("cumulative", 0):
+            self.ctx["resets"] = self.ctx.get("resets", 0) + 1
+        self.ctx["cumulative"] = cumulative
         thread = str(self.ctx["thread"])
         resets = self.ctx.get("resets", 0)
         return Event(

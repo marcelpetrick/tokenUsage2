@@ -10,6 +10,18 @@ All notable changes to tokenUsage2. Versions follow semantic versioning; the
 archive schema version is noted whenever it changes, because an older build
 refuses a newer archive.
 
+## 0.11.9
+
+### Fixed
+
+- A Codex compaction restart is recognised on the increments themselves.
+  0.11.4 also counted a drop to a total without usage of its own, such as the
+  zero total a compaction writes, which the upgrade to archive schema 7 cannot
+  see in the archive. When the next total lay above the old one, the parser
+  marked a restart the upgrade had not, and the rollout read again after the
+  upgrade counted those increments twice. Parser and upgrade now give every
+  increment the same key.
+
 ## 0.11.8
 
 ### Fixed

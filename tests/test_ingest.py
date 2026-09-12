@@ -31,6 +31,7 @@ from tokenusage2.config import Config
 from tokenusage2.discover import BackendMap, Discovery, discover
 from tokenusage2.ingest import EventIndex, Ingestor, walk_jsonl
 from tokenusage2.model import Account, Event, QuotaWindow, Tool, Usage
+from tokenusage2.parsers import CodexParser
 from tokenusage2.store import FileState, Store, StoreError
 
 CLAUDE = "claude:~/.claude"
@@ -630,6 +631,36 @@ def test_schema_6_archives_key_increments_after_counter_restarts_apart(tmp_path:
     ]
     assert migrated.load_file_states() == {}
     migrated.close()
+
+
+def test_the_schema_7_upgrade_finds_the_restarts_the_parser_finds(tmp_path: Path) -> None:
+    parser = CodexParser(CODEX, {}, "t")
+    records = [
+        codex_tokens("2026-09-10T10:00:00Z", 1100, inp=1100),
+        codex_tokens("2026-09-10T10:00:10Z", 3300, inp=2200),
+        codex_tokens("2026-09-10T10:00:20Z", 0),  # compaction
+        codex_tokens("2026-09-10T10:00:30Z", 400),  # a restarted total without usage of its own
+        codex_tokens("2026-09-10T10:00:40Z", 900, inp=500),
+        codex_tokens("2026-09-10T10:00:50Z", 2000, inp=1100),
+        codex_tokens("2026-09-10T10:01:00Z", 0),
+        codex_tokens("2026-09-10T10:01:10Z", 5000, inp=3000),  # above every earlier total
+    ]
+    events = [event for record in records if (event := parser.feed(line(record).encode()))]
+    path = tmp_path / "v6.sqlite"
+    store = Store(path)  # what schema 6 archived: the same increments without restart suffixes
+    store.upsert_events([replace(event, key=event.key.partition(":r")[0]) for event in events])
+    store.set_meta("schema", "6")
+    store.commit()
+    store.close()
+    with closing(Store(path)) as migrated:
+        assert sorted(e.key for e in migrated.load_events()) == sorted(e.key for e in events)
+    assert [event.key for event in events] == [
+        "codex:t:1100",
+        "codex:t:3300",
+        "codex:t:900:r1",
+        "codex:t:2000:r1",
+        "codex:t:5000:r1",
+    ]
 
 
 CODEX_BACKUP = "codex:~/.codex-backup"
