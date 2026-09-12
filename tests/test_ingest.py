@@ -321,10 +321,12 @@ def test_a_copied_claude_home_is_counted_once(
     shutil.copytree(home.root / ".claude", home.root / ".claude-backup")
     archive = tmp_path / "archive.sqlite"
     ingestor = make(archive)
+    ingestor.store.set_meta(f"statscache-scale:{BACKUP}", "0.5:3")  # measured before it was a copy
     ingestor.scan()
     sums = totals(ingestor)
     assert sums[CLAUDE] == 1160 + 700 + 5000
     assert BACKUP not in sums
+    assert ingestor.store.get_meta(f"statscache-scale:{BACKUP}") is None
     assert ingestor.duplicates == {BACKUP: {CLAUDE: 2}}  # msg_a's two copies share a key
     assert ingestor.mirror_of(BACKUP) == CLAUDE
     assert ingestor.mirror_of(CLAUDE) is None

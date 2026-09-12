@@ -10,6 +10,14 @@ All notable changes to tokenUsage2. Versions follow semantic versioning; the
 archive schema version is noted whenever it changes, because an older build
 refuses a newer archive.
 
+## 0.11.10
+
+### Fixed
+
+- A home taken for a copy of another no longer keeps the stats-cache scale
+  measured while it had records of its own; `--doctor` could quote that scale
+  for retained totals the copy no longer counts.
+
 ## 0.11.9
 
 ### Fixed

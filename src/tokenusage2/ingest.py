@@ -429,6 +429,7 @@ class Ingestor:
             prefix = f"{BACKFILL_PREFIX}{account.id}:"
             self.index.discard(prefix, float("-inf"))
             self.store.delete_events(prefix, float("-inf"))
+            self.store.delete_meta(f"statscache-scale:{account.id}")
             self.store.set_meta(mark, signature)
             return
         try:

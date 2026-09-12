@@ -252,6 +252,9 @@ class Store:
             (key, value),
         )
 
+    def delete_meta(self, key: str) -> None:
+        self.conn.execute("DELETE FROM meta WHERE key = ?", (key,))
+
     def load_file_states(self) -> dict[str, FileState]:
         rows = self.conn.execute(
             "SELECT path, account, inode, size, mtime_ns, offset, ctx FROM files"
