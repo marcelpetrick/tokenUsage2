@@ -19,7 +19,7 @@ from pathlib import Path
 from tokenusage2.model import Account, Event, QuotaWindow, Tool, Usage
 from tokenusage2.parsers import BACKFILL_PREFIX
 
-SCHEMA_VERSION = 5
+SCHEMA_VERSION = 6
 _TOOLS = {tool.value: tool for tool in Tool}
 _SCHEMA = """
 CREATE TABLE IF NOT EXISTS meta(key TEXT PRIMARY KEY, value TEXT NOT NULL);
@@ -122,12 +122,30 @@ def _copies_by_distinct_key(conn: sqlite3.Connection) -> None:
     conn.execute("DELETE FROM files WHERE account LIKE 'claude:%'")
 
 
+_OWN_CODEX_PREFIX = "substr(key, 1, length(account) + 7) = 'codex:' || account || ':'"
+
+
+def _codex_keys_without_account(conn: sqlite3.Connection) -> None:
+    """Schema 5 → 6: Codex keys drop the account, so a copied home collapses.
+
+    Where two homes held the same increment, the first renamed row wins and the
+    other is removed; Codex rollouts are read again once to record the copies.
+    """
+    conn.execute(
+        "UPDATE OR IGNORE events SET key = 'codex:' || substr(key, length(account) + 8) "
+        f"WHERE tool = 'codex' AND {_OWN_CODEX_PREFIX}"
+    )
+    conn.execute(f"DELETE FROM events WHERE tool = 'codex' AND {_OWN_CODEX_PREFIX}")
+    conn.execute("DELETE FROM files WHERE account LIKE 'codex:%'")
+
+
 #: ``MIGRATIONS[n]`` upgrades an archive from schema ``n`` to ``n + 1``.
 MIGRATIONS = {
     1: _claude_keys_without_account,
     2: _backend_becomes_route,
     3: _cache_write_ttl_split,
     4: _copies_by_distinct_key,
+    5: _codex_keys_without_account,
 }
 
 
@@ -164,7 +182,7 @@ def _row(event: Event) -> tuple:
 
 
 #: Record keys that continue with the account id (see parsers).
-_ACCOUNT_KEYS = ("codex:", "opencode:", BACKFILL_PREFIX)
+_ACCOUNT_KEYS = ("opencode:", BACKFILL_PREFIX)
 
 
 class Store:
@@ -275,9 +293,9 @@ class Store:
     def rename_account(self, old: str, new: str) -> None:
         """Move everything recorded for account ``old`` to ``new``.
 
-        Codex, OpenCode and retained-total keys embed the account and are
-        rewritten; a record ``new`` already holds is dropped under ``old``, so
-        a history split across both ids counts once.
+        OpenCode and retained-total keys embed the account and are rewritten;
+        a record ``new`` already holds is dropped under ``old``, so a history
+        split across both ids counts once.
         """
         conn = self.conn
         for prefix in _ACCOUNT_KEYS:

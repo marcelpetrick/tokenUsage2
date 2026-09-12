@@ -248,7 +248,8 @@ class CodexParser:
             return None
         thread = str(self.ctx["thread"])
         return Event(
-            key=f"codex:{self.account}:{thread}:{cumulative}",
+            # No account in the key: a copied home must not count an increment twice.
+            key=f"codex:{thread}:{cumulative}",
             ts=ts,
             tool=Tool.CODEX,
             account=self.account,

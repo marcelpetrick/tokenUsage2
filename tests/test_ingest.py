@@ -332,9 +332,9 @@ def test_schema_1_archives_are_migrated(tmp_path: Path) -> None:
     migrated = Store(path)
     assert sorted(event.key for event in migrated.load_events()) == [
         "claude:msg_a:req_1",
-        "codex:codex:~/.codex:t:5",
+        "codex:t:5",
     ]
-    assert migrated.get_meta("schema") == "5"
+    assert migrated.get_meta("schema") == "6"
     migrated.close()
 
 
@@ -406,7 +406,7 @@ def test_schema_2_archives_keep_only_the_logged_route(tmp_path: Path) -> None:
         )
     store = Store(path)
     assert [event.route for event in store.load_events()] == ["anthropic", "", "openai"]
-    assert store.get_meta("schema") == "5"
+    assert store.get_meta("schema") == "6"
     store.close()
 
 
@@ -445,9 +445,9 @@ def test_schema_3_archives_gain_the_ttl_split_and_reread_claude(tmp_path: Path) 
             "INSERT INTO files VALUES ('/x.jsonl', 'codex:~/.codex', 1, 2, 3, 2, '{}');"
         )
     store = Store(path)
-    assert store.get_meta("schema") == "5"
+    assert store.get_meta("schema") == "6"
     assert store.load_events()[0].usage.cache_write_1h == 0
-    assert list(store.load_file_states()) == ["/x.jsonl"]
+    assert list(store.load_file_states()) == []  # Claude for schema 4, Codex for schema 6
     store.close()
 
 
@@ -535,21 +535,58 @@ def test_schema_4_archives_count_copies_again_by_key(tmp_path: Path) -> None:
     store.commit()
     store.close()
     migrated = Store(path)
-    assert migrated.get_meta("schema") == "5"
+    assert migrated.get_meta("schema") == "6"
     assert migrated.get_meta("duplicates") is None
-    assert list(migrated.load_file_states()) == ["/x.jsonl"]
+    assert list(migrated.load_file_states()) == []  # Claude for schema 5, Codex for schema 6
     assert migrated.copy_counts() == {}
     migrated.close()
 
 
+def test_schema_5_archives_drop_the_account_from_codex_keys(tmp_path: Path) -> None:
+    path = tmp_path / "v5.sqlite"
+    store = Store(path)
+    codex = Event(
+        f"codex:{CODEX}:t:5", 1.0, Tool.CODEX, CODEX, "m", "openai", "p", "t", Usage(input=5)
+    )
+    backup = "codex:~/.codex-backup"
+    opencode = Event("opencode:o:r1", 2.0, Tool.OPENCODE, "o", "m", "p", "", "", Usage(input=1))
+    store.upsert_events(
+        [codex, replace(codex, key=f"codex:{backup}:t:5", account=backup), opencode]
+    )
+    store.save_file_state(FileState("/c.jsonl", CLAUDE, 1, 2, 3, 2, {}))
+    store.save_file_state(FileState("/x.jsonl", CODEX, 1, 2, 3, 2, {}))
+    store.set_meta("schema", "5")
+    store.commit()
+    store.close()
+    migrated = Store(path)
+    assert migrated.get_meta("schema") == "6"
+    assert sorted(event.key for event in migrated.load_events()) == ["codex:t:5", "opencode:o:r1"]
+    assert list(migrated.load_file_states()) == ["/c.jsonl"]
+    migrated.close()
+
+
+CODEX_BACKUP = "codex:~/.codex-backup"
+
+
+def test_a_copied_codex_home_is_counted_once(home: FakeHome, make: Factory) -> None:
+    shutil.copytree(home.root / ".codex", home.root / ".codex-backup")
+    ingestor = make()
+    ingestor.scan()
+    sums = totals(ingestor)
+    assert sums[CODEX] == 3300
+    assert CODEX_BACKUP not in sums
+    assert ingestor.duplicates == {CODEX_BACKUP: {CODEX: 2}}
+    assert ingestor.mirror_of(CODEX_BACKUP) == CODEX
+
+
 def test_renaming_an_account_rewrites_keys_and_drops_what_the_new_id_holds() -> None:
     store = Store(None)
-    shared = Event("codex:old:t:5", 1.0, Tool.CODEX, "old", "m", "openai", "p", "t", Usage(input=5))
+    shared = Event("opencode:old:r5", 1.0, Tool.OPENCODE, "old", "m", "p", "p", "t", Usage(input=5))
     store.upsert_events(
         [
             shared,
-            replace(shared, key="codex:new:t:5", account="new"),
-            replace(shared, key="codex:old:t:9", ts=2.0),
+            replace(shared, key="opencode:new:r5", account="new"),
+            replace(shared, key="opencode:old:r9", ts=2.0),
             Event("claude:m:", 3.0, Tool.CLAUDE, "old", "m", "", "p", "s", Usage(input=1)),
         ]
     )
@@ -561,8 +598,8 @@ def test_renaming_an_account_rewrites_keys_and_drops_what_the_new_id_holds() -> 
     store.rename_account("old", "new")
     assert sorted((event.key, event.account) for event in store.load_events()) == [
         ("claude:m:", "new"),
-        ("codex:new:t:5", "new"),
-        ("codex:new:t:9", "new"),
+        ("opencode:new:r5", "new"),
+        ("opencode:new:r9", "new"),
     ]
     assert store.load_file_states()["/r.jsonl"].account == "new"
     assert [quota.account for quota in store.load_quotas()] == ["new"]
@@ -596,6 +633,6 @@ def test_old_ids_of_a_symlinked_home_are_merged_into_its_id(tmp_path: Path) -> N
         ingestor = Ingestor(store, found, BERLIN, home, {})
         assert ingestor.scan().bytes_read == 0
         assert [(event.key, event.account) for event in ingestor.index.events()] == [
-            (f"codex:{account.id}:t:1100", account.id)
+            ("codex:t:1100", account.id)
         ]
         assert [stored.id for stored in store.load_accounts()] == [account.id]

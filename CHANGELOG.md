@@ -10,6 +10,19 @@ All notable changes to tokenUsage2. Versions follow semantic versioning; the
 archive schema version is noted whenever it changes, because an older build
 refuses a newer archive.
 
+## 0.11.3
+
+Archive schema 6 — migrated in place; Codex rollouts are read again once.
+
+### Fixed
+
+- A copied Codex home (`cp -r ~/.codex ~/.codex-backup`, found by the `$HOME`
+  scan) no longer counts its usage a second time. Codex record keys carried
+  the account, so the same increment was a new record in every home that held
+  it; they are now `(thread, cumulative total)` alone, as Claude's keys have
+  no account. Copies are recorded like Claude's and shown by `--doctor`; the
+  upgrade collapses increments archived under several homes.
+
 ## 0.11.2
 
 ### Fixed
