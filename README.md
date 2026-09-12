@@ -69,7 +69,7 @@ appended, so a restart takes about 0.2 s.
 | **Breakdown** | The selected bar by model (with backend), project, session (with its first and last request), backend, account or tool: calls, fresh input, cache read, cache write, output, total, share, cache-hit rate. |
 | **Live feed** | The newest requests as they land — model, project and token split; rows younger than 20 s are highlighted. |
 | **Heatmap** | Hour-of-day × weekday activity over the last four weeks (replaces the feed on `h`). |
-| **Sources** | Discovered homes and *how* each was found, file/event counts, archive path, quota freshness, backend hints, and a reconciliation against each tool's own totals (`s`, or `--doctor`). |
+| **Sources** | Discovered homes and *how* each was found, file/event counts, archive path, quota freshness, backend hints, a reconciliation against Codex's own thread totals, and where Claude's tokens come from with the stats-cache scale (`s`, or `--doctor`). |
 
 Four metrics are available: all tokens including cache (the raw total), fresh
 input + output, output only, and the API-equivalent cost.

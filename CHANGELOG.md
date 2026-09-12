@@ -10,6 +10,18 @@ All notable changes to tokenUsage2. Versions follow semantic versioning; the
 archive schema version is noted whenever it changes, because an older build
 refuses a newer archive.
 
+## 0.11.5
+
+### Fixed
+
+- `--doctor` reconciles honestly. For Codex it compares only threads Codex
+  still lists, and increments from before a thread's last compaction — which
+  Codex's `threads.tokens_used` restarts without — are reported on their own
+  instead of showing up as a mismatch. For Claude it no longer compares with
+  the stats cache, which counts every transcript line and already supplies the
+  retained totals; it shows the tokens from transcripts, the retained daily
+  totals and the measured stats-cache scale.
+
 ## 0.11.4
 
 Archive schema 7 — migrated in place; Codex rollouts are read again once.

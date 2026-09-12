@@ -76,6 +76,8 @@ def test_doctor_reports_discovery_and_reconciliation(
         "work@corp.example",
         "ollama@10.0.0.5",
         "parsed 3.3k vs Codex threads.tokens_used 3.3k (+0.0%)",
+        "1.9k from transcripts + 5.0k retained daily totals (stats-cache not scaled: no whole day"
+        " shared with transcripts)",
         "quota 5h: 22%",
         "in memory",
         "database · 1 events",

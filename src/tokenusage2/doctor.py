@@ -4,7 +4,6 @@
 
 """The sources report: what was found, where, how, and whether it adds up."""
 
-import json
 import sqlite3
 from collections.abc import Mapping, Sequence
 from contextlib import closing
@@ -19,52 +18,90 @@ from tokenusage2.procscan import AgentProcess
 from tokenusage2.render import compact, duration
 
 
-def retained_total(account: Account) -> tuple[int, str] | None:
-    """The tool's own headline total, for comparison with what was parsed."""
-    if account.tool is Tool.CODEX:
-        databases = sorted(account.home.glob("state_*.sqlite"))
-        if not databases:
-            return None
-        try:
-            uri = f"{databases[-1].resolve().as_uri()}?mode=ro"
-            with closing(sqlite3.connect(uri, uri=True, timeout=1.0)) as connection:
-                value = connection.execute(
-                    "SELECT COALESCE(SUM(tokens_used), 0) FROM threads"
-                ).fetchone()[0]
-        except sqlite3.Error:
-            return None
-        return int(value), "Codex threads.tokens_used"
-    if account.tool is Tool.CLAUDE:
-        try:
-            data = json.loads((account.home / "stats-cache.json").read_text(encoding="utf-8"))
-        except OSError, ValueError:
-            return None
-        models = data.get("modelUsage") if isinstance(data, dict) else None
-        if not isinstance(models, dict):
-            return None
-        fields = ("inputTokens", "outputTokens", "cacheReadInputTokens", "cacheCreationInputTokens")
-        value = sum(
-            int(model.get(name) or 0)
-            for model in models.values()
-            if isinstance(model, dict)
-            for name in fields
-        )
-        return value, "Claude stats-cache modelUsage"
-    return None
+def codex_thread_totals(account: Account) -> dict[str, int]:
+    """Codex's own ``threads.tokens_used`` per thread id (empty when unreadable)."""
+    databases = sorted(account.home.glob("state_*.sqlite"))
+    if not databases:
+        return {}
+    try:
+        uri = f"{databases[-1].resolve().as_uri()}?mode=ro"
+        with closing(sqlite3.connect(uri, uri=True, timeout=1.0)) as connection:
+            rows = connection.execute("SELECT id, tokens_used FROM threads").fetchall()
+    except sqlite3.Error:
+        return {}
+    return {str(thread): int(used or 0) for thread, used in rows}
 
 
-def reconcile(account: Account, events: Sequence[Event]) -> str | None:
-    retained = retained_total(account)
-    if retained is None or not retained[0]:
+def restart_of(key: str) -> int:
+    """How many compaction restarts preceded a Codex increment (see the parser)."""
+    tail = key.rpartition(":")[2]
+    return int(tail[1:]) if tail[:1] == "r" and tail[1:].isdigit() else 0
+
+
+def _plural(count: int, noun: str) -> str:
+    return f"{count} {noun}" if count == 1 else f"{count} {noun}s"
+
+
+def reconcile_codex(account: Account, events: Sequence[Event]) -> str | None:
+    """Parsed increments against Codex's own count, on the threads both know.
+
+    Codex's ``tokens_used`` restarts with a thread's cumulative total at
+    compaction, so increments before a thread's last restart are left out of
+    the comparison and reported on their own.
+    """
+    used = codex_thread_totals(account)
+    mine = [event for event in events if event.account == account.id and event.session in used]
+    total = sum(used[thread] for thread in {event.session for event in mine})
+    if not total:
         return None
-    parsed = sum(event.usage.total for event in events if event.account == account.id)
-    value, label = retained
+    last: dict[str, int] = {}
+    for event in mine:
+        last[event.session] = max(last.get(event.session, 0), restart_of(event.key))
+    parsed = earlier = 0
+    for event in mine:
+        if restart_of(event.key) < last[event.session]:
+            earlier += event.usage.total
+        else:
+            parsed += event.usage.total
     summary = (
-        f"parsed {compact(parsed)} vs {label} {compact(value)} ({(parsed - value) / value:+.1%})"
+        f"parsed {compact(parsed)} vs Codex threads.tokens_used {compact(total)} "
+        f"({(parsed - total) / total:+.1%})"
     )
-    if account.tool is Tool.CLAUDE and parsed < value:
-        summary += " — the cache also counts sessions whose transcripts are gone"
+    if earlier:
+        restarted = _plural(sum(1 for count in last.values() if count), "thread")
+        summary += f"; {compact(earlier)} more before compaction restarted the count in {restarted}"
     return summary
+
+
+def reconcile_claude(account: Account, events: Sequence[Event], scale: str | None) -> str | None:
+    """Where Claude's tokens come from, and how the stats cache was scaled.
+
+    The stats cache counts every transcript line, so it cannot check the
+    transcripts; what it contributes is shown with the measured scale instead.
+    """
+    mine = [event for event in events if event.account == account.id]
+    if not mine:
+        return None
+    transcripts = sum(event.usage.total for event in mine if not event.usage.unsplit)
+    retained = sum(event.usage.unsplit for event in mine)
+    summary = f"{compact(transcripts)} from transcripts + {compact(retained)} retained daily totals"
+    value, _, days = (scale or "").partition(":")
+    if days.isdigit() and int(days):
+        summary += (
+            f" (stats-cache counts every transcript line: scaled by {float(value):.2f}, "
+            f"measured on {_plural(int(days), 'day')})"
+        )
+    elif scale:
+        summary += " (stats-cache not scaled: no whole day shared with transcripts)"
+    return summary
+
+
+def reconcile(account: Account, events: Sequence[Event], scale: str | None = None) -> str | None:
+    if account.tool is Tool.CODEX:
+        return reconcile_codex(account, events)
+    if account.tool is Tool.CLAUDE:
+        return reconcile_claude(account, events, scale)
+    return None
 
 
 def _day(ts: float | None, tz: tzinfo) -> str:
@@ -115,7 +152,9 @@ def doctor_lines(
                     f"           quota {window}: {quota.used_percent:.0f}% · observed "
                     f"{duration(now - quota.observed_at)} ago via {quota.source}"
                 )
-        summary = reconcile(account, events)
+        summary = reconcile(
+            account, events, ingestor.store.get_meta(f"statscache-scale:{account.id}")
+        )
         if summary:
             lines.append(f"           {summary}")
         labels = {known.id: known.label for known in discovery.accounts}
