@@ -189,6 +189,25 @@ def test_heatmap_by_weekday_and_hour() -> None:
     assert sum(map(sum, snapshot.heatmap)) == 200
 
 
+def test_heatmap_uses_the_wall_clock_hour_on_dst_days() -> None:
+    def cell(moment: datetime) -> tuple[int, int]:
+        ts = moment.timestamp()
+        snapshot = build_snapshot([ev(ts)], ACCOUNTS, [], now=ts + 3600, tz=BERLIN)
+        ((row, hour),) = [
+            (row, hour)
+            for row, cells in enumerate(snapshot.heatmap)
+            for hour, value in enumerate(cells)
+            if value
+        ]
+        return row, hour
+
+    sunday = 6
+    assert cell(datetime(2026, 3, 29, 10, 30, tzinfo=BERLIN)) == (sunday, 10)  # 23-hour day
+    assert cell(datetime(2026, 10, 25, 10, 30, tzinfo=BERLIN)) == (sunday, 10)  # 25-hour day
+    assert cell(datetime(2026, 10, 25, 2, 30, fold=1, tzinfo=BERLIN)) == (sunday, 2)  # repeated
+    assert cell(datetime(2026, 10, 25, 23, 59, tzinfo=BERLIN)) == (sunday, 23)
+
+
 def test_metrics_and_retained_totals() -> None:
     tally = Tally()
     tally.add(Usage(unsplit=100))

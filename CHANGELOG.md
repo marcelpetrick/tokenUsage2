@@ -10,6 +10,14 @@ All notable changes to tokenUsage2. Versions follow semantic versioning; the
 archive schema version is noted whenever it changes, because an older build
 refuses a newer archive.
 
+## 0.11.6
+
+### Fixed
+
+- The heatmap puts a request into the hour the clock showed. It counted hours
+  since midnight, so on a daylight-saving day every request after the change
+  landed one hour early (spring) or late (autumn).
+
 ## 0.11.5
 
 ### Fixed

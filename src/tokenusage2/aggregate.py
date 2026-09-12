@@ -543,12 +543,16 @@ def build_snapshot(
     heat_edges = [midnight(day, tz) for day in heat_days]
     heatmap = [[0] * 24 for _ in range(7)]
     for index, day in enumerate(heat_days[:-1]):
-        start, cells = heat_edges[index], heatmap[day.weekday()]
-        for position in _slice(timestamps, start, heat_edges[index + 1]):
-            event = events[position]
-            if not event.usage.unsplit:
-                hour = min(23, int((event.ts - start) // 3600))
-                cells[hour] += usage_value(event.usage, metric)
+        cells = heatmap[day.weekday()]
+        # Wall-clock hours, not hours since midnight: a DST day has 23 or 25.
+        # The skipped hour spans nothing; the repeated one spans both passes.
+        bounds = [datetime.combine(day, time(hour), tzinfo=tz).timestamp() for hour in range(24)]
+        bounds.append(heat_edges[index + 1])
+        for hour in range(24):
+            for position in _slice(timestamps, bounds[hour], bounds[hour + 1]):
+                event = events[position]
+                if not event.usage.unsplit:
+                    cells[hour] += usage_value(event.usage, metric)
 
     latest = [event for event in reversed(events[-(recent * 4) :]) if not event.usage.unsplit]
     return Snapshot(
