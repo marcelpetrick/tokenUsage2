@@ -32,6 +32,7 @@ from tokenusage2.render import (
     stack_cells,
 )
 from tokenusage2.tui import bucket_count, take_snapshot
+from tokenusage2.version import __version__
 
 ANSI = re.compile(r"\x1b\[[0-9;]*m")
 
@@ -67,7 +68,7 @@ def test_plain_frame_shows_every_panel(demo: DemoSource) -> None:
     text = "\n".join(frame(demo, View(theme="plain"), mode="DEMO", status="status!"))
     assert "\x1b" not in text
     for needle in (
-        "tokenUsage2",
+        f"◆ tokenUsage2 {__version__}  DEMO",
         "DEMO",
         "Accounts",
         "Tokens per day",

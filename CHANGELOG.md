@@ -10,6 +10,13 @@ All notable changes to tokenUsage2. Versions follow semantic versioning; the
 archive schema version is noted whenever it changes, because an older build
 refuses a newer archive.
 
+## 0.12.0
+
+### Added
+
+- The dashboard's headline shows the running version (`◆ tokenUsage2 0.12.0`),
+  and so do the start-up screens while agent homes are discovered and indexed.
+
 ## 0.11.10
 
 ### Fixed

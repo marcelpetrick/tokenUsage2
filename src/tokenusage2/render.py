@@ -26,6 +26,7 @@ from tokenusage2.aggregate import (
     Tally,
 )
 from tokenusage2.model import Tool
+from tokenusage2.version import __version__
 
 MIN_WIDTH, MIN_HEIGHT = 70, 16
 AXIS = 8
@@ -802,7 +803,7 @@ def draw_header(
     filter_label: str | None,
 ) -> None:
     canvas.fill(Rect(0, 0, width, 1), "header")
-    left = f" ◆ tokenUsage2  {mode} "
+    left = f" ◆ tokenUsage2 {__version__}  {mode} "
     canvas.put(0, 0, left, "header")
     clock = datetime.fromtimestamp(snapshot.now, tz).strftime("%a %d %b  %H:%M:%S")
     right = f" ⚡ {compact(snapshot.rate)} tok/min   {clock} "

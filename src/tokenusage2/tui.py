@@ -23,6 +23,7 @@ from tokenusage2.export import export
 from tokenusage2.ingest import ScanReport
 from tokenusage2.live import Source
 from tokenusage2.render import THEME_NAMES, View, layout, render, render_message
+from tokenusage2.version import __version__
 
 PERIOD_KEYS = {
     "d": Period.DAY,
@@ -328,7 +329,7 @@ def _loop(
                 width,
                 height,
                 [
-                    "tokenUsage2",
+                    f"tokenUsage2 {__version__}",
                     f"indexing {done:,} / {total:,} files",
                     "the first run builds the archive — later starts are instant",
                 ],
@@ -337,7 +338,9 @@ def _loop(
         )
 
     screen.draw(
-        render_message(width, height, ["tokenUsage2", "discovering agent homes…"], view.theme)
+        render_message(
+            width, height, [f"tokenUsage2 {__version__}", "discovering agent homes…"], view.theme
+        )
     )
     report = source.scan(progress)
     next_scan = clock() + view.interval
