@@ -10,7 +10,7 @@ import pytest
 from conftest import BERLIN, NOW
 from tokenusage2.aggregate import GroupBy, Metric, Period, QuotaView, build_snapshot
 from tokenusage2.demo import DemoSource
-from tokenusage2.model import Account, Tool
+from tokenusage2.model import Account, Event, Tool, Usage
 from tokenusage2.render import (
     THEME_NAMES,
     Column,
@@ -87,6 +87,35 @@ def test_retained_history_is_drawn_hatched() -> None:
     text = "\n".join(frame(source, View(theme="plain", period=Period.MONTH)))
     assert "▒ retained daily total (split unknown)" in text
     assert "▒" in text.split("Tokens per month")[1]
+
+
+def test_retained_history_is_marked_where_the_metric_cannot_show_it() -> None:
+    accounts = [Account("a", Tool.CLAUDE, Path("/a"), "alpha")]
+    retained = Event(
+        "claude-daily:a:2026-09-09:m",
+        NOW - 86400,
+        Tool.CLAUDE,
+        "a",
+        "m",
+        "",
+        "",
+        "",
+        Usage(unsplit=500),
+    )
+    view = View(theme="plain", metric=Metric.FRESH)
+
+    def timeline(events: list[Event]) -> str:
+        snapshot = build_snapshot(
+            events, accounts, [], now=NOW, tz=BERLIN, metric=Metric.FRESH, count=7
+        )
+        text = "\n".join(visible(render(snapshot, view, 160, 48, tz=BERLIN)))
+        return text.split("Tokens per day")[1]
+
+    marked, empty = timeline([retained]), timeline([])
+    assert marked.count("░") > empty.count("░")
+    assert "░ retained daily total (only in the total view)" in marked
+    assert "no usage in this range" not in marked
+    assert "no usage in this range" in empty
 
 
 def test_colour_themes_emit_styles(demo: DemoSource) -> None:

@@ -10,6 +10,16 @@ All notable changes to tokenUsage2. Versions follow semantic versioning; the
 archive schema version is noted whenever it changes, because an older build
 refuses a newer archive.
 
+## 0.11.7
+
+### Fixed
+
+- Retained daily totals no longer vanish without a trace in the fresh, output
+  and cost views. Their split is unknown, so these views cannot count them,
+  and a month of retained history looked like a month without usage. A bucket
+  whose bar is empty but that holds retained totals is now marked `░` on the
+  baseline, and the legend says they appear only in the total view.
+
 ## 0.11.6
 
 ### Fixed

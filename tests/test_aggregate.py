@@ -219,6 +219,8 @@ def test_metrics_and_retained_totals() -> None:
     assert Tally().cache_share == 0.0
     snapshot = snap([ev(at(1), usage=Usage(unsplit=1000)), ev(at(0))])
     assert snapshot.has_hatched
+    fresh = snap([ev(at(1), usage=Usage(unsplit=1000)), ev(at(0))], metric=Metric.FRESH)
+    assert (fresh.has_retained, fresh.has_hatched) == (True, False)
     assert [event.usage.unsplit for event in snapshot.recent] == [0]
     assert next(r for r in snapshot.accounts if r.id == "a").last_ts == at(0)
     assert usage_value(Usage(output=3), Metric.OUTPUT) == 3

@@ -586,6 +586,8 @@ def draw_timeline(canvas: Canvas, rect: Rect, snapshot: Snapshot, view: View) ->
             if hatched > 0:
                 segments.append((hatched, view.series(name), True))
         cells = stack_cells(segments, scale, chart_h)
+        if not cells and bucket.total.unsplit:  # retained totals this metric cannot show
+            cells = [("░", "dim")]
         heights.append(len(cells))
         x = plot_x + index * slot
         for row, (glyph, style) in enumerate(cells):
@@ -624,9 +626,11 @@ def draw_timeline(canvas: Canvas, rect: Rect, snapshot: Snapshot, view: View) ->
     entries = [("■", view.series(name), clean(name)) for name in snapshot.groups]
     if snapshot.has_hatched:
         entries.append(("▒", "dim", "retained daily total (split unknown)"))
+    elif snapshot.has_retained:
+        entries.append(("░", "dim", "retained daily total (only in the total view)"))
     if trend and snapshot.groups:
         entries.append(("▆", "ok", "cache-hit share"))
-    if not snapshot.groups:
+    if not entries:
         canvas.put(inner_x + 1, legend_y, "no usage in this range", "dim")
     for glyph, style, name in entries:
         if x + len(name) + 4 > inner_x + inner_w:

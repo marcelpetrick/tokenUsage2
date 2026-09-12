@@ -312,7 +312,12 @@ class Snapshot:
 
     @property
     def has_hatched(self) -> bool:
-        return self.metric is Metric.TOTAL and any(b.total.unsplit for b in self.buckets)
+        return self.metric is Metric.TOTAL and self.has_retained
+
+    @property
+    def has_retained(self) -> bool:
+        """Some bucket holds retained daily totals, whether the metric can show them or not."""
+        return any(b.total.unsplit for b in self.buckets)
 
 
 def logged_route(event: Event) -> str:

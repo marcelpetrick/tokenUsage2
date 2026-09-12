@@ -65,7 +65,7 @@ appended, so a restart takes about 0.2 s.
 |-------|---------|
 | **Header** | Clock, live burn rate (tokens/min over the last 5 min), today / week / month / all-time totals. |
 | **Accounts** | One row per discovered account: tool, label, e-mail, plan, today/week/month/all, a 24 h sparkline, idle time, and **live 5 h and weekly quota bars** with reset countdowns. `●` marks accounts with a running agent process. |
-| **Timeline** | Stacked bars for the last N days, ISO weeks or months — coloured by account, tool, backend, model or project. The cursor selects a bar and scrolls back through the whole history. Retained history whose split is unknown is drawn hatched (`▒`); a row below the dates shows each bucket's cache-hit share. |
+| **Timeline** | Stacked bars for the last N days, ISO weeks or months — coloured by account, tool, backend, model or project. The cursor selects a bar and scrolls back through the whole history. Retained history whose split is unknown is drawn hatched (`▒`) — in the fresh, output and cost views, which cannot count it, a bucket holding it is marked `░`; a row below the dates shows each bucket's cache-hit share. |
 | **Breakdown** | The selected bar by model (with backend), project, session (with its first and last request), backend, account or tool: calls, fresh input, cache read, cache write, output, total, share, cache-hit rate. |
 | **Live feed** | The newest requests as they land — model, project and token split; rows younger than 20 s are highlighted. |
 | **Heatmap** | Hour-of-day × weekday activity over the last four weeks (replaces the feed on `h`). |
