@@ -116,6 +116,19 @@ def test_appended_lines_are_read_incrementally(home: FakeHome, make: Factory) ->
     )
 
 
+def test_an_increment_after_a_compaction_restart_is_not_taken_for_an_earlier_one(
+    home: FakeHome, make: Factory
+) -> None:
+    ingestor = make()
+    with home.codex_rollout.open("a") as handle:
+        handle.write(line(codex_tokens("2026-09-10T10:20:00Z", 0)))  # compaction restarts the count
+    ingestor.scan()
+    with home.codex_rollout.open("a") as handle:  # read incrementally, after the restart
+        handle.write(line(codex_tokens("2026-09-10T10:21:00Z", 1100, inp=1000, out=100)))
+    assert ingestor.scan().events_changed == 1
+    assert totals(ingestor)[CODEX] == 3300 + 1100
+
+
 def test_partial_line_waits_for_its_newline(home: FakeHome, make: Factory) -> None:
     ingestor = make()
     ingestor.scan()
@@ -334,7 +347,7 @@ def test_schema_1_archives_are_migrated(tmp_path: Path) -> None:
         "claude:msg_a:req_1",
         "codex:t:5",
     ]
-    assert migrated.get_meta("schema") == "6"
+    assert migrated.get_meta("schema") == "7"
     migrated.close()
 
 
@@ -406,7 +419,7 @@ def test_schema_2_archives_keep_only_the_logged_route(tmp_path: Path) -> None:
         )
     store = Store(path)
     assert [event.route for event in store.load_events()] == ["anthropic", "", "openai"]
-    assert store.get_meta("schema") == "6"
+    assert store.get_meta("schema") == "7"
     store.close()
 
 
@@ -445,7 +458,7 @@ def test_schema_3_archives_gain_the_ttl_split_and_reread_claude(tmp_path: Path) 
             "INSERT INTO files VALUES ('/x.jsonl', 'codex:~/.codex', 1, 2, 3, 2, '{}');"
         )
     store = Store(path)
-    assert store.get_meta("schema") == "6"
+    assert store.get_meta("schema") == "7"
     assert store.load_events()[0].usage.cache_write_1h == 0
     assert list(store.load_file_states()) == []  # Claude for schema 4, Codex for schema 6
     store.close()
@@ -535,7 +548,7 @@ def test_schema_4_archives_count_copies_again_by_key(tmp_path: Path) -> None:
     store.commit()
     store.close()
     migrated = Store(path)
-    assert migrated.get_meta("schema") == "6"
+    assert migrated.get_meta("schema") == "7"
     assert migrated.get_meta("duplicates") is None
     assert list(migrated.load_file_states()) == []  # Claude for schema 5, Codex for schema 6
     assert migrated.copy_counts() == {}
@@ -559,9 +572,45 @@ def test_schema_5_archives_drop_the_account_from_codex_keys(tmp_path: Path) -> N
     store.commit()
     store.close()
     migrated = Store(path)
-    assert migrated.get_meta("schema") == "6"
+    assert migrated.get_meta("schema") == "7"
     assert sorted(event.key for event in migrated.load_events()) == ["codex:t:5", "opencode:o:r1"]
     assert list(migrated.load_file_states()) == ["/c.jsonl"]
+    migrated.close()
+
+
+def test_schema_6_archives_key_increments_after_counter_restarts_apart(tmp_path: Path) -> None:
+    path = tmp_path / "v6.sqlite"
+    store = Store(path)
+
+    def increment(cumulative: int, ts: float, session: str = "t") -> Event:
+        key = f"codex:{session}:{cumulative}"
+        return Event(key, ts, Tool.CODEX, CODEX, "m", "openai", "p", session, Usage(input=1))
+
+    store.upsert_events(
+        [
+            increment(100, 1.0),
+            increment(5000, 2.0),
+            increment(200, 3.0),  # the first restart
+            increment(900, 4.0),
+            increment(50, 5.0),  # the second
+            increment(10, 1.5, "u"),
+        ]
+    )
+    store.save_file_state(FileState("/x.jsonl", CODEX, 1, 2, 3, 2, {"thread": "t"}))
+    store.set_meta("schema", "6")
+    store.commit()
+    store.close()
+    migrated = Store(path)
+    assert migrated.get_meta("schema") == "7"
+    assert sorted(event.key for event in migrated.load_events()) == [
+        "codex:t:100",
+        "codex:t:200:r1",
+        "codex:t:5000",
+        "codex:t:50:r2",
+        "codex:t:900:r1",
+        "codex:u:10",
+    ]
+    assert migrated.load_file_states() == {}
     migrated.close()
 
 

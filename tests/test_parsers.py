@@ -129,6 +129,20 @@ def test_codex_parser_carries_context_and_collapses_repeats() -> None:
     assert later.model == "gpt-5.6-sol"
 
 
+def test_codex_increments_after_a_counter_restart_keep_their_own_keys() -> None:
+    parser = CodexParser("acct", {}, "t")
+    first = parser.feed(encode(codex_tokens("2026-09-10T10:00:00Z", 1100, inp=1100)))
+    assert parser.feed(encode(codex_tokens("2026-09-10T10:01:00Z", 0))) is None  # compaction
+    resumed = CodexParser("acct", parser.ctx, "t")
+    again = resumed.feed(encode(codex_tokens("2026-09-10T10:02:00Z", 1100, inp=1100)))
+    repeat = resumed.feed(encode(codex_tokens("2026-09-10T10:02:01Z", 1100, inp=1100)))
+    assert first is not None
+    assert again is not None
+    assert repeat is not None
+    assert first.key == "codex:t:1100"
+    assert again.key == repeat.key == "codex:t:1100:r1"
+
+
 def test_codex_parser_ignores_model_limits_and_junk() -> None:
     parser = CodexParser("acct", {}, "fallback")
     parser.feed(

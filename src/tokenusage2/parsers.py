@@ -151,7 +151,10 @@ class CodexParser:
 
     ``token_count`` events repeat the same cumulative total whenever only the
     rate limits refresh, so the pair (thread, cumulative total) identifies one
-    usage increment. ``ctx`` carries thread, model, cwd and provider across
+    usage increment. Compaction restarts the cumulative total, so every
+    increment after the n-th restart gets ``:r<n>`` appended to its key — it
+    could otherwise repeat an earlier total and be dropped as that increment.
+    ``ctx`` carries thread, model, cwd, provider and the restart count across
     incremental reads of the same file.
     """
 
@@ -243,13 +246,17 @@ class CodexParser:
         if not isinstance(total, dict) or not isinstance(last, dict):
             return None
         cumulative = count(total.get("total_tokens"))
+        if cumulative < self.ctx.get("cumulative", 0):
+            self.ctx["resets"] = self.ctx.get("resets", 0) + 1
+        self.ctx["cumulative"] = cumulative
         tokens = codex_usage(last)
         if cumulative == 0 or tokens.total == 0:
             return None
         thread = str(self.ctx["thread"])
+        resets = self.ctx.get("resets", 0)
         return Event(
             # No account in the key: a copied home must not count an increment twice.
-            key=f"codex:{thread}:{cumulative}",
+            key=f"codex:{thread}:{cumulative}" + (f":r{resets}" if resets else ""),
             ts=ts,
             tool=Tool.CODEX,
             account=self.account,

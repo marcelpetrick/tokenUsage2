@@ -10,6 +10,18 @@ All notable changes to tokenUsage2. Versions follow semantic versioning; the
 archive schema version is noted whenever it changes, because an older build
 refuses a newer archive.
 
+## 0.11.4
+
+Archive schema 7 — migrated in place; Codex rollouts are read again once.
+
+### Fixed
+
+- A Codex increment after a compaction is no longer at risk of being taken for
+  an earlier one. Compaction restarts a thread's cumulative total, so a later
+  increment could repeat an earlier total, share its key and be dropped. Each
+  restart is now counted per rollout, and increments after the n-th carry
+  `:r<n>` in their key; the upgrade gives archived increments the same keys.
+
 ## 0.11.3
 
 Archive schema 6 — migrated in place; Codex rollouts are read again once.

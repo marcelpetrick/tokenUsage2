@@ -19,7 +19,7 @@ from pathlib import Path
 from tokenusage2.model import Account, Event, QuotaWindow, Tool, Usage
 from tokenusage2.parsers import BACKFILL_PREFIX
 
-SCHEMA_VERSION = 6
+SCHEMA_VERSION = 7
 _TOOLS = {tool.value: tool for tool in Tool}
 _SCHEMA = """
 CREATE TABLE IF NOT EXISTS meta(key TEXT PRIMARY KEY, value TEXT NOT NULL);
@@ -139,6 +139,32 @@ def _codex_keys_without_account(conn: sqlite3.Connection) -> None:
     conn.execute("DELETE FROM files WHERE account LIKE 'codex:%'")
 
 
+def _codex_counter_restarts(conn: sqlite3.Connection) -> None:
+    """Schema 6 → 7: increments after a compaction restart get their own keys.
+
+    A thread's archived increments are replayed in time order; each drop of the
+    cumulative total is a restart, and the increments after the n-th get
+    ``:r<n>`` like the parser gives them. Codex rollouts are read again once,
+    so every file's restart count is known when it is next read.
+    """
+    rows = conn.execute("SELECT key, session FROM events WHERE tool = 'codex' ORDER BY session, ts")
+    previous: dict[str, int] = {}
+    restarts: dict[str, int] = {}
+    renames = []
+    for key, session in rows.fetchall():
+        tail = key.rpartition(":")[2]
+        if not tail.isdigit():
+            continue
+        cumulative = int(tail)
+        if cumulative < previous.get(session, 0):
+            restarts[session] = restarts.get(session, 0) + 1
+        previous[session] = cumulative
+        if restarts.get(session):
+            renames.append((f"{key}:r{restarts[session]}", key))
+    conn.executemany("UPDATE OR IGNORE events SET key = ? WHERE key = ?", renames)
+    conn.execute("DELETE FROM files WHERE account LIKE 'codex:%'")
+
+
 #: ``MIGRATIONS[n]`` upgrades an archive from schema ``n`` to ``n + 1``.
 MIGRATIONS = {
     1: _claude_keys_without_account,
@@ -146,6 +172,7 @@ MIGRATIONS = {
     3: _cache_write_ttl_split,
     4: _copies_by_distinct_key,
     5: _codex_keys_without_account,
+    6: _codex_counter_restarts,
 }
 
 
