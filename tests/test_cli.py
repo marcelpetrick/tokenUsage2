@@ -5,6 +5,7 @@
 import json
 import runpy
 import shutil
+import sqlite3
 import sys
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -13,8 +14,10 @@ from zoneinfo import TZPATH, ZoneInfoNotFoundError
 import pytest
 
 from conftest import NOW, FakeHome
+from tokenusage2 import store as store_module
 from tokenusage2.cli import main, resolve_tz
-from tokenusage2.store import Store
+from tokenusage2.live import LiveSource
+from tokenusage2.store import Store, StoreBusyError
 from tokenusage2.version import __version__
 
 
@@ -341,3 +344,52 @@ def test_exports_cover_the_whole_history(
     assert len(json.loads(out)["buckets"]) == 91
     code, out, _ = call(["--demo", "--csv", "--tz", "UTC"], env, tmp_path, capsys)
     assert len({line.split(",")[1] for line in out.splitlines()[1:]}) == 91
+
+
+def test_a_busy_archive_is_a_clear_error_not_a_traceback(
+    home: FakeHome,
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    archive = tmp_path / "archive.sqlite"
+    Store(archive).close()
+    monkeypatch.setattr(store_module, "BUSY_SECONDS", 0.05)
+    holder = sqlite3.connect(archive, isolation_level=None)
+    holder.execute("BEGIN IMMEDIATE")
+    try:
+        code, out, err = call(["--json", "--archive", str(archive)], home.env, tmp_path, capsys)
+    finally:
+        holder.close()
+    assert (code, out) == (2, "")
+    assert "is busy: another tokenusage2 is writing to it" in err
+
+
+def test_a_scan_that_finds_the_archive_busy_exits_cleanly(
+    home: FakeHome,
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def busy(self: LiveSource, progress: object = None) -> None:
+        raise StoreBusyError("archive x is busy: another tokenusage2 is writing to it; try again")
+
+    monkeypatch.setattr(LiveSource, "scan", busy)
+    code, out, err = call(["--json", "--no-archive"], home.env, tmp_path, capsys)
+    assert (code, out) == (2, "")
+    assert "is busy" in err
+
+
+def test_a_busy_archive_while_the_source_starts_exits_cleanly(
+    home: FakeHome,
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def busy(*args: object, **kwargs: object) -> None:
+        raise StoreBusyError("archive x is busy: another tokenusage2 is writing to it; try again")
+
+    monkeypatch.setattr("tokenusage2.cli.LiveSource", busy)
+    code, _, err = call(["--json", "--no-archive"], home.env, tmp_path, capsys)
+    assert code == 2
+    assert "is busy" in err

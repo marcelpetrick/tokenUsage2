@@ -19,6 +19,7 @@ from tokenusage2.aggregate import GroupBy, Metric, Period
 from tokenusage2.config import AlertSettings
 from tokenusage2.demo import DemoSource
 from tokenusage2.render import View
+from tokenusage2.store import StoreBusyError
 from tokenusage2.tui import (
     Controller,
     Terminal,
@@ -249,3 +250,35 @@ def test_export_notice_wins_over_an_active_alert(
     frames = ["\n".join(lines) for lines in screen.frames]
     assert any("▲ codex 5h quota" in frame for frame in frames)
     assert any("exported timeline-" in frame for frame in frames)
+
+
+def test_a_busy_archive_does_not_stop_the_dashboard() -> None:
+    source = DemoSource(BERLIN, clock=lambda: NOW, days=5)
+    scans = itertools.count()
+    scan = source.scan
+
+    def flaky(progress: object = None) -> object:
+        if next(scans) < 2:  # the start-up scan and the first refresh find the archive busy
+            raise StoreBusyError("archive x is busy")
+        return scan()
+
+    def rediscover() -> None:
+        raise StoreBusyError("archive x is busy")
+
+    source.scan = flaky  # type: ignore[method-assign]
+    ticks = itertools.count(NOW, 1.0)
+    screen = FakeScreen([[], [], ["r"], []])
+    source.rediscover = rediscover  # type: ignore[method-assign]
+    assert (
+        run(
+            source,
+            View(theme="plain", interval=0.5),
+            BERLIN,
+            screen=screen,
+            clock=lambda: next(ticks),
+        )
+        == 0
+    )
+    texts = ["\n".join(frame) for frame in screen.frames]
+    assert any("archive busy: another tokenusage2 is writing to it" in text for text in texts)
+    assert "archive busy" not in texts[-1]

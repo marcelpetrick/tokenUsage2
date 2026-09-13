@@ -35,6 +35,9 @@ from tokenusage2.store import FileState, Store
 
 type Progress = Callable[[int, int], None]
 
+#: Files read per write transaction, so another tokenusage2 never waits long.
+COMMIT_EVERY = 64
+
 
 class EventIndex:
     """In-memory events by key, applying the archive's keep-the-larger rule.
@@ -235,6 +238,7 @@ class Ingestor:
         Before 0.11 an account was named after whichever spelling of its home
         was found first, so a symlinked home could collect several ids.
         """
+        self.store.begin()
         current = {(account.tool, account.home.resolve()): account.id for account in accounts}
         for stored in self.store.load_accounts():
             new = current.get((stored.tool, stored.home.resolve()))
@@ -243,6 +247,7 @@ class Ingestor:
         self.store.commit()
 
     def set_discovery(self, discovery: Discovery) -> None:
+        self.store.begin()
         self.discovery = discovery
         self.store.upsert_accounts(discovery.accounts, self.clock())
         self.store.commit()
@@ -269,10 +274,14 @@ class Ingestor:
             for account in self.discovery.accounts
             for path in self.files_for(account)
         ]
+        self.store.begin()  # before anything in memory changes: a busy archive changes nothing
         for number, (account, path) in enumerate(jobs, 1):
             self._ingest_file(account, path, report)
             if progress is not None and (number % 16 == 0 or number == len(jobs)):
                 progress(number, len(jobs))
+            if number % COMMIT_EVERY == 0:
+                self.store.commit()
+                self.store.begin()
         if self._copies_changed:  # the retained totals below ask mirror_of
             self.duplicates = self.store.copy_counts()
             self._copies_changed = False

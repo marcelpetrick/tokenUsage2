@@ -10,6 +10,19 @@ All notable changes to tokenUsage2. Versions follow semantic versioning; the
 archive schema version is noted whenever it changes, because an older build
 refuses a newer archive.
 
+## 0.12.1
+
+### Fixed
+
+- A second tokenusage2 on the same archive no longer crashes with
+  `sqlite3.OperationalError: database is locked`. A scan used to hold the write
+  lock from its first write to its end — seconds on the first start after an
+  upgrade — and a write waited only 5 s. Scans now commit every 64 files, a
+  write waits up to 30 s, and the write lock is taken before anything in memory
+  changes. A locked archive is a one-line error for `--json`, `--csv`,
+  `--once` and `--doctor` (exit 2); the dashboard keeps running, says the
+  archive is busy and retries on its next refresh.
+
 ## 0.12.0
 
 ### Added

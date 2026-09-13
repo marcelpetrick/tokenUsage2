@@ -20,9 +20,10 @@ from typing import Protocol, TextIO
 from tokenusage2.aggregate import GroupBy, Metric, Period, Snapshot, build_snapshot, periods_back
 from tokenusage2.alerts import Alert, AlertTracker, evaluate, notify, typical_rate
 from tokenusage2.export import export
-from tokenusage2.ingest import ScanReport
+from tokenusage2.ingest import Progress, ScanReport
 from tokenusage2.live import Source
 from tokenusage2.render import THEME_NAMES, View, layout, render, render_message
+from tokenusage2.store import StoreBusyError
 from tokenusage2.version import __version__
 
 PERIOD_KEYS = {
@@ -322,6 +323,18 @@ def _loop(
     tracker = AlertTracker()
     alerts: list[Alert] = []
     notice, notice_until = "", 0.0
+    busy = ""
+
+    def refresh(current: ScanReport, progress: Progress | None = None) -> ScanReport:
+        """Scan, or keep the last report while another tokenusage2 holds the archive."""
+        nonlocal busy
+        try:
+            fresh = source.scan(progress)
+        except StoreBusyError:
+            busy = "archive busy: another tokenusage2 is writing to it — retrying"
+            return current
+        busy = ""
+        return fresh
 
     def progress(done: int, total: int) -> None:
         screen.draw(
@@ -342,7 +355,7 @@ def _loop(
             width, height, [f"tokenUsage2 {__version__}", "discovering agent homes…"], view.theme
         )
     )
-    report = source.scan(progress)
+    report = refresh(ScanReport(), progress)
     next_scan = clock() + view.interval
     memo: tuple | None = None
     snapshot: Snapshot | None = None
@@ -354,7 +367,7 @@ def _loop(
             width, height = screen.size()
             dirty = True
         if not view.paused and now >= next_scan:
-            report = source.scan()
+            report = refresh(report)
             next_scan = now + view.interval
             dirty = dirty or report.changed
         accounts = source.accounts()
@@ -397,7 +410,8 @@ def _loop(
                     sources=source.sources() if view.sources else (),
                     mode="PAUSED" if view.paused else source.mode,
                     # a fresh notice (an export) takes the footer for its ten seconds
-                    alert="" if now < notice_until else (alerts[0].text if alerts else ""),
+                    alert=busy
+                    or ("" if now < notice_until else (alerts[0].text if alerts else "")),
                 )
             )
             drawn_second, dirty = int(now), False
@@ -411,7 +425,10 @@ def _loop(
                 )
                 notice_until = clock() + 10
             if action == "rescan":
-                source.rediscover()
-                report = source.scan()
+                try:
+                    source.rediscover()
+                except StoreBusyError:
+                    busy = "archive busy: another tokenusage2 is writing to it — retrying"
+                report = refresh(report)
                 next_scan = clock() + view.interval
             dirty = True

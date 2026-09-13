@@ -24,7 +24,7 @@ from tokenusage2.demo import DemoSource
 from tokenusage2.export import TIMELINE_FIELDS, timeline_rows, to_csv
 from tokenusage2.live import LiveSource, Source
 from tokenusage2.render import THEME_NAMES, View, mask, render
-from tokenusage2.store import Store, StoreError
+from tokenusage2.store import Store, StoreBusyError, StoreError
 from tokenusage2.tui import bucket_count, data_span, run, status_text, take_snapshot
 from tokenusage2.version import __version__
 
@@ -236,9 +236,17 @@ def main(
         except (ConfigError, StoreError) as error:
             print(f"tokenusage2: {error}", file=sys.stderr)
             return 2
-        source = LiveSource(store, home, env, config, tz, proc, clock)
+        try:
+            source = LiveSource(store, home, env, config, tz, proc, clock)
+        except StoreBusyError as error:
+            store.close()
+            print(f"tokenusage2: {error}", file=sys.stderr)
+            return 2
     try:
         return _run(args, source, env, tz, clock, default_exports(home, env))
+    except StoreBusyError as error:
+        print(f"tokenusage2: {error}", file=sys.stderr)
+        return 2
     finally:
         source.close()
 

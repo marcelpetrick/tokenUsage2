@@ -26,13 +26,15 @@ from conftest import (
     line,
     write_jsonl,
 )
+from tokenusage2 import ingest as ingest_module
+from tokenusage2 import store as store_module
 from tokenusage2.aggregate import lifetimes_of
 from tokenusage2.config import Config
 from tokenusage2.discover import BackendMap, Discovery, discover
 from tokenusage2.ingest import EventIndex, Ingestor, walk_jsonl
 from tokenusage2.model import Account, Event, QuotaWindow, Tool, Usage
 from tokenusage2.parsers import CodexParser
-from tokenusage2.store import FileState, Store, StoreError
+from tokenusage2.store import FileState, Store, StoreBusyError, StoreError
 
 CLAUDE = "claude:~/.claude"
 CODEX = "codex:~/.codex"
@@ -736,3 +738,53 @@ def test_old_ids_of_a_symlinked_home_are_merged_into_its_id(tmp_path: Path) -> N
             ("codex:t:1100", account.id)
         ]
         assert [stored.id for stored in store.load_accounts()] == [account.id]
+
+
+def hold_write_lock(path: Path) -> sqlite3.Connection:
+    """Another tokenusage2 in the middle of a write."""
+    holder = sqlite3.connect(path, isolation_level=None)
+    holder.execute("BEGIN IMMEDIATE")
+    return holder
+
+
+def test_opening_a_busy_archive_raises_store_busy(tmp_path: Path) -> None:
+    path = tmp_path / "archive.sqlite"
+    Store(path).close()
+    with closing(hold_write_lock(path)), pytest.raises(StoreBusyError, match="is busy"):
+        Store(path, timeout=0.05)
+
+
+def test_a_busy_scan_changes_nothing_and_the_next_one_catches_up(
+    home: FakeHome, make: Factory, tmp_path: Path
+) -> None:
+    archive = tmp_path / "archive.sqlite"
+    ingestor = make(archive)
+    ingestor.store.conn.execute("PRAGMA busy_timeout = 50")
+    with closing(hold_write_lock(archive)):
+        with pytest.raises(StoreBusyError):
+            ingestor.scan()
+        assert (len(ingestor.index), ingestor.files()) == (0, [])
+    ingestor.scan()
+    assert len(ingestor.store.load_events()) == len(ingestor.index) > 0
+    assert len(ingestor.store.load_file_states()) == len(ingestor.files()) > 0
+
+
+def test_a_long_scan_commits_in_batches(
+    home: FakeHome, make: Factory, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(ingest_module, "COMMIT_EVERY", 1)
+    ingestor = make()
+    commits: list[int] = []
+    commit = ingestor.store.commit
+    monkeypatch.setattr(ingestor.store, "commit", lambda: (commits.append(1), commit())[1])
+    ingestor.scan()
+    assert len(commits) == 3 + 1  # after each of the three rollouts and transcripts, and at the end
+
+
+def test_other_database_errors_are_not_taken_for_a_busy_archive(tmp_path: Path) -> None:
+    with pytest.raises(sqlite3.OperationalError, match="no such table"):  # noqa: SIM117
+        with store_module._busy_is_store_busy(tmp_path / "archive.sqlite"):
+            raise sqlite3.OperationalError("no such table: missing")
+    with pytest.raises(StoreBusyError, match="is busy"):  # noqa: SIM117
+        with store_module._busy_is_store_busy(tmp_path / "archive.sqlite"):
+            raise sqlite3.OperationalError("database is locked")

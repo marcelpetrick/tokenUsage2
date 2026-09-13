@@ -12,7 +12,8 @@ streaming copies of a message before the final one.
 
 import json
 import sqlite3
-from collections.abc import Iterable
+from collections.abc import Iterable, Iterator
+from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -20,6 +21,8 @@ from tokenusage2.model import Account, Event, QuotaWindow, Tool, Usage
 from tokenusage2.parsers import BACKFILL_PREFIX
 
 SCHEMA_VERSION = 7
+#: How long a write waits for another tokenusage2 to release the archive.
+BUSY_SECONDS = 30.0
 _TOOLS = {tool.value: tool for tool in Tool}
 _SCHEMA = """
 CREATE TABLE IF NOT EXISTS meta(key TEXT PRIMARY KEY, value TEXT NOT NULL);
@@ -66,6 +69,22 @@ WHERE {_TOTAL.format(t="excluded")} > {_TOTAL.format(t="events")}
 
 class StoreError(RuntimeError):
     """The archive exists but cannot be used by this version."""
+
+
+class StoreBusyError(StoreError):
+    """Another tokenusage2 held the archive's write lock for longer than a write waits."""
+
+
+@contextmanager
+def _busy_is_store_busy(path: Path | None) -> Iterator[None]:
+    try:
+        yield
+    except sqlite3.OperationalError as error:
+        if "locked" not in str(error) and "busy" not in str(error):
+            raise
+        raise StoreBusyError(
+            f"archive {path} is busy: another tokenusage2 is writing to it; try again"
+        ) from error
 
 
 _OWN_CLAUDE_PREFIX = "substr(key, 1, length(account) + 8) = 'claude:' || account || ':'"
@@ -213,34 +232,51 @@ _ACCOUNT_KEYS = ("opencode:", BACKFILL_PREFIX)
 
 
 class Store:
-    def __init__(self, path: Path | None) -> None:
+    def __init__(self, path: Path | None, timeout: float | None = None) -> None:
         self.path = path
         if path is not None:
             path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
-        self.conn = sqlite3.connect(str(path) if path else ":memory:", timeout=5.0)
-        if path is not None:
-            self.conn.execute("PRAGMA journal_mode=WAL")
-        self.conn.executescript(_SCHEMA)
-        stored = self.get_meta("schema")
-        if stored is not None:
-            version = int(stored) if stored.isdigit() else -1
-            while version < SCHEMA_VERSION and version in MIGRATIONS:
-                MIGRATIONS[version](self.conn)
-                version += 1
-            if version != SCHEMA_VERSION:
-                self.conn.close()
-                raise StoreError(
-                    f"archive schema {stored} is not supported (expected "
-                    f"{SCHEMA_VERSION}); move {path} aside to rebuild it"
-                )
-        self.set_meta("schema", str(SCHEMA_VERSION))
-        self.commit()
+        wait = BUSY_SECONDS if timeout is None else timeout
+        self.conn = sqlite3.connect(str(path) if path else ":memory:", timeout=wait)
+        try:
+            with _busy_is_store_busy(path):
+                if path is not None:
+                    self.conn.execute("PRAGMA journal_mode=WAL")
+                self.conn.executescript(_SCHEMA)
+            self.begin()
+            stored = self.get_meta("schema")
+            if stored is not None:
+                version = int(stored) if stored.isdigit() else -1
+                while version < SCHEMA_VERSION and version in MIGRATIONS:
+                    MIGRATIONS[version](self.conn)
+                    version += 1
+                if version != SCHEMA_VERSION:
+                    raise StoreError(
+                        f"archive schema {stored} is not supported (expected "
+                        f"{SCHEMA_VERSION}); move {path} aside to rebuild it"
+                    )
+            self.set_meta("schema", str(SCHEMA_VERSION))
+            self.commit()
+        except StoreError:
+            self.conn.close()
+            raise
 
     def close(self) -> None:
         self.conn.close()
 
+    def begin(self) -> None:
+        """Take the write lock now, unless this connection already holds it.
+
+        Callers take it before they change anything in memory, so a busy archive
+        (``StoreBusyError``) leaves memory and archive in agreement.
+        """
+        if not self.conn.in_transaction:
+            with _busy_is_store_busy(self.path):
+                self.conn.execute("BEGIN IMMEDIATE")
+
     def commit(self) -> None:
-        self.conn.commit()
+        with _busy_is_store_busy(self.path):
+            self.conn.commit()
 
     def get_meta(self, key: str) -> str | None:
         row = self.conn.execute("SELECT value FROM meta WHERE key = ?", (key,)).fetchone()
