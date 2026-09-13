@@ -10,6 +10,15 @@ All notable changes to tokenUsage2. Versions follow semantic versioning; the
 archive schema version is noted whenever it changes, because an older build
 refuses a newer archive.
 
+## 0.12.4
+
+### Fixed
+
+- Merging the ids of one home keeps the larger copy of a record both ids hold.
+  The copy already under the new id always won, even when the old id's copy
+  was larger, so the merge could lower a total; now the same keep-the-larger
+  rule applies as everywhere else.
+
 ## 0.12.3
 
 ### Fixed

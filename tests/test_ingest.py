@@ -858,3 +858,33 @@ def test_opening_an_archive_of_a_newer_build_names_that_build(tmp_path: Path) ->
         other.execute("DELETE FROM meta WHERE key = 'writer'")
     with pytest.raises(StoreError, match="written by a newer tokenusage2"):
         Store(archive)
+
+
+def test_merging_ids_keeps_the_larger_copy_of_a_shared_record() -> None:
+    store = Store(None)
+    record = Event("opencode:new:r7", 1.0, Tool.OPENCODE, "new", "m", "p", "", "", Usage(input=2))
+    store.upsert_events(
+        [
+            record,
+            replace(record, key="opencode:old:r7", account="old", usage=Usage(input=9)),
+            replace(record, key="opencode:new:r8", usage=Usage(input=4)),
+            replace(record, key="opencode:old:r8", account="old", usage=Usage(input=1)),
+            replace(record, key="opencode:new:r9", usage=Usage(cache_write=10)),
+            replace(
+                record,
+                key="opencode:old:r9",
+                account="old",
+                usage=Usage(cache_write=10, cache_write_1h=8),
+            ),
+        ]
+    )
+    store.rename_account("old", "new")
+    assert sorted(
+        (event.key, event.account, event.usage.total, event.usage.cache_write_1h)
+        for event in store.load_events()
+    ) == [
+        ("opencode:new:r7", "new", 9, 0),  # the old id's copy was larger
+        ("opencode:new:r8", "new", 4, 0),  # the new id's copy was larger
+        ("opencode:new:r9", "new", 10, 8),  # a tie: the copy with the TTL split
+    ]
+    store.close()

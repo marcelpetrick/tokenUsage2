@@ -386,13 +386,22 @@ class Store:
     def rename_account(self, old: str, new: str) -> None:
         """Move everything recorded for account ``old`` to ``new``.
 
-        OpenCode and retained-total keys embed the account and are rewritten;
-        a record ``new`` already holds is dropped under ``old``, so a history
-        split across both ids counts once.
+        OpenCode and retained-total keys embed the account and are rewritten.
+        Where both ids hold a record, the larger copy is kept under ``new`` (on
+        a tie, the one that knows its cache TTL split, as in the upsert), so a
+        history split across both ids counts once and no total shrinks.
         """
         conn = self.conn
         for prefix in _ACCOUNT_KEYS:
             before, after = f"{prefix}{old}:", f"{prefix}{new}:"
+            moved, kept = _TOTAL.format(t="moved"), _TOTAL.format(t="events")
+            conn.execute(  # a copy under the new id loses to a larger one under the old id
+                "DELETE FROM events WHERE substr(key, 1, ?) = ? AND EXISTS ("
+                "SELECT 1 FROM events AS moved WHERE moved.key = ? || substr(events.key, ?) AND "
+                f"({moved} > {kept} OR ({moved} = {kept} "
+                "AND moved.cache_write_1h > events.cache_write_1h)))",
+                (len(after), after, before, len(after) + 1),
+            )
             conn.execute(
                 "UPDATE OR IGNORE events SET key = ? || substr(key, ?) WHERE substr(key, 1, ?) = ?",
                 (after, len(before) + 1, len(before), before),
