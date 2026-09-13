@@ -314,3 +314,21 @@ def test_claude_records_the_cache_ttl_split() -> None:
         == 5
     )
     assert cache_write_1h({"cache_creation": "junk"}) == 0
+
+
+def test_stats_cache_scale_leaves_out_days_cleanup_has_cut() -> None:
+    def request(day: int, total: int) -> Event:
+        moment = parse_ts(f"2026-09-{day:02d}T10:00:00Z")
+        assert moment is not None
+        return Event(f"claude:{day}", moment, Tool.CLAUDE, "a", "m", "", "", "", Usage(input=total))
+
+    # Every cached day counts 1000; transcripts hold half of that, except on the days
+    # right after the first, whose shorter sessions cleanup had already removed.
+    held = {1: 1, 2: 50, 3: 10, 4: 500, 5: 510, 6: 490, 7: 1}
+    data = {
+        "lastComputedDate": "2026-09-07",
+        "dailyModelTokens": [
+            {"date": f"2026-09-{day:02d}", "tokensByModel": {"m": 1000}} for day in held
+        ],
+    }
+    assert stats_cache_scale(data, [request(day, total) for day, total in held.items()]) == (0.5, 3)

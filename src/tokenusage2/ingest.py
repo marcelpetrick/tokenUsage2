@@ -455,7 +455,7 @@ class Ingestor:
         before = datetime.fromtimestamp(first, UTC).date() if first is not None else None
         mirror = self.mirror_of(account.id)
         # The version prefix re-derives totals archived by an older rule once.
-        signature = f"v3:{stat.st_size}:{stat.st_mtime_ns}:{before}:{mirror}"
+        signature = f"v4:{stat.st_size}:{stat.st_mtime_ns}:{before}:{mirror}"
         mark = f"statscache:{account.id}"
         if self.store.get_meta(mark) == signature:
             return

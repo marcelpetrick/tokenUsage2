@@ -11,6 +11,7 @@ that head is searched — never the multi-megabyte content that follows.
 """
 
 import json
+import statistics
 from collections.abc import Iterable, Iterator, Mapping
 from datetime import UTC, date, datetime, time
 from pathlib import Path
@@ -335,8 +336,10 @@ def stats_cache_scale(data: Mapping[str, object], requests: Iterable[Event]) -> 
     requests behind them. The ratio is measured on the days the cache shares
     with ``requests`` (deduplicated transcript records): after the first
     request's day, which cleanup may have cut, and before the day the cache was
-    last computed, which may be partial. It is never above 1, and ``(1.0, 0)``
-    when nothing overlaps.
+    last computed, which may be partial. Cleanup removes whole transcripts, so
+    the first days after that can still be cut; days whose ratio is below half
+    the median day's are left out. It is never above 1, and ``(1.0, 0)`` when
+    nothing overlaps.
     """
     used: dict[tuple[date, str], int] = {}
     for request in requests:
@@ -349,19 +352,26 @@ def stats_cache_scale(data: Mapping[str, object], requests: Iterable[Event]) -> 
         computed: date | None = date.fromisoformat(str(data.get("lastComputedDate")))
     except ValueError:
         computed = None
-    cached = measured = 0
-    days: set[date] = set()
+    per_day: dict[date, list[int]] = {}  # day -> [cached, measured]
     for when, models in stats_cache_days(data):
         if when <= first or (computed is not None and when >= computed):
             continue
         for model, tokens in models.items():
             if (when, str(model)) in used and count(tokens):
-                cached += count(tokens)
-                measured += used[when, str(model)]
-                days.add(when)
-    if not cached:
+                sums = per_day.setdefault(when, [0, 0])
+                sums[0] += count(tokens)
+                sums[1] += used[when, str(model)]
+    if not per_day:
         return 1.0, 0
-    return min(1.0, measured / cached), len(days)
+    median = statistics.median(measured / cached for cached, measured in per_day.values())
+    whole = [
+        (cached, measured)
+        for cached, measured in per_day.values()
+        if measured / cached >= median / 2
+    ]
+    cached = sum(cached for cached, _ in whole)
+    measured = sum(measured for _, measured in whole)
+    return min(1.0, measured / cached), len(whole)
 
 
 def parse_stats_cache(

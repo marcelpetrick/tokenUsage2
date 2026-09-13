@@ -10,6 +10,17 @@ All notable changes to tokenUsage2. Versions follow semantic versioning; the
 archive schema version is noted whenever it changes, because an older build
 refuses a newer archive.
 
+## 0.12.3
+
+### Fixed
+
+- The stats-cache scale no longer counts days whose transcripts cleanup had
+  already cut. Claude Code removes whole transcripts, so some days after the
+  first surviving one hold only part of their requests; with them in the
+  measurement the scale came out too small (here 0.510 instead of 0.522, about
+  17 M retained tokens too few). Days whose ratio is below half the median
+  day's are now left out, and archived totals are re-derived once.
+
 ## 0.12.2
 
 ### Fixed
