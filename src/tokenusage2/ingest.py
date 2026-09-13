@@ -20,11 +20,12 @@ from datetime import UTC, datetime, tzinfo
 from datetime import time as clock_time
 from pathlib import Path
 
+from tokenusage2 import keys
 from tokenusage2.aggregate import Lifetime, Tally, lifetimes_of
 from tokenusage2.discover import Discovery, display_path
+from tokenusage2.keys import BACKFILL_PREFIX
 from tokenusage2.model import Account, Event, QuotaWindow, Tool
 from tokenusage2.parsers import (
-    BACKFILL_PREFIX,
     make_parser,
     parse_claude_quota,
     parse_opencode_message,
@@ -418,7 +419,7 @@ class Ingestor:
         self.store.save_file_state(state)
 
     def _ingest_opencode(self, account: Account, report: ScanReport) -> None:
-        mark = f"opencode-watermark:{account.id}"
+        mark = keys.opencode_watermark(account.id)
         since = int(self.store.get_meta(mark) or 0)
         try:
             uri = f"{account.home.resolve().as_uri()}?mode=ro"
@@ -456,15 +457,15 @@ class Ingestor:
         mirror = self.mirror_of(account.id)
         # The version prefix re-derives totals archived by an older rule once.
         signature = f"v4:{stat.st_size}:{stat.st_mtime_ns}:{before}:{mirror}"
-        mark = f"statscache:{account.id}"
+        mark = keys.stats_cache_mark(account.id)
         if self.store.get_meta(mark) == signature:
             return
         if mirror is not None:
             # A copy of another home: its retained totals are already counted there.
-            prefix = f"{BACKFILL_PREFIX}{account.id}:"
+            prefix = keys.backfill_prefix(account.id)
             self.index.discard(prefix, float("-inf"))
             self.store.delete_events(prefix, float("-inf"))
-            self.store.delete_meta(f"statscache-scale:{account.id}")
+            self.store.delete_meta(keys.stats_cache_scale_key(account.id))
             self.store.set_meta(mark, signature)
             return
         try:
@@ -472,7 +473,7 @@ class Ingestor:
         except (OSError, ValueError) as error:
             report.problems.append(f"{display_path(path, self.home)}: {error}")
             return
-        prefix = f"{BACKFILL_PREFIX}{account.id}:"
+        prefix = keys.backfill_prefix(account.id)
         if before is not None:
             cutoff = datetime.combine(before, clock_time(0), tzinfo=UTC).timestamp()
             self.index.discard(prefix, cutoff)
@@ -492,7 +493,7 @@ class Ingestor:
         ]
         self.store.replace_events(changed)
         report.events_changed += len(changed)
-        self.store.set_meta(f"statscache-scale:{account.id}", f"{scale:.6f}:{days}")
+        self.store.set_meta(keys.stats_cache_scale_key(account.id), keys.format_scale(scale, days))
         self.store.set_meta(mark, signature)
 
     def quota_files(self, account: Account) -> list[Path]:

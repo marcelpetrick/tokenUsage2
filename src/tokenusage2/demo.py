@@ -11,6 +11,7 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta, tzinfo
 from pathlib import Path
 
+from tokenusage2 import keys
 from tokenusage2.aggregate import midnight
 from tokenusage2.config import AlertSettings
 from tokenusage2.ingest import Progress, ScanReport
@@ -153,7 +154,7 @@ class DemoSource:
                         tokens = self.rng.randint(8_000_000, 30_000_000)
                         events.append(
                             Event(
-                                f"claude-daily:demo:{day}",
+                                keys.backfill_key("demo", day, "claude-opus-4-7"),
                                 start + 12 * 3600,
                                 Tool.CLAUDE,
                                 profile.account.id,

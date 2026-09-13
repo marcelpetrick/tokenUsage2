@@ -10,6 +10,16 @@ All notable changes to tokenUsage2. Versions follow semantic versioning; the
 archive schema version is noted whenever it changes, because an older build
 refuses a newer archive.
 
+## 0.12.5
+
+### Changed
+
+- Record keys and archive meta keys are spelled in one module, `keys.py`, and
+  built and read back only through it. The Codex key format was built in the
+  parser and taken apart in two other modules by string convention — where
+  0.11.4's parser/migration mismatch came from. No behaviour change; archive
+  migrations keep the historical spellings they convert from.
+
 ## 0.12.4
 
 ### Fixed

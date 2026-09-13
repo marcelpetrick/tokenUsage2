@@ -17,8 +17,8 @@ from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
 
+from tokenusage2 import keys
 from tokenusage2.model import Account, Event, QuotaWindow, Tool, Usage
-from tokenusage2.parsers import BACKFILL_PREFIX
 from tokenusage2.version import __version__
 
 SCHEMA_VERSION = 7
@@ -237,10 +237,6 @@ def _row(event: Event) -> tuple:
     )
 
 
-#: Record keys that continue with the account id (see parsers).
-_ACCOUNT_KEYS = ("opencode:", BACKFILL_PREFIX)
-
-
 class Store:
     def __init__(self, path: Path | None, timeout: float | None = None) -> None:
         self.path = path
@@ -392,7 +388,7 @@ class Store:
         history split across both ids counts once and no total shrinks.
         """
         conn = self.conn
-        for prefix in _ACCOUNT_KEYS:
+        for prefix in keys.ACCOUNT_KEY_PREFIXES:
             before, after = f"{prefix}{old}:", f"{prefix}{new}:"
             moved, kept = _TOTAL.format(t="moved"), _TOTAL.format(t="events")
             conn.execute(  # a copy under the new id loses to a larger one under the old id
@@ -417,7 +413,7 @@ class Store:
         conn.execute("DELETE FROM accounts WHERE id = ?", (old,))
         conn.execute(
             "DELETE FROM meta WHERE key IN (?, ?, ?)",
-            (f"statscache:{old}", f"statscache-scale:{old}", f"opencode-watermark:{old}"),
+            keys.account_meta_keys(old),
         )
 
     def load_events(self) -> list[Event]:

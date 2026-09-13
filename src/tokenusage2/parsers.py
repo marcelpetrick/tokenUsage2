@@ -17,12 +17,12 @@ from datetime import UTC, date, datetime, time
 from pathlib import Path
 from typing import Protocol
 
+from tokenusage2 import keys
 from tokenusage2.model import Account, Event, QuotaWindow, Tool, Usage
 
 CODEX_WINDOWS = {300: "5h", 10080: "week"}
 #: Codex's record type sits at byte ~60-92 of a line; 256 leaves ample margin.
 CODEX_HEAD = 256
-BACKFILL_PREFIX = "claude-daily:"
 
 
 class Parser(Protocol):
@@ -115,8 +115,7 @@ class ClaudeParser:
             return None
         request_id = str(obj.get("requestId") or "")
         return Event(
-            # No account in the key: a copied home must not count a message twice.
-            key=f"claude:{ident}:{request_id}",
+            key=keys.claude_key(ident, request_id),
             ts=ts,
             tool=Tool.CLAUDE,
             account=self.account,
@@ -258,8 +257,7 @@ class CodexParser:
         thread = str(self.ctx["thread"])
         resets = self.ctx.get("resets", 0)
         return Event(
-            # No account in the key: a copied home must not count an increment twice.
-            key=f"codex:{thread}:{cumulative}" + (f":r{resets}" if resets else ""),
+            key=keys.codex_key(thread, cumulative, resets),
             ts=ts,
             tool=Tool.CODEX,
             account=self.account,
@@ -304,7 +302,7 @@ def parse_opencode_message(account: str, row_id: str, data: str | bytes) -> Even
         return None
     path = obj.get("path") if isinstance(obj.get("path"), dict) else {}
     return Event(
-        key=f"opencode:{account}:{row_id}",
+        key=keys.opencode_key(account, row_id),
         ts=created / 1000.0,
         tool=Tool.OPENCODE,
         account=account,
@@ -399,7 +397,7 @@ def parse_stats_cache(
             model = str(model)
             events.append(
                 Event(
-                    key=f"{BACKFILL_PREFIX}{account}:{when.isoformat()}:{model}",
+                    key=keys.backfill_key(account, when, model),
                     ts=noon,
                     tool=Tool.CLAUDE,
                     account=account,

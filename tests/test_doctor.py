@@ -6,7 +6,7 @@ import sqlite3
 from contextlib import closing
 from pathlib import Path
 
-from tokenusage2.doctor import reconcile, restart_of
+from tokenusage2.doctor import reconcile
 from tokenusage2.model import Account, Event, Tool, Usage
 
 
@@ -32,10 +32,6 @@ def test_codex_reconciliation_sets_increments_before_a_restart_apart(tmp_path: P
     assert reconcile(account, events[1:3]) == "parsed 150 vs Codex threads.tokens_used 150 (+0.0%)"
     assert reconcile(account, events[3:]) is None
     assert reconcile(Account("codex:y", Tool.CODEX, tmp_path / "none", "y"), events) is None
-
-
-def test_restart_of_reads_the_parser_suffix() -> None:
-    assert [restart_of(key) for key in ("codex:t:5:r12", "codex:t:5", "claude:m:req")] == [12, 0, 0]
 
 
 def test_claude_reconciliation_shows_its_sources_and_the_stats_cache_scale() -> None:

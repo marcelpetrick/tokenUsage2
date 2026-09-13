@@ -10,6 +10,7 @@ from contextlib import closing
 from datetime import datetime, tzinfo
 from pathlib import Path
 
+from tokenusage2 import keys
 from tokenusage2.config import Config
 from tokenusage2.discover import Discovery, display_path
 from tokenusage2.ingest import Ingestor
@@ -32,12 +33,6 @@ def codex_thread_totals(account: Account) -> dict[str, int]:
     return {str(thread): int(used or 0) for thread, used in rows}
 
 
-def restart_of(key: str) -> int:
-    """How many compaction restarts preceded a Codex increment (see the parser)."""
-    tail = key.rpartition(":")[2]
-    return int(tail[1:]) if tail[:1] == "r" and tail[1:].isdigit() else 0
-
-
 def _plural(count: int, noun: str) -> str:
     return f"{count} {noun}" if count == 1 else f"{count} {noun}s"
 
@@ -56,10 +51,10 @@ def reconcile_codex(account: Account, events: Sequence[Event]) -> str | None:
         return None
     last: dict[str, int] = {}
     for event in mine:
-        last[event.session] = max(last.get(event.session, 0), restart_of(event.key))
+        last[event.session] = max(last.get(event.session, 0), keys.codex_restarts(event.key))
     parsed = earlier = 0
     for event in mine:
-        if restart_of(event.key) < last[event.session]:
+        if keys.codex_restarts(event.key) < last[event.session]:
             earlier += event.usage.total
         else:
             parsed += event.usage.total
@@ -85,11 +80,11 @@ def reconcile_claude(account: Account, events: Sequence[Event], scale: str | Non
     transcripts = sum(event.usage.total for event in mine if not event.usage.unsplit)
     retained = sum(event.usage.unsplit for event in mine)
     summary = f"{compact(transcripts)} from transcripts + {compact(retained)} retained daily totals"
-    value, _, days = (scale or "").partition(":")
-    if days.isdigit() and int(days):
+    measured = keys.parse_scale(scale)
+    if measured is not None and measured[1]:
         summary += (
-            f" (stats-cache counts every transcript line: scaled by {float(value):.2f}, "
-            f"measured on {_plural(int(days), 'day')})"
+            f" (stats-cache counts every transcript line: scaled by {measured[0]:.2f}, "
+            f"measured on {_plural(measured[1], 'day')})"
         )
     elif scale:
         summary += " (stats-cache not scaled: no whole day shared with transcripts)"
@@ -153,7 +148,7 @@ def doctor_lines(
                     f"{duration(now - quota.observed_at)} ago via {quota.source}"
                 )
         summary = reconcile(
-            account, events, ingestor.store.get_meta(f"statscache-scale:{account.id}")
+            account, events, ingestor.store.get_meta(keys.stats_cache_scale_key(account.id))
         )
         if summary:
             lines.append(f"           {summary}")
