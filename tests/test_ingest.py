@@ -27,6 +27,7 @@ from conftest import (
     write_jsonl,
 )
 from tokenusage2 import ingest as ingest_module
+from tokenusage2 import keys
 from tokenusage2 import store as store_module
 from tokenusage2.aggregate import lifetimes_of
 from tokenusage2.config import Config
@@ -888,3 +889,25 @@ def test_merging_ids_keeps_the_larger_copy_of_a_shared_record() -> None:
         ("opencode:new:r9", "new", 10, 8),  # a tie: the copy with the TTL split
     ]
     store.close()
+
+
+def test_retained_totals_derived_by_a_newer_rule_are_left_alone(
+    home: FakeHome, make: Factory
+) -> None:
+    ingestor = make()
+    ingestor.scan()
+    derived = retained(ingestor, CLAUDE)
+    mark = keys.stats_cache_mark(CLAUDE)
+    newer = keys.stats_cache_signature(ingest_module.BACKFILL_RULE + 1, 1, 2, None, None)
+    ingestor.store.set_meta(mark, newer)
+    ingestor.store.commit()
+    cache = home.root / ".claude" / "stats-cache.json"
+    days = [{"date": "2026-08-20", "tokensByModel": {"claude-opus-4-7": 700}}]
+    cache.write_text(json.dumps({"dailyModelTokens": days}))  # would add a retained day
+    ingestor.scan()
+    assert retained(ingestor, CLAUDE) == derived
+    assert ingestor.store.get_meta(mark) == newer
+    ingestor.store.set_meta(mark, "29296:1:2:None:None")  # an unversioned, older signature
+    ingestor.store.commit()
+    ingestor.scan()
+    assert retained(ingestor, CLAUDE) == derived + 700

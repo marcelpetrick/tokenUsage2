@@ -10,6 +10,18 @@ All notable changes to tokenUsage2. Versions follow semantic versioning; the
 archive schema version is noted whenever it changes, because an older build
 refuses a newer archive.
 
+## 0.12.7
+
+### Fixed
+
+- Two builds running side by side no longer rewrite Claude's retained daily
+  totals back and forth. Each build re-derived them whenever the archive held
+  another build's signature, so a 0.12.0 dashboard next to 0.12.6 flipped them
+  between 756 M and 775 M on every scan. The signature records the rule
+  version; totals derived by a newer rule are now left alone, and those of an
+  older rule are derived again once. Builds before 0.12.7 still rewrite
+  foreign totals: restart running dashboards when upgrading.
+
 ## 0.12.6
 
 ### Build

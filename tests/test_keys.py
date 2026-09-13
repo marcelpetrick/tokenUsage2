@@ -40,3 +40,10 @@ def test_meta_keys_and_the_scale_value_round_trip() -> None:
     assert keys.format_scale(0.5097962884, 26) == "0.509796:26"
     assert keys.parse_scale(keys.format_scale(0.5, 3)) == (0.5, 3)
     assert [keys.parse_scale(value) for value in (None, "", "abc", "0.5", "0.5:x")] == [None] * 5
+
+
+def test_stats_cache_signatures_record_their_rule_version() -> None:
+    signature = keys.stats_cache_signature(4, 29296, 17, date(2026, 8, 3), None)
+    assert signature == "v4:29296:17:2026-08-03:None"
+    samples = (signature, "29296:17:2026-08-03:None", None, "", "vx:1", "v12:1")
+    assert [keys.signature_rule(value) for value in samples] == [4, 0, 0, 0, 0, 12]

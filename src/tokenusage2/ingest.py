@@ -38,6 +38,8 @@ type Progress = Callable[[int, int], None]
 
 #: Files read per write transaction, so another tokenusage2 never waits long.
 COMMIT_EVERY = 64
+#: Version of the rule that derives retained daily totals from the stats cache.
+BACKFILL_RULE = 4
 
 
 class EventIndex:
@@ -455,10 +457,14 @@ class Ingestor:
         # The cache's dates are UTC days: the first transcript's UTC day may be cut.
         before = datetime.fromtimestamp(first, UTC).date() if first is not None else None
         mirror = self.mirror_of(account.id)
-        # The version prefix re-derives totals archived by an older rule once.
-        signature = f"v4:{stat.st_size}:{stat.st_mtime_ns}:{before}:{mirror}"
+        signature = keys.stats_cache_signature(
+            BACKFILL_RULE, stat.st_size, stat.st_mtime_ns, before, mirror
+        )
         mark = keys.stats_cache_mark(account.id)
-        if self.store.get_meta(mark) == signature:
+        stored = self.store.get_meta(mark)
+        # An older rule's totals are derived again once; a newer build's are left alone, or
+        # two builds running side by side would rewrite them back and forth on every scan.
+        if stored == signature or keys.signature_rule(stored) > BACKFILL_RULE:
             return
         if mirror is not None:
             # A copy of another home: its retained totals are already counted there.

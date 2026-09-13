@@ -49,6 +49,19 @@ def stats_cache_mark(account: str) -> str:
     return f"statscache:{account}"
 
 
+def stats_cache_signature(
+    rule: int, size: int, mtime_ns: int, before: date | None, mirror: str | None
+) -> str:
+    """What an account's retained totals were derived from, and under which rule version."""
+    return f"v{rule}:{size}:{mtime_ns}:{before}:{mirror}"
+
+
+def signature_rule(value: str | None) -> int:
+    """The rule version a stats-cache signature was written under; 0 when it records none."""
+    head = (value or "").partition(":")[0]
+    return int(head[1:]) if head[:1] == "v" and head[1:].isdigit() else 0
+
+
 def stats_cache_scale_key(account: str) -> str:
     """Meta key of the measured stats-cache scale (see ``format_scale``)."""
     return f"statscache-scale:{account}"
