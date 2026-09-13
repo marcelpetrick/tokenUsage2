@@ -11,7 +11,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
 [![Release workflow](https://github.com/marcelpetrick/tokenUsage2/actions/workflows/release.yml/badge.svg?branch=master)](https://github.com/marcelpetrick/tokenUsage2/actions/workflows/release.yml)
 [![Python 3.14](https://img.shields.io/badge/Python-3.14-3776AB.svg?logo=python&logoColor=white)](https://www.python.org/)
 [![Runtime dependencies: none](https://img.shields.io/badge/runtime%20dependencies-none-2ea44f.svg)](pyproject.toml)
-[![Coverage gate: 90%](https://img.shields.io/badge/coverage%20gate-90%25-2ea44f.svg)](localPipeline.sh)
+[![Coverage gate: 95%](https://img.shields.io/badge/coverage%20gate-95%25-2ea44f.svg)](localPipeline.sh)
 [![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
 [![Platform: Linux](https://img.shields.io/badge/platform-Linux-555.svg?logo=linux&logoColor=white)](#requirements)
 [![License: GPL v3 or later](https://img.shields.io/badge/license-GPLv3%20or%20later-blue.svg)](LICENSE)
@@ -279,7 +279,7 @@ bell = false                 # terminal bell
 The pipeline's twelve stages: find Python 3.14 → create or reuse `.venv` →
 install the project editable with the pinned tools → ruff lint → ruff format
 check → ShellCheck on the script itself (skipped when it is not installed) →
-pytest with the 90 % branch-coverage gate → one `--demo` frame → sdist and
+pytest with the 95 % branch-coverage gate → one `--demo` frame → sdist and
 wheel → install that wheel into a clean throwaway venv and run it → check that
 `.venv/bin/tokenusage2` reports the current version → launch. A failing stage
 prints the tail of its log and skips the stages that depend on it. Every stage

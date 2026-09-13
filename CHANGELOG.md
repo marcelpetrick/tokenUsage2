@@ -10,6 +10,16 @@ All notable changes to tokenUsage2. Versions follow semantic versioning; the
 archive schema version is noted whenever it changes, because an older build
 refuses a newer archive.
 
+## 0.12.6
+
+### Build
+
+- The branch-coverage gate is 95 % (was 90 %). New tests cover the error paths
+  the feature tests did not reach: files that vanish or cannot be read, an
+  OpenCode database without new rows, a missing stats cache, malformed Codex
+  context and rate limits, an unreadable Codex state database, discovery with
+  bad ports and bare logins, and panels drawn with too little room or no data.
+
 ## 0.12.5
 
 ### Changed

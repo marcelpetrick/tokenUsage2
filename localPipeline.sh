@@ -22,7 +22,7 @@ readonly ROOT_DIR
 readonly VENV_DIR="${ROOT_DIR}/.venv"
 readonly VENV_PYTHON="${VENV_DIR}/bin/python"
 readonly APP="${VENV_DIR}/bin/tokenusage2"
-readonly COVERAGE_GATE=90
+readonly COVERAGE_GATE=95
 
 RUN_APP=true
 FIX=false
@@ -49,7 +49,7 @@ From a fresh clone to a verified, runnable tokenusage2:
    4. Ruff lint      ruff check
    5. Ruff format    ruff format --check
    6. ShellCheck     this script, when shellcheck is installed
-   7. Tests          pytest with a 90 % branch-coverage gate
+   7. Tests          pytest with a 95 % branch-coverage gate
    8. Smoke run      render one --demo frame
    9. Build          sdist and wheel into dist/
   10. Wheel check    install the wheel into a clean throwaway venv and run it
