@@ -183,6 +183,8 @@ class ScanReport:
     errors: int = 0
     seconds: float = 0.0
     problems: list[str] = field(default_factory=list)
+    #: Set when a newer tokenusage2 owns the archive; the scan then wrote nothing.
+    outdated: str = ""
 
     @property
     def changed(self) -> bool:
@@ -239,6 +241,9 @@ class Ingestor:
         was found first, so a symlinked home could collect several ids.
         """
         self.store.begin()
+        if self.store.newer_schema():  # a newer build owns the archive: write nothing
+            self.store.rollback()
+            return
         current = {(account.tool, account.home.resolve()): account.id for account in accounts}
         for stored in self.store.load_accounts():
             new = current.get((stored.tool, stored.home.resolve()))
@@ -249,6 +254,9 @@ class Ingestor:
     def set_discovery(self, discovery: Discovery) -> None:
         self.store.begin()
         self.discovery = discovery
+        if self.store.newer_schema():  # a newer build owns the archive: write nothing
+            self.store.rollback()
+            return
         self.store.upsert_accounts(discovery.accounts, self.clock())
         self.store.commit()
 
@@ -274,14 +282,16 @@ class Ingestor:
             for account in self.discovery.accounts
             for path in self.files_for(account)
         ]
-        self.store.begin()  # before anything in memory changes: a busy archive changes nothing
+        if not self._lock(report):  # before anything in memory changes
+            return self._finish(report, started)
         for number, (account, path) in enumerate(jobs, 1):
             self._ingest_file(account, path, report)
             if progress is not None and (number % 16 == 0 or number == len(jobs)):
                 progress(number, len(jobs))
             if number % COMMIT_EVERY == 0:
                 self.store.commit()
-                self.store.begin()
+                if not self._lock(report):
+                    return self._finish(report, started)
         if self._copies_changed:  # the retained totals below ask mirror_of
             self.duplicates = self.store.copy_counts()
             self._copies_changed = False
@@ -292,6 +302,22 @@ class Ingestor:
                 self._backfill(account, report)
                 self._claude_quotas(account, report)
         self.store.commit()
+        return self._finish(report, started)
+
+    def _lock(self, report: ScanReport) -> bool:
+        """Take the write lock; False, with nothing written, when a newer build owns the archive.
+
+        A busy archive raises ``StoreBusyError`` instead, also before anything changes.
+        """
+        self.store.begin()
+        outdated = self.store.newer_schema()
+        if outdated:
+            self.store.rollback()
+            report.outdated = outdated
+            report.problems.append(outdated)
+        return not outdated
+
+    def _finish(self, report: ScanReport, started: float) -> ScanReport:
         report.seconds = time.perf_counter() - started
         self.last_report = report
         return report

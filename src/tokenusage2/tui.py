@@ -411,6 +411,7 @@ def _loop(
                     mode="PAUSED" if view.paused else source.mode,
                     # a fresh notice (an export) takes the footer for its ten seconds
                     alert=busy
+                    or report.outdated
                     or ("" if now < notice_until else (alerts[0].text if alerts else "")),
                 )
             )

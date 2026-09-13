@@ -10,6 +10,20 @@ All notable changes to tokenUsage2. Versions follow semantic versioning; the
 archive schema version is noted whenever it changes, because an older build
 refuses a newer archive.
 
+## 0.12.2
+
+### Fixed
+
+- A tokenusage2 that is still running when a newer build migrates its archive
+  no longer keeps writing its own record formats into it. The schema was
+  checked only when the archive was opened; every write now re-checks it under
+  the write lock and, when a newer build owns the archive, writes nothing: the
+  dashboard keeps showing what it has and says to restart with the newer
+  version, and `--json`, `--csv`, `--once` and `--doctor` exit 2 with that
+  reason. Opening such an archive names the build that wrote it instead of
+  suggesting to move it aside. Builds before 0.12.2 cannot check this: restart
+  running dashboards before upgrading.
+
 ## 0.12.1
 
 ### Fixed

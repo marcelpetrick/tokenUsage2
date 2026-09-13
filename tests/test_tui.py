@@ -18,6 +18,7 @@ from conftest import BERLIN, NOW
 from tokenusage2.aggregate import GroupBy, Metric, Period
 from tokenusage2.config import AlertSettings
 from tokenusage2.demo import DemoSource
+from tokenusage2.ingest import ScanReport
 from tokenusage2.render import View
 from tokenusage2.store import StoreBusyError
 from tokenusage2.tui import (
@@ -282,3 +283,12 @@ def test_a_busy_archive_does_not_stop_the_dashboard() -> None:
     texts = ["\n".join(frame) for frame in screen.frames]
     assert any("archive busy: another tokenusage2 is writing to it" in text for text in texts)
     assert "archive busy" not in texts[-1]
+
+
+def test_the_dashboard_says_when_a_newer_build_owns_the_archive() -> None:
+    source = DemoSource(BERLIN, clock=lambda: NOW, days=5)
+    outdated = "archive schema 8 was written by tokenusage2 9.0.0; restart"
+    source.scan = lambda progress=None: ScanReport(outdated=outdated)  # type: ignore[method-assign]
+    screen = FakeScreen([[]])
+    assert run(source, View(theme="plain"), BERLIN, screen=screen, clock=lambda: NOW) == 0
+    assert outdated in "\n".join(screen.frames[-1])

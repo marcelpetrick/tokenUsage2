@@ -19,6 +19,7 @@ from pathlib import Path
 
 from tokenusage2.model import Account, Event, QuotaWindow, Tool, Usage
 from tokenusage2.parsers import BACKFILL_PREFIX
+from tokenusage2.version import __version__
 
 SCHEMA_VERSION = 7
 #: How long a write waits for another tokenusage2 to release the archive.
@@ -69,6 +70,15 @@ WHERE {_TOTAL.format(t="excluded")} > {_TOTAL.format(t="events")}
 
 class StoreError(RuntimeError):
     """The archive exists but cannot be used by this version."""
+
+
+def newer_schema_message(schema: str, writer: str | None) -> str:
+    """What to tell the user when a newer tokenusage2 has migrated the archive past this build."""
+    by = f"tokenusage2 {writer}" if writer else "a newer tokenusage2"
+    return (
+        f"archive schema {schema} was written by {by}, newer than this {__version__} "
+        f"(schema {SCHEMA_VERSION}); restart with the newer version"
+    )
 
 
 class StoreBusyError(StoreError):
@@ -250,12 +260,15 @@ class Store:
                 while version < SCHEMA_VERSION and version in MIGRATIONS:
                     MIGRATIONS[version](self.conn)
                     version += 1
+                if version > SCHEMA_VERSION:
+                    raise StoreError(newer_schema_message(stored, self.get_meta("writer")))
                 if version != SCHEMA_VERSION:
                     raise StoreError(
                         f"archive schema {stored} is not supported (expected "
                         f"{SCHEMA_VERSION}); move {path} aside to rebuild it"
                     )
             self.set_meta("schema", str(SCHEMA_VERSION))
+            self.set_meta("writer", __version__)
             self.commit()
         except StoreError:
             self.conn.close()
@@ -273,6 +286,20 @@ class Store:
         if not self.conn.in_transaction:
             with _busy_is_store_busy(self.path):
                 self.conn.execute("BEGIN IMMEDIATE")
+
+    def rollback(self) -> None:
+        self.conn.rollback()
+
+    def newer_schema(self) -> str | None:
+        """Why this build must not write: a newer tokenusage2 migrated the archive since it opened.
+
+        A running dashboard only checks the schema when it opens the archive, so
+        every write re-checks it under the write lock.
+        """
+        stored = self.get_meta("schema")
+        if stored is None or not stored.isdigit() or int(stored) <= SCHEMA_VERSION:
+            return None
+        return newer_schema_message(stored, self.get_meta("writer"))
 
     def commit(self) -> None:
         with _busy_is_store_busy(self.path):

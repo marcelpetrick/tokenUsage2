@@ -16,6 +16,7 @@ import pytest
 from conftest import NOW, FakeHome
 from tokenusage2 import store as store_module
 from tokenusage2.cli import main, resolve_tz
+from tokenusage2.ingest import ScanReport
 from tokenusage2.live import LiveSource
 from tokenusage2.store import Store, StoreBusyError
 from tokenusage2.version import __version__
@@ -393,3 +394,22 @@ def test_a_busy_archive_while_the_source_starts_exits_cleanly(
     code, _, err = call(["--json", "--no-archive"], home.env, tmp_path, capsys)
     assert code == 2
     assert "is busy" in err
+
+
+OUTDATED = "archive schema 8 was written by tokenusage2 9.0.0, newer than this build"
+
+
+@pytest.mark.parametrize("mode", ["--json", "--once", "--csv", "--doctor"])
+def test_a_newer_build_owning_the_archive_exits_with_its_reason(
+    home: FakeHome,
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+    mode: str,
+) -> None:
+    monkeypatch.setattr(
+        LiveSource, "scan", lambda self, progress=None: ScanReport(outdated=OUTDATED)
+    )
+    code, _, err = call([mode, "--no-archive"], home.env, tmp_path, capsys)
+    assert code == 2
+    assert f"tokenusage2: {OUTDATED}" in err

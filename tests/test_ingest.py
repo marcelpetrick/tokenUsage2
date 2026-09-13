@@ -34,7 +34,8 @@ from tokenusage2.discover import BackendMap, Discovery, discover
 from tokenusage2.ingest import EventIndex, Ingestor, walk_jsonl
 from tokenusage2.model import Account, Event, QuotaWindow, Tool, Usage
 from tokenusage2.parsers import CodexParser
-from tokenusage2.store import FileState, Store, StoreBusyError, StoreError
+from tokenusage2.store import SCHEMA_VERSION, FileState, Store, StoreBusyError, StoreError
+from tokenusage2.version import __version__
 
 CLAUDE = "claude:~/.claude"
 CODEX = "codex:~/.codex"
@@ -788,3 +789,72 @@ def test_other_database_errors_are_not_taken_for_a_busy_archive(tmp_path: Path) 
     with pytest.raises(StoreBusyError, match="is busy"):  # noqa: SIM117
         with store_module._busy_is_store_busy(tmp_path / "archive.sqlite"):
             raise sqlite3.OperationalError("database is locked")
+
+
+def upgrade_behind_its_back(archive: Path, writer: str = "9.0.0") -> str:
+    """What a newer tokenusage2 does to the archive while this one runs."""
+    with closing(sqlite3.connect(archive)) as other, other:
+        other.execute("UPDATE meta SET value = ? WHERE key = 'schema'", (str(SCHEMA_VERSION + 1),))
+        other.execute("INSERT OR REPLACE INTO meta VALUES ('writer', ?)", (writer,))
+    return (
+        f"archive schema {SCHEMA_VERSION + 1} was written by tokenusage2 {writer}, newer than "
+        f"this {__version__} (schema {SCHEMA_VERSION}); restart with the newer version"
+    )
+
+
+def archived_rows(archive: Path) -> tuple[int, int, int]:
+    with closing(sqlite3.connect(archive)) as connection:
+        return tuple(  # type: ignore[return-value]
+            connection.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0]
+            for table in ("events", "files", "accounts")
+        )
+
+
+def test_a_newer_build_owning_the_archive_stops_every_write(
+    home: FakeHome, make: Factory, tmp_path: Path
+) -> None:
+    archive = tmp_path / "archive.sqlite"
+    ingestor = make(archive)
+    accounts = archived_rows(archive)[2]
+    message = upgrade_behind_its_back(archive)
+    report = ingestor.scan()
+    assert (report.outdated, report.problems) == (message, [message])
+    assert (len(ingestor.index), ingestor.files()) == (0, [])
+    ingestor.set_discovery(replace(ingestor.discovery, accounts=()))
+    ingestor._merge_spellings(ingestor.discovery.accounts)
+    assert archived_rows(archive) == (0, 0, accounts)
+
+
+def test_a_newer_build_taking_over_mid_scan_stops_the_scan_at_its_next_batch(
+    home: FakeHome, make: Factory, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(ingest_module, "COMMIT_EVERY", 1)
+    archive = tmp_path / "archive.sqlite"
+    ingestor = make(archive)
+    commit = ingestor.store.commit
+    upgraded: list[str] = []
+
+    def commit_then_upgrade() -> None:
+        commit()
+        if not upgraded:
+            upgraded.append(upgrade_behind_its_back(archive))
+
+    monkeypatch.setattr(ingestor.store, "commit", commit_then_upgrade)
+    report = ingestor.scan()
+    assert report.outdated == upgraded[0]
+    assert len(ingestor.files()) == 1  # the first batch was committed before the takeover
+    assert archived_rows(archive)[1] == 1
+
+
+def test_opening_an_archive_of_a_newer_build_names_that_build(tmp_path: Path) -> None:
+    archive = tmp_path / "archive.sqlite"
+    with closing(Store(archive)) as store:
+        assert (store.get_meta("writer"), store.newer_schema()) == (__version__, None)
+    message = upgrade_behind_its_back(archive, "1.2.3")
+    with pytest.raises(StoreError) as refused:
+        Store(archive)
+    assert str(refused.value) == message
+    with closing(sqlite3.connect(archive)) as other, other:
+        other.execute("DELETE FROM meta WHERE key = 'writer'")
+    with pytest.raises(StoreError, match="written by a newer tokenusage2"):
+        Store(archive)

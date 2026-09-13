@@ -22,6 +22,7 @@ from tokenusage2.alerts import evaluate, typical_rate
 from tokenusage2.config import ConfigError, load_config
 from tokenusage2.demo import DemoSource
 from tokenusage2.export import TIMELINE_FIELDS, timeline_rows, to_csv
+from tokenusage2.ingest import ScanReport
 from tokenusage2.live import LiveSource, Source
 from tokenusage2.render import THEME_NAMES, View, mask, render
 from tokenusage2.store import Store, StoreBusyError, StoreError
@@ -251,6 +252,14 @@ def main(
         source.close()
 
 
+def _outdated(report: ScanReport) -> int:
+    """Exit status 2, with the reason, when a newer tokenusage2 owns the archive."""
+    if not report.outdated:
+        return 0
+    print(f"tokenusage2: {report.outdated}", file=sys.stderr)
+    return 2
+
+
 def _run(
     args: argparse.Namespace,
     source: Source,
@@ -278,11 +287,13 @@ def _run(
     )
 
     if args.doctor:
-        source.scan()
+        report = source.scan()
         print("\n".join(source.sources()))
-        return 0
+        return _outdated(report)
     if args.json or args.once or args.csv:
         report = source.scan()
+        if report.outdated:
+            return _outdated(report)
         width, height = shutil.get_terminal_size((160, 48))
         width, height = args.width or width, args.height or height
         now = clock()
