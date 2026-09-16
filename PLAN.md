@@ -172,4 +172,6 @@ Implementation rules for this repair:
 | Version | Status | Work | Acceptance evidence |
 |---------|--------|------|---------------------|
 | 0.13.3 | ☑ | Run the `updateDependencies` audit, update stale exact pins, and run the complete repository gate. | PyPI reports only Ruff stale (`0.16.7` → `0.16.8`); all 11 pipeline stages pass with 301 tests, 99.41% coverage and a verified 0.13.3 wheel. |
-| 0.13.4+ | ☐ | Run `reviewBranch`, store its report in `review.md`, then fix every HIGH or MEDIUM finding in separate atomic, versioned commits and re-review. | Pending the dependency commit. |
+| 0.13.4 | ☑ | Run `reviewBranch`, store its report in `review.md`, then fix every HIGH or MEDIUM finding in separate atomic, versioned commits and re-review. | The formal `origin/master...HEAD` review reports zero Code or Architecture findings; no HIGH or MEDIUM fix commit is required. |
+| 0.13.5 | ◐ | Audit and update all Markdown and other repository documentation against the current behavior, commands, versions and release process. | Documentation inventory and consistency checks are in progress. |
+| 0.13.6 | ☐ | Run the final source/documentation review and complete pipeline, then push and verify the public release and artifacts. | Pending the documentation audit. |

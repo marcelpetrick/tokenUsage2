@@ -10,6 +10,14 @@ All notable changes to tokenUsage2. Versions follow semantic versioning; the
 archive schema version is noted whenever it changes, because an older build
 refuses a newer archive.
 
+## 0.13.4
+
+### Documentation
+
+- Add the requested `review.md` risk review of the post-release dependency
+  branch. It reports no Code or Architecture findings, so there are no HIGH or
+  MEDIUM corrections to apply.
+
 ## 0.13.3
 
 ### Build
