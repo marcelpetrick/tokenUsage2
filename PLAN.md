@@ -126,3 +126,43 @@ The open ideas from §3, in delivery order — one commit and one version each:
 | 0.10.1 | Hand-over | `codingWithGPT/tokenUsage2/`, where the project started, keeps only a README that points here and says that all further work happens in this repository; its CI workflow goes with the code. |
 | — | Aider / Gemini CLI | Deferred: no Gemini CLI data exists on the development machine and the only Aider history holds no token lines (a local model), so no parser could be verified against real records. |
 
+## 7. Data-correctness repair plan (September 2026)
+
+Status legend: ☐ pending · ◐ in progress · ☑ verified and committed.
+
+The 0.12.7 dashboard was reproduced against the real archive on 2026-09-16.
+The selected day's project breakdown proved three separate issues:
+
+- Claude rows showed bare small values such as `512` and `872` under `input`.
+  These are correct fresh-token counts—Anthropic reports cached prompt tokens in
+  separate fields—but the absent unit and the generic heading make them look
+  truncated next to values such as `662k`.
+- Codex records for `gpt-5.6-sol` via `openai` were wholly unpriced, leaving
+  `26,406,455` tokens for `DividendenDackel` and `690,684` for
+  `gitAnimationImrprovement` with a `—` cost. The resolver only contains
+  built-in Anthropic rates.
+- Project grouping uses the basename of the raw request working directory.
+  That produced `src` for a nested directory, `cat` for a Claude-created Codex
+  scratchpad, and `tmp` for unattributed temporary work.
+
+| Version | Status | Work | Acceptance evidence |
+|---------|--------|------|---------------------|
+| 0.12.8 | ☑ | Record this execution plan and the real-data baseline before changing behaviour. | Plan, version and changelog are committed together. |
+| 0.12.9 | ☐ | Make token-table semantics explicit: label fresh input accurately and append an exact `tok` unit below the compact `k` threshold. | Rendering tests cover `512tok`, `872tok`, scaled values and narrow layouts; real `--once` output has no ambiguous bare token counts. |
+| 0.13.0 | ☐ | Add provider-gated OpenAI standard token rates for the priced Codex/Work models, while preserving config overrides and leaving local, unknown and research-preview models unpriced. | Unit tests cover every default and routing boundary; the real `gpt-5.6-sol` rows have non-zero costs and zero unpriced tokens. |
+| 0.13.1 | ☐ | Resolve project labels to Git worktree roots, map recognized Claude scratchpads back to their source project, and label other temporary paths `(temporary)`. | Unit/integration tests cover nested repos, scratchpads, deleted/unknown paths and sessions; real project output contains no false `src`, `cat` or `tmp` project. |
+| 0.13.2 | ☐ | Review all changes, update user documentation, run focused tests and the full local pipeline, reproduce against the real archive, and prepare the release. | Clean worktree; lint, format, coverage, smoke, sdist and wheel checks pass; real-data assertions pass; pushed commit is released with artifacts. |
+
+Implementation rules for this repair:
+
+1. Each row above is one atomic commit and carries its own version/changelog
+   entry, matching the repository's release contract.
+2. Update this table in the corresponding implementation commit with the exact
+   evidence obtained; do not mark work complete based only on inspection.
+3. Built-in prices apply only when the recorded route is `openai`. User
+   `[prices]` entries keep precedence. Extra fees that cannot be derived from
+   local token logs (for example fast mode or regional processing) are stated
+   as exclusions rather than guessed.
+4. Project canonicalisation is display-time only: preserve raw working
+   directories in the archive, perform no destructive migration, and fall back
+   safely when a historical path no longer exists.
