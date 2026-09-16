@@ -4,7 +4,7 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-"""Render the ``--demo`` dashboard to ``media/tokenusage2_demo.png``.
+"""Render the ``--demo`` dashboard to the README's ``media/tokenUsage2.png``.
 
 The frame is produced by the real renderer, its ANSI colours are translated to
 HTML, and headless Chromium takes the screenshot. Demo data is synthetic, so
@@ -21,7 +21,7 @@ import tempfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-OUTPUT = ROOT / "media" / "tokenusage2_demo.png"
+OUTPUT = ROOT / "media" / "tokenUsage2.png"
 COLUMNS, ROWS = 150, 46
 FONT_PX, LINE_PX, CHAR_PX = 14, 17, 8.43
 SGR = re.compile(r"\x1b\[([0-9;]*)m")

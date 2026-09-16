@@ -10,6 +10,17 @@ All notable changes to tokenUsage2. Versions follow semantic versioning; the
 archive schema version is noted whenever it changes, because an older build
 refuses a newer archive.
 
+## 0.13.5
+
+### Documentation
+
+- Synchronize every current documentation surface with the shipped behavior:
+  CLI choices now include session grouping and cost, configuration explains
+  price overrides, privacy wording matches local identity decoding, and the
+  architecture includes project resolution and pricing.
+- Regenerate the README screenshot from deterministic demo data with the real
+  0.13 renderer, and link the reproducible generator plus `review.md`.
+
 ## 0.13.4
 
 ### Documentation

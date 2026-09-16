@@ -30,11 +30,11 @@ backend**, as daily, weekly and monthly views. Read-only, offline, no API keys.
 and moved here with its full history (see `CHANGELOG.md` 0.3.8); all work
 continues in this repository.
 
-![tokenUsage2 running live in Konsole](media/tokenUsage2.png)
+![tokenUsage2 synthetic dashboard](media/tokenUsage2.png)
 
-*Live on a real workstation: Claude Code, two Codex accounts and OpenCode, one
-account label blacked out. For a synthetic frame, run `--demo` or
-[`scripts/screenshot.py`](scripts/screenshot.py).*
+*Rendered from deterministic synthetic data by the real dashboard. Reproduce
+it with [`scripts/screenshot.py`](scripts/screenshot.py), or explore the same
+data interactively with `tokenusage2 --demo`.*
 
 ## Quick start
 
@@ -159,10 +159,15 @@ Codex reports its provider per session (`model_provider`), OpenCode per message.
 All tools are normalised to *fresh input · cache read · cache write · output*
 (reasoning is a subset of output). Every request is attributed to its own
 timestamp and bucketed by local midnights, so 23- and 25-hour DST days stay
-one day. Project views collapse nested working directories to their Git
-worktree root. Claude-created Codex scratchpads are attributed back to their
-encoded source project; other temporary working directories are shown as
-`(temporary)`. The archive keeps the original working directory unchanged.
+one day. Anthropic's `input_tokens` contains only fresh tokens after the last
+cache breakpoint; total prompt input is fresh + cache read + cache write, which
+is why a `fresh` value can be tiny beside `cache r`. Exact counts below 1,000
+carry the `tok` suffix; larger values use `k`, `M`, `B` or `T`.
+
+Project views collapse nested working directories to their Git worktree root.
+Claude-created Codex scratchpads are attributed back to their encoded source
+project; other temporary working directories are shown as `(temporary)`. The
+archive keeps the original working directory unchanged.
 
 ### Cost
 
@@ -217,11 +222,14 @@ ingest changes were checked to produce an identical event fingerprint.
 
 ```text
 tokenusage2 [--once | --json | --csv | --doctor] [--demo]
-            [--period day|week|month] [--group account|tool|backend|model|project]
-            [--breakdown …] [--metric total|fresh|output] [--account LABEL]
+            [--period day|week|month]
+            [--group account|tool|backend|model|project|session]
+            [--breakdown account|tool|backend|model|project|session]
+            [--metric total|fresh|output|cost] [--account LABEL_OR_ID]
             [--theme default|midnight|amber|plain] [--interval SECONDS]
-            [--archive PATH | --no-archive] [--config PATH] [--home DIR] [--tz ZONE]
+            [--archive PATH] [--no-archive] [--config PATH] [--home DIR] [--tz ZONE]
             [--width N] [--height N] [--color auto|always|never] [--redact]
+            [--version]
 ```
 
 - `--once` prints one frame (great in scripts or `watch`), `--json` a
@@ -250,7 +258,7 @@ scan_home = true              # look for ~/.claude* and ~/.codex*
 [backends]
 "qwen3*" = "ollama@gpu-box"   # model glob → backend label
 
-[prices."gpt-*"]              # USD per 1M tokens — example values, use your price list
+[prices."custom-model-*"]     # optional override, USD per 1M tokens
 input = 1.0
 output = 8.0
 cache_read = 0.1              # optional: cache_read, cache_write, cache_write_1h
@@ -267,9 +275,10 @@ bell = false                 # terminal bell
 
 - Read-only: it never writes into any tool's directory and makes no network
   requests.
-- Only usage metadata is extracted — timestamps, model, backend, working
+- Only usage metadata is retained — timestamps, model, backend, working
   directory, session id and token counts. Prompt and response text is never
-  stored; OAuth tokens and API keys are never read out.
+  stored. Identity discovery decodes e-mail/plan claims locally; credential
+  values are never stored or shown.
 - `--redact` / `x` masks e-mail addresses on screen and in JSON.
 
 ## Development
@@ -295,12 +304,14 @@ only on `PASS`.
 
 CI ([`.github/workflows/tokenUsage2.yml`](.github/workflows/tokenUsage2.yml))
 runs `./localPipeline.sh --noRun` on Python 3.14 for every push and pull
-request, puts the pipeline's summary table and a demo frame in the job summary
-and uploads coverage, the stage logs and the built distributions. Every push to `master` whose version has no tag yet also
-becomes a [GitHub release](https://github.com/marcelpetrick/tokenUsage2/releases)
-with sdist, wheel and that version's changelog section as the notes
-([`release.yml`](.github/workflows/release.yml)). Architecture and the design rationale are in
-[`PLAN.md`](PLAN.md).
+request, puts the pipeline's summary table and a demo frame in the job summary,
+and uploads coverage, stage logs and built distributions. Every push to
+`master` whose version has no tag yet also becomes a
+[GitHub release](https://github.com/marcelpetrick/tokenUsage2/releases) with
+sdist, wheel and that version's changelog section as the notes
+([`release.yml`](.github/workflows/release.yml)). Architecture and design
+rationale are in [`PLAN.md`](PLAN.md); the latest requested branch audit is in
+[`review.md`](review.md).
 
 ## Requirements
 

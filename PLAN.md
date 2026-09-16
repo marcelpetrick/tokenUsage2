@@ -63,20 +63,23 @@ Implemented in v0.1 (✓) and backlog (·):
   (e-mail, redactable), plan, today/week/month, 24 h sparkline, last activity,
   **live quota bars** (5 h and weekly) with reset countdown.
 - ✓ Timeline: stacked bars for the last N days / ISO weeks / months, coloured
-  by account, tool, backend or model; a cursor selects a bucket and scrolls
+  by account, tool, backend, model or project; a cursor selects a bucket and scrolls
   back through history.
-- ✓ Breakdown of the selected bucket by model, project, backend or account:
-  calls, fresh input, cache read, cache write, output, total, share bar.
+- ✓ Breakdown of the selected bucket by model, project, session, backend,
+  account or tool: calls, fresh input, cache read, cache write, output, total,
+  cost and share bar.
 - ✓ Live feed: the newest requests with model, project and token split;
   just-arrived rows are highlighted.
 - ✓ Heatmap: hour-of-day × weekday over the last four weeks.
-- ✓ Metrics: raw total (incl. cache), fresh (input+output), output only.
+- ✓ Metrics: raw total (incl. cache), fresh (input+output), output and
+  standard-rate cost estimate.
 - ✓ Sources overlay / `--doctor`: discovered homes, how each was found, file
   and event counts, archive path, backend hints, quota freshness, and
   reconciliation against Codex `threads.tokens_used` and Claude `stats-cache`.
 - ✓ `--once` (one frame to stdout), `--json` (machine-readable snapshot),
   `--demo` (synthetic data for screenshots and tests).
-- ✓ API-equivalent cost with an editable price table (0.5.0).
+- ✓ Standard-rate cost estimate with built-in provider rates and editable
+  overrides (0.5.0, expanded in 0.13.0).
 - ✓ Cache efficiency trend: cache-read share per bucket (0.6.0).
 - ✓ Threshold notifications: quota ≥ 90 %, unusual burn rate (0.7.0).
 - ✓ Per-session drill-down (0.8.0).
@@ -88,13 +91,16 @@ Implemented in v0.1 (✓) and backlog (·):
 
 ```
 discover.py  → Account list + backend hints (env, $HOME scan, rc files, config.toml)
+procscan.py  → running agents, their homes/backends and per-account process counts
 parsers.py   → pure line/row → Event functions per tool
 store.py     → SQLite archive (files, events, quotas, accounts), upsert-with-max
 ingest.py    → incremental tail of append-only JSONL, OpenCode watermark, backfill
+projects.py  → display-time Git roots, Claude scratchpads and temporary labels
+pricing.py   → provider-gated standard rates plus configured overrides
 aggregate.py → buckets (DST-safe local midnights), tallies, account summaries
 render.py    → cell canvas → ANSI/plain frame, themes, panels, overlays
 tui.py       → alternate screen, cbreak keys, resize, refresh loop
-cli.py       → --once / --json / --doctor / --demo / TUI
+cli.py       → TUI, --once, --json, --csv, --doctor and --demo
 ```
 
 Python 3.14, standard library only (`sqlite3`, `tomllib`, `zoneinfo`,
@@ -117,7 +123,7 @@ The open ideas from §3, in delivery order — one commit and one version each:
 | Version | Item | Approach |
 |---------|------|----------|
 | 0.4.0 | Cache-write TTL split | Claude Code writes most of its cache at the 1-hour TTL (2× the input price) and the rest at 5 minutes (1.25×) — measured 106M vs 3.6M tokens for Opus 5, 15.5M vs 5.2M for Sonnet 5. Record the 1-hour share per request (archive schema 4; Claude transcripts are re-read once) so costs can be exact. |
-| 0.5.0 | API-equivalent cost | A price table per model glob in USD per 1M tokens (input, output, cache read, cache write 5 m / 1 h). Defaults for Anthropic's models (list prices as of 2026-06-24); requests answered by a local backend cost nothing; Codex and OpenCode models are priced only when `[prices]` in the config names them. New metric `cost` (`v`), a cost column in the breakdown, all-time cost from per-model lifetime sums. Retained daily totals stay unpriced — their split is unknown. |
+| 0.5.0 | Standard-rate cost estimate | A price table per model glob in USD per 1M tokens (input, output, cache read, cache write 5 m / 1 h). It began with Anthropic defaults; 0.13.0 added provider-gated OpenAI Work/Codex rates. Requests answered by a local backend cost nothing unless config supplies an override. Metric `cost` (`v`) and the breakdown cost column use per-model lifetime sums. Retained daily totals stay unpriced — their split is unknown. |
 | 0.6.0 | Cache-efficiency trend | A row under the timeline bars: the cache-read share of prompt tokens per bucket. |
 | 0.7.0 | Alerts | Quota ≥ 90 % (configurable) and a burn rate far above the typical active-minute rate of the last seven days — shown in the status line, optionally through `notify-send` and the terminal bell; each alert fires once per quota window or burn episode. |
 | 0.8.0 | Session drill-down | `session` as a breakdown dimension: project · session id with first and last request. |
@@ -151,7 +157,7 @@ The selected day's project breakdown proved three separate issues:
 | 0.12.9 | ☑ | Make token-table semantics explicit: label fresh input accurately and append an exact `tok` unit below the compact `k` threshold. | 43 rendering tests pass; helper coverage proves `512tok`, `872tok` and threshold behaviour; real `--once` shows `532tok` and `872tok` under `fresh`, with all 160 columns intact. |
 | 0.13.0 | ☑ | Add provider-gated OpenAI standard token rates for the priced Codex/Work models, while preserving config overrides and leaving local, unknown and research-preview models unpriced. | 80 focused tests pass; every OpenAI model in the real archive resolves to a rate; `DividendenDackel` now shows `$14.256092` and `gitAnimationImrprovement` `$0.593018`, both with zero unpriced tokens. |
 | 0.13.1 | ☑ | Resolve project labels to Git worktree roots, map recognized Claude scratchpads back to their source project, and label other temporary paths `(temporary)`. | 81 focused tests pass; real totals are preserved while `src`, `frontend` and `cat` merge into `x-clone-starter`, `gitAnimationImrprovement` resolves to its `codingWithGPT` worktree, and bare `tmp` becomes `(temporary)`. |
-| 0.13.2 | ☑ | Review all changes, update user documentation, run focused tests and the full local pipeline, reproduce against the real archive, and prepare the release. | Risk review has zero findings; all 11 pipeline stages pass with 301 tests and 99.41% coverage; the clean-wheel and real-archive assertions pass. Push/workflow evidence necessarily follows this commit and is reported in the release handoff. |
+| 0.13.2 | ☑ | Review all changes, update user documentation, run focused tests and the full local pipeline, reproduce against the real archive, and prepare the release. | Risk review has zero findings; all 11 pipeline stages pass with 301 tests and 99.41% coverage; the clean-wheel and real-archive assertions pass; release workflow run 35149420481 published `v0.13.2` with both artifacts. |
 
 Implementation rules for this repair:
 
@@ -173,5 +179,5 @@ Implementation rules for this repair:
 |---------|--------|------|---------------------|
 | 0.13.3 | ☑ | Run the `updateDependencies` audit, update stale exact pins, and run the complete repository gate. | PyPI reports only Ruff stale (`0.16.7` → `0.16.8`); all 11 pipeline stages pass with 301 tests, 99.41% coverage and a verified 0.13.3 wheel. |
 | 0.13.4 | ☑ | Run `reviewBranch`, store its report in `review.md`, then fix every HIGH or MEDIUM finding in separate atomic, versioned commits and re-review. | The formal `origin/master...HEAD` review reports zero Code or Architecture findings; no HIGH or MEDIUM fix commit is required. |
-| 0.13.5 | ◐ | Audit and update all Markdown and other repository documentation against the current behavior, commands, versions and release process. | Documentation inventory and consistency checks are in progress. |
+| 0.13.5 | ☑ | Audit and update all Markdown and other repository documentation against the current behavior, commands, versions and release process. | README CLI/config/privacy/release text, architecture and feature plan, changelog, review link, screenshot generator and synthetic dashboard image are synchronized with 0.13 behavior. |
 | 0.13.6 | ☐ | Run the final source/documentation review and complete pipeline, then push and verify the public release and artifacts. | Pending the documentation audit. |
