@@ -10,6 +10,15 @@ All notable changes to tokenUsage2. Versions follow semantic versioning; the
 archive schema version is noted whenever it changes, because an older build
 refuses a newer archive.
 
+## 0.13.2
+
+### Changed
+
+- The final review names cost consistently as a standard-rate estimate rather
+  than an API-equivalent cost: OpenAI defaults come from the published
+  ChatGPT Work/Codex rate card. The estimate remains explicitly separate from
+  an invoice and excludes surcharges the local token records cannot identify.
+
 ## 0.13.1
 
 ### Fixed

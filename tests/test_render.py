@@ -319,7 +319,7 @@ def test_money_amount_and_cost_text() -> None:
 
 def test_cost_view_shows_dollars(demo: DemoSource) -> None:
     text = "\n".join(frame(demo, View(theme="plain", metric=Metric.COST)))
-    assert "API-equivalent cost" in text
+    assert "standard-rate estimate" in text
     assert "today $" in text
     assert " cost" in text
 

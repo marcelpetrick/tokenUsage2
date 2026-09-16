@@ -72,7 +72,7 @@ appended, so a restart takes about 0.2 s.
 | **Sources** | Discovered homes and *how* each was found, file/event counts, archive path, quota freshness, backend hints, a reconciliation against Codex's own thread totals, and where Claude's tokens come from with the stats-cache scale (`s`, or `--doctor`). |
 
 Four metrics are available: all tokens including cache (the raw total), fresh
-input + output, output only, and the API-equivalent cost.
+input + output, output only, and the standard-rate cost estimate.
 
 **Alerts** appear in the status line when a 5 h or weekly quota reaches 90 %
 or the burn rate climbs far above the typical active minute of the last seven
@@ -87,7 +87,7 @@ bell. Each fires once per quota window or burn episode; `--json` lists them.
 | `←` `→` `[` `]` | move the bucket cursor · `PgUp` `PgDn` page · `Home` oldest · `End` now |
 | `g` | colour the timeline by account → tool → backend → model → project |
 | `b` | breakdown by model → project → session → backend → account → tool |
-| `v` | metric: total incl. cache → fresh → output → API-equivalent cost |
+| `v` | metric: total incl. cache → fresh → output → standard-rate cost estimate |
 | `a` | filter to one account (cycles, then back to all) |
 | `h` | heatmap ↔ live feed |
 | `s` | sources overlay · `?` / `F1` help · `Esc` closes overlays |
@@ -171,8 +171,9 @@ would cost at standard token rates — a list-price figure, not an invoice. Requ
 Anthropic's API answered use Anthropic's list prices per model (cache reads
 0.1x input, cache writes 1.25x for the 5-minute and 2x for the 1-hour TTL,
 which is why the split is recorded). Requests a local backend answered cost
-nothing. OpenAI-routed Codex and OpenCode records use the published ChatGPT
-Work/Codex token rates; models without a final published rate show as `—`.
+nothing. OpenAI-routed Codex and OpenCode records use the
+[published ChatGPT Work/Codex token rates](https://help.openai.com/en/articles/20001415-chatgpt-rate-card-enterprise-token-based-pricing);
+models without a final published rate show as `—`.
 Fast mode, long-context, regional-processing and tool-call extras are not
 inferable from the local token records and are excluded. `[prices]` entries
 override all built-in rates. Retained daily totals stay unpriced because their

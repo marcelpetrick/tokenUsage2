@@ -51,7 +51,7 @@ METRIC_HELP = {
     Metric.TOTAL: "all tokens incl. cache",
     Metric.FRESH: "fresh input + output",
     Metric.OUTPUT: "output tokens",
-    Metric.COST: "API-equivalent cost (USD)",
+    Metric.COST: "standard-rate estimate (USD)",
 }
 
 

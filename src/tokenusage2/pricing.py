@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-"""API-equivalent cost: what the tokens would cost at list prices.
+"""Standard-rate estimate: what the tokens would cost at published token rates.
 
 An estimate, not an invoice — a subscription bills differently, and a local
 backend costs electricity rather than tokens. Prices are resolved when
