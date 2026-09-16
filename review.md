@@ -1,12 +1,14 @@
-Base: origin/master @ 3c20118   Head: b467e65
-Files changed: 4   +17 / -2 lines
+Base: origin/master @ 3c20118   Head: ff6231d
+Files changed: 8   +99 / -32 lines
 
 ## Findings
 
-No Code or Architecture findings. The only executable change updates an exact
+No Code or Architecture findings. The executable changes update the exact
 development-only Ruff pin from the latest previous patch to the current stable,
-non-yanked patch; the repository's full lint, format, test, coverage, smoke,
-build, clean-wheel and version gates all pass with that resolved version.
+non-yanked patch and direct the deterministic screenshot generator to the image
+used by the README. The remaining changes synchronize documentation and record
+the earlier dependency review. The full lint, format, test, coverage, smoke,
+build, clean-wheel and version gates pass with the resolved dependency set.
 
 ## Verdict
 
