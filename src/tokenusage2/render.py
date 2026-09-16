@@ -172,6 +172,12 @@ def compact(value: float) -> str:
     raise AssertionError("unreachable")  # pragma: no cover
 
 
+def token_text(value: float) -> str:
+    """A token count with an explicit unit when compact notation has no suffix."""
+    text = compact(value)
+    return f"{text}tok" if abs(float(value)) < 999.5 else text
+
+
 def money(value: float) -> str:
     if value <= 0:
         return "$0"
@@ -660,7 +666,7 @@ def draw_breakdown(canvas: Canvas, rect: Rect, snapshot: Snapshot, view: View) -
         columns.append(Column(extra, 18, "<", 6))
     columns += [
         Column("calls", 6, ">", 3),
-        Column("input", 7, ">", 4),
+        Column("fresh", 7, ">", 4),
         Column("cache r", 7, ">", 2),
         Column("cache w", 7, ">", 5),
         Column("output", 7, ">", 1),
@@ -685,11 +691,11 @@ def draw_breakdown(canvas: Canvas, rect: Rect, snapshot: Snapshot, view: View) -
             cells.append((clean(row.extra), "dim"))
         cells += [
             (compact(tally.calls), "dim"),
-            (compact(tally.input), "text"),
-            (compact(tally.cache_read), "text"),
-            (compact(tally.cache_write), "text"),
-            (compact(tally.output), "text"),
-            (compact(tally.total), "accent"),
+            (token_text(tally.input), "text"),
+            (token_text(tally.cache_read), "text"),
+            (token_text(tally.cache_write), "text"),
+            (token_text(tally.output), "text"),
+            (token_text(tally.total), "accent"),
             (cost_text(tally), "text"),
             [("█" * filled, "s1"), ("░" * (8 - filled), "dim"), (f" {share:4.0%}", "text")],
         ]
@@ -706,11 +712,11 @@ def draw_breakdown(canvas: Canvas, rect: Rect, snapshot: Snapshot, view: View) -
         cells.append(("", "dim"))
     cells += [
         (compact(total.calls), "dim"),
-        (compact(total.input), "title"),
-        (compact(total.cache_read), "title"),
-        (compact(total.cache_write), "title"),
-        (compact(total.output), "title"),
-        (compact(total.total), "accent"),
+        (token_text(total.input), "title"),
+        (token_text(total.cache_read), "title"),
+        (token_text(total.cache_write), "title"),
+        (token_text(total.output), "title"),
+        (token_text(total.total), "accent"),
         (cost_text(priced), "title"),
         ("", "dim"),
     ]
@@ -722,7 +728,7 @@ FEED_COLUMNS = (
     Column("account", 11, "<", 1),
     Column("model", 14, "<", 2, flex=True),
     Column("project", 14, "<", 4),
-    Column("in", 6, ">", 5),
+    Column("fresh", 6, ">", 5),
     Column("cache", 6, ">", 3),
     Column("out", 6, ">", 3),
     Column("total", 7, ">", 0),
@@ -759,10 +765,10 @@ def draw_feed(
                 (clean(label), TOOL_STYLE[tool]),
                 (clean(event.model), "text"),
                 (clean(project_label(event.project)), "dim"),
-                (compact(usage.input), "text"),
-                (compact(usage.cache_read + usage.cache_write), "dim"),
-                (compact(usage.output), "text"),
-                (compact(usage.total), "accent"),
+                (token_text(usage.input), "text"),
+                (token_text(usage.cache_read + usage.cache_write), "dim"),
+                (token_text(usage.output), "text"),
+                (token_text(usage.total), "accent"),
             ],
         )
 

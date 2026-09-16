@@ -10,6 +10,16 @@ All notable changes to tokenUsage2. Versions follow semantic versioning; the
 archive schema version is noted whenever it changes, because an older build
 refuses a newer archive.
 
+## 0.12.9
+
+### Fixed
+
+- Small values in the breakdown and live-feed token columns now carry an
+  explicit `tok` suffix instead of looking like compact values whose unit was
+  lost. The `input` heading is now `fresh`, clarifying that Anthropic reports
+  only input after the cache breakpoint there; cache reads and writes remain
+  separate columns.
+
 ## 0.12.8
 
 ### Documentation

@@ -30,6 +30,7 @@ from tokenusage2.render import (
     render_message,
     sparkline,
     stack_cells,
+    token_text,
 )
 from tokenusage2.tui import bucket_count, take_snapshot
 from tokenusage2.version import __version__
@@ -212,6 +213,14 @@ def test_text_helpers() -> None:
         "1d01h",
         "115d",
     ]
+    assert [token_text(v) for v in (0, 512, 872, 999, 999.6, 12_345)] == [
+        "0tok",
+        "512tok",
+        "872tok",
+        "999tok",
+        "1.0k",
+        "12.3k",
+    ]
     assert mask("you@example.com") == "y…@e….com"
     assert mask("x@localhost") == "x…@localhost"
     assert mask("API key") == "API key"
@@ -224,6 +233,27 @@ def test_text_helpers() -> None:
     assert sparkline([0, 1, 8], 3) == " ▁█"
     assert sparkline([0, 0], 2) == "  "
     assert sparkline([1, 2], 0) == ""
+
+
+def test_token_tables_name_fresh_input_and_unit_small_counts() -> None:
+    event = Event(
+        "e",
+        NOW,
+        Tool.CLAUDE,
+        "a",
+        "claude-opus-5",
+        "anthropic",
+        "/work/project",
+        "s",
+        Usage(input=512, cache_read=12_345, output=872),
+    )
+    account = Account("a", Tool.CLAUDE, Path("/a"), "claude")
+    snapshot = build_snapshot([event], [account], [], now=NOW, tz=BERLIN, count=1)
+    text = "\n".join(visible(render(snapshot, View(theme="plain"), 160, 48, tz=BERLIN)))
+    assert "fresh" in text
+    assert "512tok" in text
+    assert "872tok" in text
+    assert "12.3k" in text
 
 
 def test_stack_cells() -> None:
