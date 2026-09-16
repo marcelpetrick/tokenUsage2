@@ -10,6 +10,14 @@ All notable changes to tokenUsage2. Versions follow semantic versioning; the
 archive schema version is noted whenever it changes, because an older build
 refuses a newer archive.
 
+## 0.13.3
+
+### Build
+
+- Update the exactly pinned Ruff development dependency from 0.16.7 to
+  0.16.8. Setuptools 84.0.0, pytest 9.1.1, pytest-cov 7.1.0 and build 1.6.1
+  were checked against PyPI and remain current.
+
 ## 0.13.2
 
 ### Changed

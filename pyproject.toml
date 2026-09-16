@@ -30,7 +30,7 @@ dynamic = ["version"]
 dependencies = []
 
 [project.optional-dependencies]
-dev = ["pytest==9.1.1", "pytest-cov==7.1.0", "ruff==0.16.7", "build==1.6.1"]
+dev = ["pytest==9.1.1", "pytest-cov==7.1.0", "ruff==0.16.8", "build==1.6.1"]
 
 [project.scripts]
 tokenusage2 = "tokenusage2.cli:main"

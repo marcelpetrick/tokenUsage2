@@ -166,3 +166,10 @@ Implementation rules for this repair:
 4. Project canonicalisation is display-time only: preserve raw working
    directories in the archive, perform no destructive migration, and fall back
    safely when a historical path no longer exists.
+
+## 8. Post-release dependency and source review
+
+| Version | Status | Work | Acceptance evidence |
+|---------|--------|------|---------------------|
+| 0.13.3 | ☑ | Run the `updateDependencies` audit, update stale exact pins, and run the complete repository gate. | PyPI reports only Ruff stale (`0.16.7` → `0.16.8`); all 11 pipeline stages pass with 301 tests, 99.41% coverage and a verified 0.13.3 wheel. |
+| 0.13.4+ | ☐ | Run `reviewBranch`, store its report in `review.md`, then fix every HIGH or MEDIUM finding in separate atomic, versioned commits and re-review. | Pending the dependency commit. |
