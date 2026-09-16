@@ -764,17 +764,13 @@ def draw_feed(
                 (stamp, "hi" if age < 20 else "dim"),
                 (clean(label), TOOL_STYLE[tool]),
                 (clean(event.model), "text"),
-                (clean(project_label(event.project)), "dim"),
+                (clean(snapshot.project_labels[event.project]), "dim"),
                 (token_text(usage.input), "text"),
                 (token_text(usage.cache_read + usage.cache_write), "dim"),
                 (token_text(usage.output), "text"),
                 (token_text(usage.total), "accent"),
             ],
         )
-
-
-def project_label(path: str) -> str:
-    return path.rstrip("/").rsplit("/", 1)[-1] if path else "—"
 
 
 WEEKDAYS = ("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")

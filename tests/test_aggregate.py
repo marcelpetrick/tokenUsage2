@@ -21,12 +21,12 @@ from tokenusage2.aggregate import (
     lifetimes_of,
     period_start,
     periods_back,
-    project_name,
     shift,
     usage_value,
 )
 from tokenusage2.model import Account, Event, QuotaWindow, Tool, Usage
 from tokenusage2.pricing import Pricer
+from tokenusage2.projects import project_name
 
 ACCOUNTS = [
     Account("a", Tool.CLAUDE, Path("/a"), "alpha"),
@@ -141,6 +141,20 @@ def test_breakdowns_and_groupings() -> None:
     relabelled = snap(events, group=GroupBy.BACKEND, backend=lambda e: f"via {e.route}")
     assert relabelled.groups == ["via anthropic", "via ollama@gpu"]
     assert snap(events, group=GroupBy.PROJECT).groups == ["alpha"]
+
+
+def test_project_resolver_is_used_for_projects_sessions_and_recent_events() -> None:
+    event = ev(at(0))
+    event.project = "/work/repo/src"
+    resolved = snap(
+        [event],
+        group=GroupBy.PROJECT,
+        detail=GroupBy.SESSION,
+        project=lambda _path: "repo",
+    )
+    assert resolved.groups == ["repo"]
+    assert resolved.breakdown[0].name == "repo · s"
+    assert resolved.project_labels == {"/work/repo/src": "repo"}
 
 
 def test_supplied_lifetimes_replace_the_full_recount() -> None:

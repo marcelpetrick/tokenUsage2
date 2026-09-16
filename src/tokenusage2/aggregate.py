@@ -14,10 +14,10 @@ from collections.abc import Callable, Iterable, Mapping, Sequence
 from dataclasses import dataclass, field, replace
 from datetime import date, datetime, time, timedelta, tzinfo
 from enum import StrEnum
-from pathlib import PurePath
 
 from tokenusage2.model import Account, Event, QuotaWindow, Tool, Usage
 from tokenusage2.pricing import Rates
+from tokenusage2.projects import project_name
 
 WINDOW_SECONDS = {"5h": 5 * 3600, "week": 7 * 86400}
 #: Keeps date arithmetic in range however far back a cursor is pushed.
@@ -226,14 +226,6 @@ def labels(period: Period, start: date) -> tuple[str, str]:
     return f"{start:%d}", f"{start:%a %d %b %Y}"
 
 
-def project_name(path: str) -> str:
-    if not path:
-        return "(unknown)"
-    if path.startswith("("):
-        return path
-    return PurePath(path).name or path
-
-
 @dataclass(slots=True)
 class Bucket:
     start: date
@@ -301,6 +293,7 @@ class Snapshot:
     all: Tally
     rate: float
     recent: list[Event]
+    project_labels: dict[str, str]
     heatmap: list[list[int]]
     first_ts: float | None
     last_ts: float | None
@@ -329,6 +322,7 @@ def key_function(
     group: GroupBy,
     names: Mapping[str, str],
     backend: Callable[[Event], str] = logged_route,
+    project_label: Callable[[str], str] = project_name,
 ) -> Callable[[Event], str]:
     """A grouping key specialised once per snapshot, not re-dispatched per event."""
     if group is GroupBy.ACCOUNT:
@@ -344,7 +338,7 @@ def key_function(
     def project(event: Event) -> str:
         name = projects.get(event.project)
         if name is None:
-            name = projects[event.project] = project_name(event.project)
+            name = projects[event.project] = project_label(event.project)
         return name
 
     if group is GroupBy.SESSION:
@@ -357,8 +351,9 @@ def group_key(
     group: GroupBy,
     names: Mapping[str, str],
     backend: Callable[[Event], str] = logged_route,
+    project_label: Callable[[str], str] = project_name,
 ) -> str:
-    return key_function(group, names, backend)(event)
+    return key_function(group, names, backend, project_label)(event)
 
 
 def quota_view(quota: QuotaWindow, now: float) -> QuotaView:
@@ -395,6 +390,7 @@ def build_snapshot(
     archived: Iterable[str] = (),
     running: Mapping[str, int] | None = None,
     backend: Callable[[Event], str] | None = None,
+    project: Callable[[str], str] | None = None,
     lifetimes: Mapping[str, Lifetime] | None = None,
     pricing: Pricing | None = None,
     priced: bool | None = None,
@@ -412,6 +408,7 @@ def build_snapshot(
     timestamps = [event.ts for event in events]
     names = {account.id: account.label for account in accounts}
     label = backend or logged_route
+    label_project = project or project_name
     price = pricing or (lambda tool, model, route: None)
     priced = metric is Metric.COST if priced is None else priced
 
@@ -430,7 +427,7 @@ def build_snapshot(
     for index, start in enumerate(starts[:-1]):
         short, long = labels(period, start)
         buckets.append(Bucket(start, edges[index], edges[index + 1], short, long))
-    key_of = key_function(group, names, label)
+    key_of = key_function(group, names, label, label_project)
     for bucket in buckets:
         tallies = bucket.groups
         for position in _slice(timestamps, bucket.start_ts, bucket.end_ts):
@@ -455,7 +452,7 @@ def build_snapshot(
     breakdown_rows: dict[str, BreakdownRow] = {}
     if buckets:
         chosen = buckets[selected]
-        detail_of = key_function(detail, names, label)
+        detail_of = key_function(detail, names, label, label_project)
         for position in _slice(timestamps, chosen.start_ts, chosen.end_ts):
             event = events[position]
             key = detail_of(event)
@@ -560,6 +557,7 @@ def build_snapshot(
                     cells[hour] += usage_value(event.usage, metric)
 
     latest = [event for event in reversed(events[-(recent * 4) :]) if not event.usage.unsplit]
+    recent_events = latest[:recent]
     return Snapshot(
         now=now,
         period=period,
@@ -576,7 +574,8 @@ def build_snapshot(
         month=overall["month"],
         all=overall["all"],
         rate=rate_total / 5.0,
-        recent=latest[:recent],
+        recent=recent_events,
+        project_labels={event.project: label_project(event.project) for event in recent_events},
         heatmap=heatmap,
         first_ts=timestamps[0] if timestamps else None,
         last_ts=timestamps[-1] if timestamps else None,

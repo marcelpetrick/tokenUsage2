@@ -185,6 +185,7 @@ def take_snapshot(
         archived=source.archived(),
         running=source.running(),
         backend=source.backend_of,
+        project=source.project_of,
         lifetimes=source.lifetimes(),
         pricing=source.rates,
         priced=priced,

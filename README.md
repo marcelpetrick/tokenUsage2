@@ -159,7 +159,10 @@ Codex reports its provider per session (`model_provider`), OpenCode per message.
 All tools are normalised to *fresh input · cache read · cache write · output*
 (reasoning is a subset of output). Every request is attributed to its own
 timestamp and bucketed by local midnights, so 23- and 25-hour DST days stay
-one day.
+one day. Project views collapse nested working directories to their Git
+worktree root. Claude-created Codex scratchpads are attributed back to their
+encoded source project; other temporary working directories are shown as
+`(temporary)`. The archive keeps the original working directory unchanged.
 
 ### Cost
 

@@ -10,6 +10,16 @@ All notable changes to tokenUsage2. Versions follow semantic versioning; the
 archive schema version is noted whenever it changes, because an older build
 refuses a newer archive.
 
+## 0.13.1
+
+### Fixed
+
+- Project and session views now collapse nested working directories to their
+  Git worktree root, map recognized Claude-created Codex scratchpads back to
+  the encoded source project, and call other temporary paths `(temporary)`.
+  The live feed uses the same labels. Raw archived working directories remain
+  untouched, so the correction needs no migration.
+
 ## 0.13.0
 
 ### Added

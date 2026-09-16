@@ -17,6 +17,7 @@ from tokenusage2.config import AlertSettings
 from tokenusage2.ingest import Progress, ScanReport
 from tokenusage2.model import Account, Event, QuotaWindow, Tool, Usage
 from tokenusage2.pricing import Pricer, Rates
+from tokenusage2.projects import project_name
 
 _PRICER = Pricer()
 
@@ -230,6 +231,9 @@ class DemoSource:
     def backend_of(self, event: Event) -> str:
         """Demo events already carry display labels."""
         return event.route
+
+    def project_of(self, path: str) -> str:
+        return project_name(path)
 
     def lifetimes(self) -> None:
         """Recounted per snapshot; the demo history is small."""

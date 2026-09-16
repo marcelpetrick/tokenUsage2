@@ -18,6 +18,7 @@ from tokenusage2.ingest import Ingestor, Progress, ScanReport
 from tokenusage2.model import Account, Event, QuotaWindow, Tool
 from tokenusage2.pricing import Pricer, Rates
 from tokenusage2.procscan import ProcessScanner, running_by_account
+from tokenusage2.projects import ProjectResolver
 from tokenusage2.store import Store
 
 REDISCOVER_SECONDS = 30.0
@@ -36,6 +37,7 @@ class Source(Protocol):
     def running(self) -> dict[str, int]: ...
     def sources(self) -> list[str]: ...
     def backend_of(self, event: Event) -> str: ...
+    def project_of(self, path: str) -> str: ...
     def lifetimes(self) -> Mapping[str, Lifetime] | None: ...
     def rates(self, tool: Tool, model: str, route: str) -> Rates | None: ...
     def alert_settings(self) -> AlertSettings: ...
@@ -69,6 +71,8 @@ class LiveSource:
         self.discovery = discover(home, env, config, self.processes)
         self.ingestor = Ingestor(store, self.discovery, tz, home, env, clock)
         self.pricer = Pricer(config.prices)
+        self._project_generation = -1
+        self._projects = ProjectResolver(())
         self._discovered_at = clock()
         self._accounts = self._merge_accounts()
 
@@ -126,6 +130,13 @@ class LiveSource:
 
     def backend_of(self, event: Event) -> str:
         return self.discovery.backends.label(event.tool, event.model, event.route)
+
+    def project_of(self, path: str) -> str:
+        generation = self.generation()
+        if generation != self._project_generation:
+            self._projects = ProjectResolver(event.project for event in self.events())
+            self._project_generation = generation
+        return self._projects.label(path)
 
     def lifetimes(self) -> Mapping[str, Lifetime]:
         return self.ingestor.index.lifetimes()
