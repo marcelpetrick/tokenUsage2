@@ -164,13 +164,16 @@ one day.
 ### Cost
 
 The `cost` metric (`v`) and the breakdown's cost column estimate what the tokens
-would cost at list prices — an API-equivalent figure, not an invoice. Requests
+would cost at standard token rates — a list-price figure, not an invoice. Requests
 Anthropic's API answered use Anthropic's list prices per model (cache reads
 0.1x input, cache writes 1.25x for the 5-minute and 2x for the 1-hour TTL,
 which is why the split is recorded). Requests a local backend answered cost
-nothing. Codex and OpenCode models are priced once `[prices]` in the config
-names them; until then they show as `—`. Retained daily totals stay unpriced
-because their split is unknown.
+nothing. OpenAI-routed Codex and OpenCode records use the published ChatGPT
+Work/Codex token rates; models without a final published rate show as `—`.
+Fast mode, long-context, regional-processing and tool-call extras are not
+inferable from the local token records and are excluded. `[prices]` entries
+override all built-in rates. Retained daily totals stay unpriced because their
+split is unknown.
 
 ### The archive
 

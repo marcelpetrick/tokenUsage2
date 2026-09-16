@@ -285,9 +285,10 @@ def test_json_is_always_priced(
     code, out, _ = call(["--json", "--no-archive", "--tz", "UTC"], home.env, tmp_path, capsys)
     data = json.loads(out)
     assert code == 0
-    # claude-opus-5 via Anthropic: 10 in, 1000 cache read, 100 cache write (5 min), 50 out
-    assert data["totals"]["all"]["cost"] == pytest.approx(2425 / 1_000_000)
-    assert data["totals"]["all"]["unpriced"] > 0  # Codex models carry no default price
+    # Anthropic costs 2,425 millionths; Sol 10,440; Astra 63,000.
+    assert data["totals"]["all"]["cost"] == pytest.approx(75_865 / 1_000_000)
+    # 5,005 retained Claude tokens have no split; OpenCode's local qwen adds 120.
+    assert data["totals"]["all"]["unpriced"] == 5125
 
 
 def test_json_buckets_carry_their_cache_share(

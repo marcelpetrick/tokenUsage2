@@ -57,6 +57,11 @@ def anthropic(input_price: float, output_price: float, cache_read: float | None 
     return Rates(input_price, output_price, read, input_price * 1.25, input_price * 2)
 
 
+def openai(input_price: float, cache_read: float, output_price: float) -> Rates:
+    """OpenAI token rates; Codex does not charge for cache writes."""
+    return Rates(input_price, output_price, cache_read, 0.0, 0.0)
+
+
 #: Anthropic list prices per model glob, USD per 1M tokens (as of 2026-06-24).
 #: The first matching glob wins, so more specific names come first.
 ANTHROPIC_PRICES: tuple[tuple[str, Rates], ...] = (
@@ -70,6 +75,27 @@ ANTHROPIC_PRICES: tuple[tuple[str, Rates], ...] = (
     ("claude-sonnet-4-6*", anthropic(3, 15)),
     ("claude-haiku-4-5*", anthropic(1, 5)),
 )
+
+#: OpenAI ChatGPT Work and Codex rates per model glob, USD per 1M tokens
+#: (as of 2026-09-16). Source: https://help.openai.com/en/articles/20001415
+#: More specific names precede their families. Models without a final price,
+#: such as GPT-5.3-Codex-Spark, are deliberately absent and blocked below.
+OPENAI_PRICES: tuple[tuple[str, Rates], ...] = (
+    ("gpt-6-astra*", openai(10, 1, 50)),
+    ("gpt-5.6-sol*", openai(4, 0.4, 20)),
+    ("gpt-5.6-terra*", openai(2, 0.2, 12)),
+    ("gpt-5.6-luna*", openai(0.2, 0.02, 1.2)),
+    ("gpt-rosalind-research*", openai(5, 0.5, 25)),
+    ("gpt-5.5*", openai(5, 0.5, 30)),
+    ("daybreak-blue*", openai(4, 0.4, 20)),
+    ("daybreak-red*", openai(12.5, 1.25, 75)),
+    ("gpt-5.4-mini*", openai(0.75, 0.075, 4.5)),
+    ("gpt-5.4*", openai(2.5, 0.25, 15)),
+    ("gpt-5.3-codex*", openai(1.75, 0.175, 14)),
+    ("gpt-5.3*", openai(1.75, 0.175, 14)),
+    ("gpt-5.2*", openai(1.75, 0.175, 14)),
+)
+OPENAI_UNPRICED = ("gpt-5.5-pro*", "gpt-5.3-codex-spark*")
 
 
 def _match(model: str, table: Sequence[tuple[str, Rates]]) -> Rates | None:
@@ -100,6 +126,10 @@ class Pricer:
             return configured
         if route == "anthropic":
             return _match(model, ANTHROPIC_PRICES)
+        if route == "openai":
+            if any(fnmatchcase(model, pattern) for pattern in OPENAI_UNPRICED):
+                return None
+            return _match(model, OPENAI_PRICES)
         if tool is Tool.CLAUDE:
             return FREE
         return None

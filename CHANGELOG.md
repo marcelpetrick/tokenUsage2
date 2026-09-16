@@ -10,6 +10,16 @@ All notable changes to tokenUsage2. Versions follow semantic versioning; the
 archive schema version is noted whenever it changes, because an older build
 refuses a newer archive.
 
+## 0.13.0
+
+### Added
+
+- OpenAI-routed Codex and OpenCode records now use the published standard
+  ChatGPT Work/Codex token rates for GPT-6 Astra, GPT-5.6 Sol/Terra/Luna,
+  GPT-5.5, GPT-5.4, GPT-5.3 and GPT-5.2 families. Configured prices still win;
+  local routes, unknown models and the unpriced GPT-5.3-Codex-Spark preview
+  remain unpriced. The estimate excludes token-log-invisible surcharges.
+
 ## 0.12.9
 
 ### Fixed
