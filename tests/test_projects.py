@@ -27,6 +27,21 @@ def test_nested_and_deleted_paths_resolve_to_the_git_root(tmp_path: Path) -> Non
     assert resolver.label(str(nested)) == "real-project"
 
 
+def test_duplicate_git_basenames_use_shortest_distinguishing_suffix(tmp_path: Path) -> None:
+    work = tmp_path / "work" / "shared"
+    personal = tmp_path / "personal" / "shared"
+    (work / ".git").mkdir(parents=True)
+    (personal / ".git").mkdir(parents=True)
+    work_nested = work / "src"
+    personal_nested = personal / "tests"
+
+    resolver = ProjectResolver([str(work_nested), str(personal_nested)])
+
+    assert resolver.label(str(work_nested)) == "work/shared"
+    assert resolver.label(str(personal_nested)) == "personal/shared"
+    assert resolver.label(str(work)) != resolver.label(str(personal))
+
+
 def test_claude_scratchpad_resolves_through_its_encoded_source(tmp_path: Path) -> None:
     root = tmp_path / "repos" / "source-with-hyphens"
     (root / ".git").mkdir(parents=True)

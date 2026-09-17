@@ -38,6 +38,36 @@ def _scratch_key(path: Path) -> str | None:
     return None
 
 
+def _display_parts(path: Path) -> tuple[str, ...]:
+    """Path components that are useful in a concise, portable label."""
+    return tuple(part for part in path.parts if part != path.anchor)
+
+
+def _unique_path_labels(paths: Iterable[Path]) -> dict[Path, str]:
+    """Return the shortest distinguishing suffix for every canonical path."""
+    unique = set(paths)
+    depths = dict.fromkeys(unique, 1)
+    while True:
+        labels = {
+            path: "/".join(_display_parts(path)[-depths[path] :]) or str(path) for path in unique
+        }
+        collisions: dict[str, list[Path]] = {}
+        for path, label in labels.items():
+            collisions.setdefault(label, []).append(path)
+        duplicated = [group for group in collisions.values() if len(group) > 1]
+        if not duplicated:
+            return labels
+        changed = False
+        for group in duplicated:
+            for path in group:
+                limit = len(_display_parts(path))
+                if depths[path] < limit:
+                    depths[path] += 1
+                    changed = True
+        if not changed:
+            return {path: str(path) for path in unique}
+
+
 class ProjectResolver:
     """Turn raw request CWDs into stable, human project labels.
 
@@ -49,8 +79,9 @@ class ProjectResolver:
 
     def __init__(self, paths: Iterable[str], temporary: Path | None = None) -> None:
         self.temporary = (temporary or Path(tempfile.gettempdir())).resolve()
+        raw_paths = set(paths)
         candidates: dict[str, set[Path]] = {}
-        for raw in set(paths):
+        for raw in raw_paths:
             if not raw or raw.startswith("("):
                 continue
             path = Path(raw)
@@ -62,6 +93,8 @@ class ProjectResolver:
                 candidates.setdefault(_encoded(candidate), set()).add(candidate)
         self._encoded = candidates
         self._labels: dict[str, str] = {}
+        targets = {target for raw in raw_paths if (target := self._canonical_path(raw)) is not None}
+        self._path_labels = _unique_path_labels(targets)
 
     @staticmethod
     def _git_root(path: Path) -> Path | None:
@@ -83,6 +116,13 @@ class ProjectResolver:
         existing = {choice for choice in choices if choice.exists()}
         return next(iter(existing)) if len(existing) == 1 else None
 
+    def _canonical_path(self, raw: str) -> Path | None:
+        if not raw or raw.startswith("("):
+            return None
+        path = Path(raw)
+        source = self._scratch_source(path)
+        return self._git_root(source or path)
+
     def label(self, raw: str) -> str:
         cached = self._labels.get(raw)
         if cached is not None:
@@ -94,7 +134,7 @@ class ProjectResolver:
             source = self._scratch_source(path)
             root = self._git_root(source or path)
             if root is not None:
-                label = root.name or str(root)
+                label = self._path_labels.get(root, root.name or str(root))
             elif path.is_absolute() and path.is_relative_to(self.temporary):
                 label = "(temporary)"
             else:

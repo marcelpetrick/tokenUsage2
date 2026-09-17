@@ -10,6 +10,14 @@ All notable changes to tokenUsage2. Versions follow semantic versioning; the
 archive schema version is noted whenever it changes, because an older build
 refuses a newer archive.
 
+## 0.13.11
+
+### Fixed
+
+- Keep unrelated Git worktrees with the same basename in separate project
+  groups by adding the shortest distinguishing parent suffix to their display
+  labels. Unique project names remain unchanged.
+
 ## 0.13.10
 
 ### Fixed

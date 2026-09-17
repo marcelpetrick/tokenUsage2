@@ -167,7 +167,9 @@ carry the `tok` suffix; larger values use `k`, `M`, `B` or `T`.
 Project views collapse nested working directories to their Git worktree root.
 Claude-created Codex scratchpads are attributed back to their encoded source
 project; other temporary working directories are shown as `(temporary)`. The
-archive keeps the original working directory unchanged.
+archive keeps the original working directory unchanged. When unrelated Git
+worktrees have the same basename, their labels gain the shortest parent suffix
+that distinguishes them (for example `work/api` and `personal/api`).
 
 ### Cost
 
