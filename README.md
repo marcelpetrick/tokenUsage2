@@ -179,6 +179,8 @@ which is why the split is recorded). Requests a local backend answered cost
 nothing. OpenAI-routed Codex and OpenCode records use the
 [published ChatGPT Work/Codex token rates](https://help.openai.com/en/articles/20001415-chatgpt-rate-card-enterprise-token-based-pricing);
 models without a final published rate show as `—`.
+An aggregate that mixes priced and unpriced usage is prefixed with `≥`, because
+the displayed amount is a known lower bound rather than a complete estimate.
 Fast mode, long-context, regional-processing and tool-call extras are not
 inferable from the local token records and are excluded. `[prices]` entries
 override all built-in rates. Retained daily totals stay unpriced because their

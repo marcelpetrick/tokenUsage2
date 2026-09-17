@@ -193,7 +193,7 @@ committed before the next begins.
 | 0.13.7 | ☑ | Record and review this implementation plan before changing behavior. | Six blocking findings are mapped to independent versions, tests and a final release gate. |
 | 0.13.8 | ☑ | #1: detect a same-inode log that was truncated and regrew past its old offset instead of resuming inside replacement content. | A constant-size beginning/middle/tail checkpoint distinguishes a normal append from rewritten prefix content; all 44 ingestion tests pass, including a same-inode replacement larger than the saved offset. |
 | 0.13.9 | ☑ | #2: treat non-finite floating token counts as malformed input rather than crashing ingestion. | Parser coverage proves positive finite floats still truncate as before while `NaN`, positive infinity and negative infinity become zero; all 22 parser tests pass. |
-| 0.13.10 | ☐ | #3: distinguish complete, partial and wholly unavailable standard-rate cost estimates everywhere they are rendered. | Pending. |
+| 0.13.10 | ☑ | #3: distinguish complete, partial and wholly unavailable standard-rate cost estimates everywhere they are rendered. | Rendering tests prove complete `$`, partial `≥$`, wholly unavailable `—`, and an unpriced timeline marker across headers, accounts and breakdowns; all 101 focused rendering, aggregation, CLI and export tests pass. |
 | 0.13.11 | ☐ | #4: keep distinct projects with the same basename separate while retaining concise display labels. | Pending. |
 | 0.13.12 | ☐ | #5: invalidate live snapshots when rediscovery changes account metadata or other discovery-derived labels. | Pending. |
 | 0.13.13 | ☐ | #6: exclude future-dated records from current buckets, summaries, activity and the live feed. | Pending. |

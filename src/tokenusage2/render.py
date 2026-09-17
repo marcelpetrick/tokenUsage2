@@ -196,7 +196,15 @@ def amount(value: float, metric: Metric) -> str:
 
 
 def cost_text(tally: Tally) -> str:
-    return "—" if tally.total and tally.unpriced >= tally.total else money(tally.cost)
+    if tally.total and tally.unpriced >= tally.total:
+        return "—"
+    text = money(tally.cost)
+    return f"≥{text}" if tally.unpriced else text
+
+
+def tally_amount(tally: Tally, metric: Metric) -> str:
+    """A tally value that preserves whether its cost estimate is complete."""
+    return cost_text(tally) if metric is Metric.COST else amount(tally.value(metric), metric)
 
 
 def duration(seconds: float) -> str:
@@ -485,10 +493,10 @@ def account_cells(row: AccountRow, snapshot: Snapshot, view: View) -> list[Cell]
         (clean(row.label), "dim" if row.archived else style),
         (clean(identity), "text"),
         (clean(row.plan or "—"), "dim"),
-        (amount(row.today.value(metric), metric), "text"),
-        (amount(row.week.value(metric), metric), "text"),
-        (amount(row.month.value(metric), metric), "text"),
-        (amount(row.all.value(metric), metric), "dim"),
+        (tally_amount(row.today, metric), "text"),
+        (tally_amount(row.week, metric), "text"),
+        (tally_amount(row.month, metric), "text"),
+        (tally_amount(row.all, metric), "dim"),
         (sparkline(row.hourly, 24), style),
         quota_cell(quotas.get("5h"), snapshot.now),
         quota_cell(quotas.get("week"), snapshot.now),
@@ -593,7 +601,8 @@ def draw_timeline(canvas: Canvas, rect: Rect, snapshot: Snapshot, view: View) ->
             if hatched > 0:
                 segments.append((hatched, view.series(name), True))
         cells = stack_cells(segments, scale, chart_h)
-        if not cells and bucket.total.unsplit:  # retained totals this metric cannot show
+        unknown_cost = metric is Metric.COST and bucket.total.unpriced
+        if not cells and (bucket.total.unsplit or unknown_cost):
             cells = [("░", "dim")]
         heights.append(len(cells))
         x = plot_x + index * slot
@@ -613,9 +622,9 @@ def draw_timeline(canvas: Canvas, rect: Rect, snapshot: Snapshot, view: View) ->
     selected = buckets[snapshot.selected]
     select_x = plot_x + snapshot.selected * slot
     canvas.put(select_x, label_y, selected.short, "hi", limit=inner_x + inner_w - select_x)
-    value_text = amount(totals[snapshot.selected], metric)
+    value_text = tally_amount(selected.total, metric)
     value_y = inner_y + chart_h - 1 - heights[snapshot.selected]
-    if totals[snapshot.selected] and value_y >= inner_y:
+    if (totals[snapshot.selected] or selected.total.unpriced) and value_y >= inner_y:
         value_x = min(select_x, inner_x + inner_w - len(value_text))
         canvas.put(value_x, value_y, value_text, "accent")
     if trend:
@@ -637,6 +646,8 @@ def draw_timeline(canvas: Canvas, rect: Rect, snapshot: Snapshot, view: View) ->
         entries.append(("░", "dim", "retained daily total (only in the total view)"))
     if trend and snapshot.groups:
         entries.append(("▆", "ok", "cache-hit share"))
+    if metric is Metric.COST and any(bucket.total.unpriced for bucket in buckets):
+        entries.append(("░", "dim", "unpriced usage (cost unknown)"))
     if not entries:
         canvas.put(inner_x + 1, legend_y, "no usage in this range", "dim")
     for glyph, style, name in entries:
@@ -811,10 +822,10 @@ def draw_header(
     right = f" ⚡ {compact(snapshot.rate)} tok/min   {clock} "
     metric = snapshot.metric
     middle = (
-        f"today {amount(snapshot.today.value(metric), metric)}  ·  "
-        f"week {amount(snapshot.week.value(metric), metric)}  ·  "
-        f"month {amount(snapshot.month.value(metric), metric)}  ·  "
-        f"all {amount(snapshot.all.value(metric), metric)}"
+        f"today {tally_amount(snapshot.today, metric)}  ·  "
+        f"week {tally_amount(snapshot.week, metric)}  ·  "
+        f"month {tally_amount(snapshot.month, metric)}  ·  "
+        f"all {tally_amount(snapshot.all, metric)}"
     )
     if filter_label:
         middle += f"  ·  [{clean(filter_label)}]"

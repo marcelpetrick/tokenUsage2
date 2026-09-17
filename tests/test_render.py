@@ -11,6 +11,7 @@ from conftest import BERLIN, NOW
 from tokenusage2.aggregate import GroupBy, Metric, Period, QuotaView, build_snapshot
 from tokenusage2.demo import DemoSource
 from tokenusage2.model import Account, Event, Tool, Usage
+from tokenusage2.pricing import Rates
 from tokenusage2.render import (
     THEME_NAMES,
     Column,
@@ -30,6 +31,7 @@ from tokenusage2.render import (
     render_message,
     sparkline,
     stack_cells,
+    tally_amount,
     token_text,
 )
 from tokenusage2.tui import bucket_count, take_snapshot
@@ -315,6 +317,66 @@ def test_money_amount_and_cost_text() -> None:
     assert amount(2500, Metric.TOTAL) == "2.5k"
     assert cost_text(Tally(input=5, unpriced=5)) == "—"
     assert cost_text(Tally(input=5, cost=0.5)) == "$0.50"
+    assert cost_text(Tally(input=10, cost=0.5, unpriced=5)) == "≥$0.50"
+    assert tally_amount(Tally(input=5, unpriced=5), Metric.COST) == "—"
+
+
+def test_cost_view_marks_partial_and_wholly_unpriced_estimates() -> None:
+    account = Account("a", Tool.CODEX, Path("/a"), "alpha")
+    known = Event(
+        "known",
+        NOW - 60,
+        Tool.CODEX,
+        "a",
+        "known",
+        "openai",
+        "/work/shared",
+        "s",
+        Usage(input=1_000_000),
+    )
+    unknown = Event(
+        "unknown",
+        NOW - 30,
+        Tool.CODEX,
+        "a",
+        "unknown",
+        "openai",
+        "/work/shared",
+        "s",
+        Usage(input=1_000_000),
+    )
+
+    def pricing(_tool: Tool, model: str, _route: str) -> Rates | None:
+        return Rates(4, 20, 0.4, 0, 0) if model == "known" else None
+
+    view = View(theme="plain", metric=Metric.COST, detail=GroupBy.PROJECT)
+    partial = build_snapshot(
+        [known, unknown],
+        [account],
+        [],
+        now=NOW,
+        tz=BERLIN,
+        metric=Metric.COST,
+        detail=GroupBy.PROJECT,
+        pricing=pricing,
+    )
+    partial_text = "\n".join(render(partial, view, 160, 48, tz=BERLIN))
+    unavailable = build_snapshot(
+        [unknown],
+        [account],
+        [],
+        now=NOW,
+        tz=BERLIN,
+        metric=Metric.COST,
+        detail=GroupBy.PROJECT,
+        pricing=pricing,
+    )
+    unavailable_text = "\n".join(render(unavailable, view, 160, 48, tz=BERLIN))
+
+    assert "today ≥$4.00" in partial_text
+    assert "≥$4.00" in partial_text
+    assert "today —" in unavailable_text
+    assert "unpriced usage (cost unknown)" in unavailable_text
 
 
 def test_cost_view_shows_dollars(demo: DemoSource) -> None:

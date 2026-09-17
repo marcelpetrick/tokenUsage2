@@ -10,6 +10,15 @@ All notable changes to tokenUsage2. Versions follow semantic versioning; the
 archive schema version is noted whenever it changes, because an older build
 refuses a newer archive.
 
+## 0.13.10
+
+### Fixed
+
+- Render wholly unpriced cost totals as unavailable and prefix mixed
+  priced/unpriced totals with `≥`, so a partial standard-rate estimate is never
+  presented as complete. Cost timelines also mark buckets containing usage
+  whose price is unknown.
+
 ## 0.13.9
 
 ### Fixed
