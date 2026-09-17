@@ -9,6 +9,7 @@ only the new complete lines are read; when it is replaced or truncated it is
 re-read from the start. Keys make every re-read idempotent.
 """
 
+import hashlib
 import json
 import os
 import sqlite3
@@ -19,6 +20,7 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime, tzinfo
 from datetime import time as clock_time
 from pathlib import Path
+from typing import BinaryIO
 
 from tokenusage2 import keys
 from tokenusage2.aggregate import Lifetime, Tally, lifetimes_of
@@ -40,6 +42,33 @@ type Progress = Callable[[int, int], None]
 COMMIT_EVERY = 64
 #: Version of the rule that derives retained daily totals from the stats cache.
 BACKFILL_RULE = 4
+#: A private parser-context key holding a sampled digest of the consumed prefix.
+_FILE_CHECKPOINT = "_tokenusage2_file_checkpoint"
+_CHECKPOINT_SAMPLE = 256
+
+
+def _file_checkpoint(handle: BinaryIO, offset: int) -> str:
+    """A cheap identity check for the consumed prefix of an append-only file.
+
+    Sampling the beginning, middle and tail keeps normal appends O(1) while
+    detecting a same-inode file that was truncated and regrew beyond its former
+    offset between scans.
+    """
+    digest = hashlib.blake2s()
+    digest.update(offset.to_bytes(8, "big", signed=False))
+    positions = {
+        0,
+        max(0, offset // 2 - _CHECKPOINT_SAMPLE // 2),
+        max(0, offset - _CHECKPOINT_SAMPLE),
+    }
+    for position in sorted(positions):
+        size = min(_CHECKPOINT_SAMPLE, max(0, offset - position))
+        handle.seek(position)
+        chunk = handle.read(size)
+        digest.update(position.to_bytes(8, "big", signed=False))
+        digest.update(len(chunk).to_bytes(4, "big", signed=False))
+        digest.update(chunk)
+    return digest.hexdigest()
 
 
 class EventIndex:
@@ -383,20 +412,27 @@ class Ingestor:
             and state.mtime_ns == stat.st_mtime_ns
         ):
             return
-        resume = (
+        can_resume = (
             state is not None
             and state.inode == stat.st_ino
             and stat.st_size >= state.offset
             and state.account == account.id
         )
-        start = state.offset if resume and state is not None else 0
-        ctx = state.ctx if resume and state is not None else {}
         path = Path(key)
-        parser = make_parser(account, ctx, path)
         events: list[Event] = []
-        offset = start
         try:
             with path.open("rb") as handle:
+                previous_ctx = dict(state.ctx) if can_resume and state is not None else {}
+                expected = previous_ctx.pop(_FILE_CHECKPOINT, None)
+                resume = bool(
+                    can_resume
+                    and isinstance(expected, str)
+                    and state is not None
+                    and _file_checkpoint(handle, state.offset) == expected
+                )
+                start = state.offset if resume and state is not None else 0
+                parser = make_parser(account, previous_ctx if resume else {}, path)
+                offset = start
                 handle.seek(start)
                 feed = parser.feed
                 for line in handle:
@@ -406,6 +442,7 @@ class Ingestor:
                     event = feed(line)
                     if event is not None:
                         events.append(event)
+                checkpoint = _file_checkpoint(handle, offset)
         except OSError as error:
             report.problems.append(f"{display_path(path, self.home)}: {error.strerror}")
             return
@@ -414,8 +451,10 @@ class Ingestor:
         report.errors += parser.errors
         report.events_changed += self._apply(events)
         report.quota_updates += self._apply_quotas(parser.quotas)
+        saved_ctx = dict(parser.ctx)
+        saved_ctx[_FILE_CHECKPOINT] = checkpoint
         state = FileState(
-            key, account.id, stat.st_ino, stat.st_size, stat.st_mtime_ns, offset, parser.ctx
+            key, account.id, stat.st_ino, stat.st_size, stat.st_mtime_ns, offset, saved_ctx
         )
         self._files[key] = state
         self.store.save_file_state(state)

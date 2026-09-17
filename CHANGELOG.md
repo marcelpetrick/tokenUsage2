@@ -10,6 +10,15 @@ All notable changes to tokenUsage2. Versions follow semantic versioning; the
 archive schema version is noted whenever it changes, because an older build
 refuses a newer archive.
 
+## 0.13.8
+
+### Fixed
+
+- Detect a same-inode transcript or rollout that was truncated and regrew past
+  its previous offset by checking a constant-size sampled prefix fingerprint.
+  Replacement content is re-read from the beginning while ordinary appends
+  remain incremental.
+
 ## 0.13.7
 
 ### Planning

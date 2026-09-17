@@ -157,6 +157,33 @@ def test_truncated_file_is_reread_from_the_start(home: FakeHome, make: Factory) 
     assert report.events_changed == 0
 
 
+def test_truncated_file_that_regrows_past_the_old_offset_is_reread(
+    home: FakeHome, make: Factory
+) -> None:
+    ingestor = make()
+    ingestor.scan()
+    previous = next(state for state in ingestor.files() if state.path == str(home.codex_rollout))
+    inode = home.codex_rollout.stat().st_ino
+    replacement = "".join(
+        (
+            line(codex_meta(CODEX_THREAD)),
+            line(codex_turn("gpt-5.6-sol")),
+            line(codex_tokens("2026-09-10T10:30:00Z", 777, inp=700, out=77)),
+            json.dumps({"padding": "x" * previous.offset * 2}) + "\n",
+        )
+    )
+
+    home.codex_rollout.write_text(replacement)
+    assert home.codex_rollout.stat().st_ino == inode
+    assert home.codex_rollout.stat().st_size > previous.offset
+
+    report = ingestor.scan()
+
+    assert report.bytes_read == len(replacement.encode())
+    assert report.events_changed == 1
+    assert any(event.key.endswith(":777") for event in ingestor.index.events())
+
+
 def test_archive_keeps_history_after_transcripts_vanish(
     home: FakeHome, make: Factory, tmp_path: Path
 ) -> None:
