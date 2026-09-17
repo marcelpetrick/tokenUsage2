@@ -197,7 +197,7 @@ committed before the next begins.
 | 0.13.11 | ☑ | #4: keep distinct projects with the same basename separate while retaining concise display labels. | Resolver coverage proves two unrelated `shared` worktrees render as `work/shared` and `personal/shared`, while all existing unique, nested, scratchpad and temporary cases remain unchanged; all 25 project and aggregation tests pass. |
 | 0.13.12 | ☑ | #5: invalidate live snapshots when rediscovery changes account metadata or other discovery-derived labels. | A loop-level regression proves a manual rescan redraws a renamed account despite unchanged account count and event generation; LiveSource coverage proves rediscovery advances its generation; all 15 live/TUI tests pass. |
 | 0.13.13 | ☑ | #6: exclude future-dated records from current buckets, summaries, activity and the live feed. | Boundary coverage proves an event exactly at `now` is visible while later same-day and later-week records stay out of current buckets, breakdown, summaries, heatmap, burn rate, activity and feed; all 21 aggregation tests pass. |
-| 0.13.14 | ☐ | Re-run the full-state review, update documentation, execute the complete pipeline, reproduce the repaired cases and publish the release. | Pending. |
+| 0.13.14 | ☑ | Re-run the full-state review, update documentation, execute the complete pipeline, reproduce the repaired cases and publish the release. | Full-state review finds no HIGH or MEDIUM issues; all 11 pipeline stages pass with 307 tests, 99.38% coverage and a clean 0.13.14 wheel; 55,629 real events confirm complete observed OpenAI pricing and corrected project labels. Public workflow evidence necessarily follows this commit and is reported in the release handoff. |
 
 Implementation invariants:
 
