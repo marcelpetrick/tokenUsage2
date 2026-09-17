@@ -196,7 +196,7 @@ committed before the next begins.
 | 0.13.10 | ☑ | #3: distinguish complete, partial and wholly unavailable standard-rate cost estimates everywhere they are rendered. | Rendering tests prove complete `$`, partial `≥$`, wholly unavailable `—`, and an unpriced timeline marker across headers, accounts and breakdowns; all 101 focused rendering, aggregation, CLI and export tests pass. |
 | 0.13.11 | ☑ | #4: keep distinct projects with the same basename separate while retaining concise display labels. | Resolver coverage proves two unrelated `shared` worktrees render as `work/shared` and `personal/shared`, while all existing unique, nested, scratchpad and temporary cases remain unchanged; all 25 project and aggregation tests pass. |
 | 0.13.12 | ☑ | #5: invalidate live snapshots when rediscovery changes account metadata or other discovery-derived labels. | A loop-level regression proves a manual rescan redraws a renamed account despite unchanged account count and event generation; LiveSource coverage proves rediscovery advances its generation; all 15 live/TUI tests pass. |
-| 0.13.13 | ☐ | #6: exclude future-dated records from current buckets, summaries, activity and the live feed. | Pending. |
+| 0.13.13 | ☑ | #6: exclude future-dated records from current buckets, summaries, activity and the live feed. | Boundary coverage proves an event exactly at `now` is visible while later same-day and later-week records stay out of current buckets, breakdown, summaries, heatmap, burn rate, activity and feed; all 21 aggregation tests pass. |
 | 0.13.14 | ☐ | Re-run the full-state review, update documentation, execute the complete pipeline, reproduce the repaired cases and publish the release. | Pending. |
 
 Implementation invariants:

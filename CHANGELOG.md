@@ -10,6 +10,14 @@ All notable changes to tokenUsage2. Versions follow semantic versioning; the
 archive schema version is noted whenever it changes, because an older build
 refuses a newer archive.
 
+## 0.13.13
+
+### Fixed
+
+- Keep future-dated records in the archive without exposing them early in the
+  active timeline bucket, current day/week/month totals, breakdown, heatmap,
+  burn rate, account activity or recent-request feed.
+
 ## 0.13.12
 
 ### Fixed

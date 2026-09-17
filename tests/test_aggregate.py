@@ -275,6 +275,26 @@ def test_events_exactly_at_midnight_open_their_own_bucket() -> None:
     )
 
 
+def test_future_events_do_not_enter_current_views() -> None:
+    present = ev(NOW - 60, usage=Usage(input=100))
+    exact = ev(NOW, usage=Usage(input=50))
+    later_today = ev(NOW + 60, usage=Usage(input=200))
+    later_week = ev(NOW + 2 * 86400, usage=Usage(input=300))
+
+    snapshot = snap([present, exact, later_today, later_week])
+    row = snapshot.accounts[0]
+
+    assert snapshot.buckets[-1].total.total == 150
+    assert sum(item.tally.total for item in snapshot.breakdown) == 150
+    assert (snapshot.today.total, snapshot.week.total, snapshot.month.total) == (150, 150, 150)
+    assert snapshot.all.total == 650
+    assert snapshot.rate == 30
+    assert sum(row.hourly) == 150
+    assert sum(map(sum, snapshot.heatmap)) == 150
+    assert [event.key for event in snapshot.recent] == [exact.key, present.key]
+    assert row.last_ts == snapshot.last_ts == NOW
+
+
 def test_cost_view_prices_buckets_totals_and_lifetimes() -> None:
     events = [
         ev(at(0), model="claude-opus-5", usage=Usage(input=1_000_000)),

@@ -159,7 +159,9 @@ Codex reports its provider per session (`model_provider`), OpenCode per message.
 All tools are normalised to *fresh input · cache read · cache write · output*
 (reasoning is a subset of output). Every request is attributed to its own
 timestamp and bucketed by local midnights, so 23- and 25-hour DST days stay
-one day. Anthropic's `input_tokens` contains only fresh tokens after the last
+one day. Records dated after the current snapshot time are retained but do not
+enter current buckets, summaries, activity or the live feed until their time
+arrives. Anthropic's `input_tokens` contains only fresh tokens after the last
 cache breakpoint; total prompt input is fresh + cache read + cache write, which
 is why a `fresh` value can be tiny beside `cache r`. Exact counts below 1,000
 carry the `tok` suffix; larger values use `k`, `M`, `B` or `T`.

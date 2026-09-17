@@ -406,6 +406,8 @@ def build_snapshot(
     if account_filter is not None:
         events = [event for event in events if event.account == account_filter]
     timestamps = [event.ts for event in events]
+    visible_end = math.nextafter(now, math.inf)
+    visible_stop = bisect_left(timestamps, visible_end)
     names = {account.id: account.label for account in accounts}
     label = backend or logged_route
     label_project = project or project_name
@@ -430,7 +432,7 @@ def build_snapshot(
     key_of = key_function(group, names, label, label_project)
     for bucket in buckets:
         tallies = bucket.groups
-        for position in _slice(timestamps, bucket.start_ts, bucket.end_ts):
+        for position in _slice(timestamps, bucket.start_ts, min(bucket.end_ts, visible_end)):
             event = events[position]
             key = key_of(event)
             tally = tallies.get(key)
@@ -453,7 +455,7 @@ def build_snapshot(
     if buckets:
         chosen = buckets[selected]
         detail_of = key_function(detail, names, label, label_project)
-        for position in _slice(timestamps, chosen.start_ts, chosen.end_ts):
+        for position in _slice(timestamps, chosen.start_ts, min(chosen.end_ts, visible_end)):
             event = events[position]
             key = detail_of(event)
             row = breakdown_rows.get(key)
@@ -507,10 +509,16 @@ def build_snapshot(
         if row is not None:
             row.all = all_time
             row.last_ts = lifetime.last_ts
+    visible_last: dict[str, float] = {}
+    for event in events[:visible_stop]:
+        visible_last[event.account] = event.ts
+    for row in rows.values():
+        if row.last_ts is not None and row.last_ts > now:
+            row.last_ts = visible_last.get(row.id)
     # Only the current month, week and day are walked; all-time totals are kept.
     for name, start in (("month", month_start), ("week", week_start), ("today", day_start)):
         per_account: dict[str, Tally] = {}
-        for position in _slice(timestamps, start, math.inf):
+        for position in _slice(timestamps, start, visible_end):
             event = events[position]
             tally = per_account.get(event.account)
             if tally is None:
@@ -523,7 +531,7 @@ def build_snapshot(
                 setattr(row, name, tally)
 
     rate_total = 0
-    for position in _slice(timestamps, now - 24 * 3600, now + 1):
+    for position in _slice(timestamps, now - 24 * 3600, visible_end):
         event = events[position]
         row = rows.get(event.account)
         hours_ago = int((now - event.ts) // 3600)
@@ -551,12 +559,15 @@ def build_snapshot(
         bounds = [datetime.combine(day, time(hour), tzinfo=tz).timestamp() for hour in range(24)]
         bounds.append(heat_edges[index + 1])
         for hour in range(24):
-            for position in _slice(timestamps, bounds[hour], bounds[hour + 1]):
+            for position in _slice(timestamps, bounds[hour], min(bounds[hour + 1], visible_end)):
                 event = events[position]
                 if not event.usage.unsplit:
                     cells[hour] += usage_value(event.usage, metric)
 
-    latest = [event for event in reversed(events[-(recent * 4) :]) if not event.usage.unsplit]
+    recent_start = max(0, visible_stop - recent * 4)
+    latest = [
+        event for event in reversed(events[recent_start:visible_stop]) if not event.usage.unsplit
+    ]
     recent_events = latest[:recent]
     return Snapshot(
         now=now,
@@ -577,7 +588,7 @@ def build_snapshot(
         recent=recent_events,
         project_labels={event.project: label_project(event.project) for event in recent_events},
         heatmap=heatmap,
-        first_ts=timestamps[0] if timestamps else None,
-        last_ts=timestamps[-1] if timestamps else None,
+        first_ts=timestamps[0] if visible_stop else None,
+        last_ts=timestamps[visible_stop - 1] if visible_stop else None,
         account_filter=account_filter,
     )
