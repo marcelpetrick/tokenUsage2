@@ -73,6 +73,7 @@ class LiveSource:
         self.pricer = Pricer(config.prices)
         self._project_generation = -1
         self._projects = ProjectResolver(())
+        self._discovery_generation = 0
         self._discovered_at = clock()
         self._accounts = self._merge_accounts()
 
@@ -88,6 +89,7 @@ class LiveSource:
         self.ingestor.set_discovery(self.discovery)
         self._discovered_at = self.clock()
         self._accounts = self._merge_accounts()
+        self._discovery_generation += 1
 
     def scan(self, progress: Progress | None = None) -> ScanReport:
         if self.clock() - self._discovered_at >= REDISCOVER_SECONDS:
@@ -100,7 +102,7 @@ class LiveSource:
         return self.ingestor.index.events()
 
     def generation(self) -> int:
-        return self.ingestor.index.generation
+        return self.ingestor.index.generation + self._discovery_generation
 
     def quotas(self) -> list[QuotaWindow]:
         return list(self.ingestor.quotas.values())

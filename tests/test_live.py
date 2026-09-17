@@ -35,7 +35,9 @@ def test_live_source_rediscovers_and_tracks_running_and_archived_homes(
         assert source.running() == {"codex:~/.codex-new": 1}
 
         shutil.rmtree(home.root / ".codex-work")
+        generation = source.generation()
         source.rediscover()
+        assert source.generation() > generation
         assert "codex:~/.codex-work" in source.archived()
         assert "ARCHIVED (no longer on disk, history kept)" in source.sources()
     finally:

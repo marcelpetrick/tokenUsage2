@@ -385,7 +385,8 @@ def _loop(
             view.account,
             count,
             tuple(sorted(source.running().items())),
-            len(accounts),
+            tuple(accounts),
+            tuple(sorted(source.archived())),
             int(now // 5),
         )
         if key != memo or snapshot is None:

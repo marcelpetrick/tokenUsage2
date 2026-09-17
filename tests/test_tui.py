@@ -10,6 +10,7 @@ import struct
 import termios
 import time
 from collections.abc import Sequence
+from dataclasses import replace
 from pathlib import Path
 
 import pytest
@@ -140,6 +141,27 @@ def test_run_loop_draws_reacts_and_quits() -> None:
     assert any("PAUSED" in text for text in texts)
     assert {len(line) for line in screen.frames[-1]} == {100}
     assert view.cursor == 1
+
+
+def test_manual_rediscovery_redraws_changed_account_metadata() -> None:
+    source = DemoSource(BERLIN, clock=lambda: NOW, days=5)
+    accounts = [source.accounts()]
+    original = accounts[0][0]
+    source.accounts = lambda: accounts[0]  # type: ignore[method-assign]
+
+    def rediscover() -> None:
+        accounts[0] = [
+            replace(account, label="renamed") if account.id == original.id else account
+            for account in accounts[0]
+        ]
+
+    source.rediscover = rediscover  # type: ignore[method-assign]
+    screen = FakeScreen([["r"], []])
+
+    assert (
+        run(source, View(theme="plain", paused=True), BERLIN, screen=screen, clock=lambda: NOW) == 0
+    )
+    assert any("renamed" in "\n".join(frame) for frame in screen.frames)
 
 
 def test_take_snapshot_clamps_the_cursor_to_the_data() -> None:
