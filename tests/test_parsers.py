@@ -298,7 +298,26 @@ def test_parse_ts_and_count() -> None:
     assert parse_ts("2026-09-10T08:00:00") == parse_ts("2026-09-10T08:00:00Z")
     assert parse_ts("nope") is None
     assert parse_ts(5) is None
-    assert (count(True), count(-3), count(2.9), count("5")) == (0, 0, 2, 0)
+    assert (
+        count(True),
+        count(-3),
+        count(2.9),
+        count("5"),
+        count(float("inf")),
+        count(float("-inf")),
+        count(float("nan")),
+    ) == (0, 0, 2, 0, 0, 0, 0)
+
+
+def test_non_finite_token_counts_do_not_abort_a_parser() -> None:
+    parser = ClaudeParser("acct")
+    record = claude_line("m", "2026-09-10T08:00:00Z")
+    record["message"]["usage"]["input_tokens"] = float("inf")
+
+    event = parser.feed(encode(record))
+
+    assert event is not None
+    assert event.usage.input == 0
 
 
 def test_claude_records_the_cache_ttl_split() -> None:

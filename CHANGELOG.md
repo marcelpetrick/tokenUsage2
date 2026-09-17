@@ -10,6 +10,13 @@ All notable changes to tokenUsage2. Versions follow semantic versioning; the
 archive schema version is noted whenever it changes, because an older build
 refuses a newer archive.
 
+## 0.13.9
+
+### Fixed
+
+- Treat non-finite floating token counts in malformed JSON records as zero
+  instead of allowing `NaN` or infinity to terminate ingestion.
+
 ## 0.13.8
 
 ### Fixed

@@ -11,6 +11,7 @@ that head is searched — never the multi-megabyte content that follows.
 """
 
 import json
+import math
 import statistics
 from collections.abc import Iterable, Iterator, Mapping
 from datetime import UTC, date, datetime, time
@@ -37,7 +38,7 @@ def count(value: object) -> int:
     """A non-negative integer token count, tolerating junk."""
     if type(value) is int:  # the common case, and bool is excluded by the exact type
         return value if value > 0 else 0
-    return max(0, int(value)) if type(value) is float else 0
+    return max(0, int(value)) if type(value) is float and math.isfinite(value) else 0
 
 
 def parse_ts(value: object) -> float | None:
