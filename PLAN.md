@@ -181,3 +181,31 @@ Implementation rules for this repair:
 | 0.13.4 | ☑ | Run `reviewBranch`, store its report in `review.md`, then fix every HIGH or MEDIUM finding in separate atomic, versioned commits and re-review. | The formal `origin/master...HEAD` review reports zero Code or Architecture findings; no HIGH or MEDIUM fix commit is required. |
 | 0.13.5 | ☑ | Audit and update all Markdown and other repository documentation against the current behavior, commands, versions and release process. | README CLI/config/privacy/release text, architecture and feature plan, changelog, review link, screenshot generator and synthetic dashboard image are synchronized with 0.13 behavior. |
 | 0.13.6 | ☑ | Run the final source/documentation review and complete pipeline, then push and verify the public release and artifacts. | Final `origin/master...HEAD` review reports zero Code or Architecture findings; all 11 pipeline stages pass with 301 tests, 99.41% coverage and a clean 0.13.6 wheel; real-archive assertions pass for units, pricing, projects and preserved totals. Public workflow evidence necessarily follows this commit and is reported in the release handoff. |
+
+## 9. Full-state review repair plan (September 2026)
+
+The post-release full-state review reproduced six defects outside the earlier
+branch-diff scope. Each fix below is isolated, regression-tested, versioned and
+committed before the next begins.
+
+| Version | Status | Finding and work | Acceptance evidence |
+|---------|--------|------------------|---------------------|
+| 0.13.7 | ☑ | Record and review this implementation plan before changing behavior. | Six blocking findings are mapped to independent versions, tests and a final release gate. |
+| 0.13.8 | ☐ | #1: detect a same-inode log that was truncated and regrew past its old offset instead of resuming inside replacement content. | Pending. |
+| 0.13.9 | ☐ | #2: treat non-finite floating token counts as malformed input rather than crashing ingestion. | Pending. |
+| 0.13.10 | ☐ | #3: distinguish complete, partial and wholly unavailable standard-rate cost estimates everywhere they are rendered. | Pending. |
+| 0.13.11 | ☐ | #4: keep distinct projects with the same basename separate while retaining concise display labels. | Pending. |
+| 0.13.12 | ☐ | #5: invalidate live snapshots when rediscovery changes account metadata or other discovery-derived labels. | Pending. |
+| 0.13.13 | ☐ | #6: exclude future-dated records from current buckets, summaries, activity and the live feed. | Pending. |
+| 0.13.14 | ☐ | Re-run the full-state review, update documentation, execute the complete pipeline, reproduce the repaired cases and publish the release. | Pending. |
+
+Implementation invariants:
+
+1. Archive history remains append-preserving and raw events are never migrated
+   merely to change presentation.
+2. Incremental ingestion remains fast for normal appends; replacement detection
+   must not hash entire multi-gigabyte logs on every refresh.
+3. Unknown prices are never presented as zero or silently folded into a
+   seemingly complete estimate.
+4. Display labels may be disambiguated, but grouping identity must remain stable
+   for every snapshot.

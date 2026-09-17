@@ -10,6 +10,15 @@ All notable changes to tokenUsage2. Versions follow semantic versioning; the
 archive schema version is noted whenever it changes, because an older build
 refuses a newer archive.
 
+## 0.13.7
+
+### Planning
+
+- Record the full-state review repair plan: six independently tested fixes for
+  incremental ingestion, malformed token counts, incomplete prices, project
+  identity, rediscovery invalidation and future-dated events, followed by a
+  final review and release gate.
+
 ## 0.13.6
 
 ### Quality
