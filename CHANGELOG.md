@@ -10,6 +10,14 @@ All notable changes to tokenUsage2. Versions follow semantic versioning; the
 archive schema version is noted whenever it changes, because an older build
 refuses a newer archive.
 
+## 0.13.15
+
+### Fixed
+
+- Report a corrupt archive file or an archive directory that cannot be created
+  as a plain command-line message with exit status 2, instead of letting the
+  underlying database or filesystem error escape as a traceback.
+
 ## 0.13.14
 
 ### Quality

@@ -209,3 +209,14 @@ Implementation invariants:
    seemingly complete estimate.
 4. Display labels may be disambiguated, but grouping identity must remain stable
    for every snapshot.
+
+## 10. Branch-review repair plan (September 2026)
+
+A whole-repository `reviewBranch` pass on the released 0.13.14 source reported
+two MEDIUM findings, both reproduced from the command line. Each fix is
+isolated, regression-tested, versioned and committed on its own.
+
+| Version | Status | Finding and work | Acceptance evidence |
+|---------|--------|------------------|---------------------|
+| 0.13.15 | ☑ | #1: normalize an unopenable or corrupt archive into the reported store error instead of a raw traceback. | Store coverage proves a junk archive file and an uncreatable archive directory raise `StoreUnusableError`; a CLI regression proves the corrupt case exits 2 with the rebuild instruction and no traceback. |
+| 0.13.16 | ☐ | #2: tolerate an OpenCode row whose `data` column is not text, instead of aborting the whole scan. | Pending. |

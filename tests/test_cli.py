@@ -348,6 +348,17 @@ def test_exports_cover_the_whole_history(
     assert len({line.split(",")[1] for line in out.splitlines()[1:]}) == 91
 
 
+def test_a_corrupt_archive_is_a_clear_error_not_a_traceback(
+    home: FakeHome, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    archive = tmp_path / "archive.sqlite"
+    archive.write_bytes(b"not a database, just junk bytes" * 10)
+    code, out, err = call(["--once", "--archive", str(archive)], home.env, tmp_path, capsys)
+    assert (code, out) == (2, "")
+    assert "file is not a database" in err
+    assert "aside to rebuild it" in err
+
+
 def test_a_busy_archive_is_a_clear_error_not_a_traceback(
     home: FakeHome,
     tmp_path: Path,

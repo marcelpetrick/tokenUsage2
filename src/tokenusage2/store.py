@@ -85,6 +85,18 @@ class StoreBusyError(StoreError):
     """Another tokenusage2 held the archive's write lock for longer than a write waits."""
 
 
+class StoreUnusableError(StoreError):
+    """The archive file cannot be opened, or holds something that is not a database."""
+
+
+def unusable_archive_message(path: Path | None, error: Exception) -> str:
+    """What to tell the user when the archive cannot be opened at all."""
+    where = f"archive {path}" if path is not None else "the in-memory archive"
+    if isinstance(error, OSError):
+        return f"{where} cannot be used: {error.strerror or error}"
+    return f"{where} cannot be opened ({error}); move it aside to rebuild it"
+
+
 @contextmanager
 def _busy_is_store_busy(path: Path | None) -> Iterator[None]:
     try:
@@ -95,6 +107,19 @@ def _busy_is_store_busy(path: Path | None) -> Iterator[None]:
         raise StoreBusyError(
             f"archive {path} is busy: another tokenusage2 is writing to it; try again"
         ) from error
+
+
+@contextmanager
+def _unusable_is_store_error(path: Path | None) -> Iterator[None]:
+    """Report a missing directory, a denied path or a corrupt file as a ``StoreError``.
+
+    Opening the archive is the first thing every run does, so these have to
+    reach the command line as a sentence, not as a traceback.
+    """
+    try:
+        yield
+    except (OSError, sqlite3.Error) as error:
+        raise StoreUnusableError(unusable_archive_message(path, error)) from error
 
 
 _OWN_CLAUDE_PREFIX = "substr(key, 1, length(account) + 8) = 'claude:' || account || ':'"
@@ -240,32 +265,33 @@ def _row(event: Event) -> tuple:
 class Store:
     def __init__(self, path: Path | None, timeout: float | None = None) -> None:
         self.path = path
-        if path is not None:
-            path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
         wait = BUSY_SECONDS if timeout is None else timeout
-        self.conn = sqlite3.connect(str(path) if path else ":memory:", timeout=wait)
+        with _unusable_is_store_error(path):
+            if path is not None:
+                path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+            self.conn = sqlite3.connect(str(path) if path else ":memory:", timeout=wait)
         try:
-            with _busy_is_store_busy(path):
+            with _unusable_is_store_error(path), _busy_is_store_busy(path):
                 if path is not None:
                     self.conn.execute("PRAGMA journal_mode=WAL")
                 self.conn.executescript(_SCHEMA)
-            self.begin()
-            stored = self.get_meta("schema")
-            if stored is not None:
-                version = int(stored) if stored.isdigit() else -1
-                while version < SCHEMA_VERSION and version in MIGRATIONS:
-                    MIGRATIONS[version](self.conn)
-                    version += 1
-                if version > SCHEMA_VERSION:
-                    raise StoreError(newer_schema_message(stored, self.get_meta("writer")))
-                if version != SCHEMA_VERSION:
-                    raise StoreError(
-                        f"archive schema {stored} is not supported (expected "
-                        f"{SCHEMA_VERSION}); move {path} aside to rebuild it"
-                    )
-            self.set_meta("schema", str(SCHEMA_VERSION))
-            self.set_meta("writer", __version__)
-            self.commit()
+                self.begin()
+                stored = self.get_meta("schema")
+                if stored is not None:
+                    version = int(stored) if stored.isdigit() else -1
+                    while version < SCHEMA_VERSION and version in MIGRATIONS:
+                        MIGRATIONS[version](self.conn)
+                        version += 1
+                    if version > SCHEMA_VERSION:
+                        raise StoreError(newer_schema_message(stored, self.get_meta("writer")))
+                    if version != SCHEMA_VERSION:
+                        raise StoreError(
+                            f"archive schema {stored} is not supported (expected "
+                            f"{SCHEMA_VERSION}); move {path} aside to rebuild it"
+                        )
+                self.set_meta("schema", str(SCHEMA_VERSION))
+                self.set_meta("writer", __version__)
+                self.commit()
         except StoreError:
             self.conn.close()
             raise

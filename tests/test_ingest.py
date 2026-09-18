@@ -35,7 +35,14 @@ from tokenusage2.discover import BackendMap, Discovery, discover
 from tokenusage2.ingest import EventIndex, Ingestor, walk_jsonl
 from tokenusage2.model import Account, Event, QuotaWindow, Tool, Usage
 from tokenusage2.parsers import CodexParser
-from tokenusage2.store import SCHEMA_VERSION, FileState, Store, StoreBusyError, StoreError
+from tokenusage2.store import (
+    SCHEMA_VERSION,
+    FileState,
+    Store,
+    StoreBusyError,
+    StoreError,
+    StoreUnusableError,
+)
 from tokenusage2.version import __version__
 
 CLAUDE = "claude:~/.claude"
@@ -774,6 +781,32 @@ def hold_write_lock(path: Path) -> sqlite3.Connection:
     holder = sqlite3.connect(path, isolation_level=None)
     holder.execute("BEGIN IMMEDIATE")
     return holder
+
+
+def test_a_corrupt_archive_is_refused_with_a_rebuild_instruction(tmp_path: Path) -> None:
+    path = tmp_path / "archive.sqlite"
+    path.write_bytes(b"not a database, just junk bytes" * 10)
+    with pytest.raises(StoreUnusableError, match=r"move .* aside to rebuild it"):
+        Store(path)
+
+
+def test_an_unwritable_archive_directory_is_refused_with_its_reason(tmp_path: Path) -> None:
+    closed = tmp_path / "closed"
+    closed.mkdir(mode=0o500)
+    if os.access(closed, os.W_OK):  # running as root: nothing is denied
+        pytest.skip("the test user may write into a mode 0500 directory")
+    try:
+        with pytest.raises(StoreUnusableError, match="cannot be used: Permission denied"):
+            Store(closed / "sub" / "archive.sqlite")
+    finally:
+        closed.chmod(0o700)
+
+
+def test_an_unusable_archive_is_a_store_error_the_command_line_reports(tmp_path: Path) -> None:
+    path = tmp_path / "archive.sqlite"
+    path.write_bytes(b"junk")
+    with pytest.raises(StoreError):  # the CLI catches StoreError, not sqlite3.DatabaseError
+        Store(path)
 
 
 def test_opening_a_busy_archive_raises_store_busy(tmp_path: Path) -> None:

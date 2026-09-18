@@ -196,7 +196,10 @@ Events are kept in `$XDG_DATA_HOME/tokenusage2/archive.sqlite`. Files are
 tailed from their last offset; a truncated or replaced file is re-read, and
 keys make every re-read idempotent. Claude Code deletes old transcripts after
 its cleanup period — the archive keeps their history, and accounts whose home
-disappeared are listed as archived.
+disappeared are listed as archived. An archive that another tokenusage2 is
+writing to, that a newer build already migrated, or that is corrupt is reported
+as a single line on stderr with exit status 2; a corrupt one names the file to
+move aside so the next start rebuilds it.
 
 ## Performance
 
