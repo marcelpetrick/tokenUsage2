@@ -483,7 +483,10 @@ class Ingestor:
             if (event := parse_opencode_message(account.id, str(row[0]), row[2]))
         ]
         report.events_changed += self._apply(events)
-        self.store.set_meta(mark, str(max(int(row[1]) for row in rows)))
+        # Only an integer timestamp may move the watermark; anything else in the
+        # column would either raise or skip rows that were never read.
+        stamps = [row[1] for row in rows if type(row[1]) is int]
+        self.store.set_meta(mark, str(max(stamps, default=since)))
 
     def _backfill(self, account: Account, report: ScanReport) -> None:
         """Claude's retained daily totals for days no surviving transcript covers."""

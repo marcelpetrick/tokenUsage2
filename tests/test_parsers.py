@@ -218,6 +218,14 @@ def test_opencode_message() -> None:
     assert parse_opencode_message("acct", "row", json.dumps(zero)) is None
 
 
+def test_an_opencode_row_that_is_not_text_is_skipped() -> None:
+    """SQLite stores what was written, not what the column type promises."""
+    assert parse_opencode_message("acct", "row", None) is None
+    assert parse_opencode_message("acct", "row", 17) is None
+    assert parse_opencode_message("acct", "row", 1.5) is None
+    assert parse_opencode_message("acct", "row", b'{"role": "user"}') is None
+
+
 def test_stats_cache_backfill_only_before_the_first_transcript() -> None:
     data = {
         "dailyModelTokens": [

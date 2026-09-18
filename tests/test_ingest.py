@@ -293,6 +293,42 @@ def test_opencode_is_read_past_its_watermark(home: FakeHome, make: Factory) -> N
     assert ingestor.scan().events_changed == 1
 
 
+def test_an_opencode_row_that_is_not_text_does_not_abort_the_scan(
+    home: FakeHome, make: Factory
+) -> None:
+    """One unreadable row must not cost the Claude and Codex accounts their scan."""
+    created = int(NOW * 1000)
+    with closing(sqlite3.connect(home.opencode_db)) as connection, connection:
+        connection.execute(
+            "INSERT INTO message VALUES (?, ?, ?, ?, ?)",
+            ("msg_null", "ses1", created, created, None),
+        )
+        connection.execute(
+            "INSERT INTO message VALUES (?, ?, ?, ?, ?)", ("msg_int", "ses1", created, created, 42)
+        )
+    ingestor = make()
+    report = ingestor.scan()
+    assert report.problems == []
+    assert {event.account for event in ingestor.index.events()} >= {CLAUDE, CODEX, OPENCODE}
+    assert not any(event.key.endswith(("msg_null", "msg_int")) for event in ingestor.index.events())
+    assert ingestor.store.get_meta(keys.opencode_watermark(OPENCODE)) == str(created)
+
+
+def test_an_opencode_watermark_ignores_a_non_integer_timestamp(
+    home: FakeHome, make: Factory
+) -> None:
+    ingestor = make()
+    ingestor.scan()
+    mark = keys.opencode_watermark(OPENCODE)
+    before = ingestor.store.get_meta(mark)
+    with closing(sqlite3.connect(home.opencode_db)) as connection, connection:
+        connection.execute(
+            "INSERT INTO message VALUES (?, ?, ?, ?, ?)", ("msg_bad", "ses1", 0, "later", "{}")
+        )
+    ingestor.scan()  # a TEXT timestamp sorts above every integer, so the row is returned
+    assert ingestor.store.get_meta(mark) == before
+
+
 def test_broken_sources_are_reported_not_fatal(home: FakeHome, make: Factory) -> None:
     home.opencode_db.write_bytes(b"not a database" * 100)
     (home.root / ".claude" / "stats-cache.json").write_text("{broken")

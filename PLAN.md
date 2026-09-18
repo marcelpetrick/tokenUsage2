@@ -219,4 +219,4 @@ isolated, regression-tested, versioned and committed on its own.
 | Version | Status | Finding and work | Acceptance evidence |
 |---------|--------|------------------|---------------------|
 | 0.13.15 | ☑ | #1: normalize an unopenable or corrupt archive into the reported store error instead of a raw traceback. | Store coverage proves a junk archive file and an uncreatable archive directory raise `StoreUnusableError`; a CLI regression proves the corrupt case exits 2 with the rebuild instruction and no traceback. |
-| 0.13.16 | ☐ | #2: tolerate an OpenCode row whose `data` column is not text, instead of aborting the whole scan. | Pending. |
+| 0.13.16 | ☑ | #2: tolerate an OpenCode row whose `data` column is not text, instead of aborting the whole scan. | Parser coverage proves a `None`, integer or float column is skipped like any other unreadable record; ingestion coverage proves a scan over a database holding such rows still reports no problem, keeps the Claude and Codex accounts, and leaves the watermark on the newest integer timestamp. |

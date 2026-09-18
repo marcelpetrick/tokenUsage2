@@ -70,7 +70,15 @@ def cache_write_1h(usage: Mapping[str, object]) -> int:
     )
 
 
-def _loads(line: bytes | str) -> dict | None:
+def _loads(line: object) -> dict | None:
+    """A JSON object from a log line or a database column, tolerating junk.
+
+    What is not text is rejected before ``json.loads`` sees it: a SQLite column
+    holds whatever was written to it, so a row can hand over ``None`` or a
+    number where the schema promises text.
+    """
+    if not isinstance(line, str | bytes | bytearray):
+        return None
     try:
         data = json.loads(line)
     except ValueError:
@@ -276,7 +284,7 @@ def make_parser(account: Account, ctx: Mapping[str, object], path: Path) -> Pars
     return ClaudeParser(account.id)
 
 
-def parse_opencode_message(account: str, row_id: str, data: str | bytes) -> Event | None:
+def parse_opencode_message(account: str, row_id: str, data: object) -> Event | None:
     """One row of OpenCode's ``message`` table."""
     obj = _loads(data)
     if obj is None or obj.get("role") != "assistant":

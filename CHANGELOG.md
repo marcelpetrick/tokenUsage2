@@ -10,6 +10,14 @@ All notable changes to tokenUsage2. Versions follow semantic versioning; the
 archive schema version is noted whenever it changes, because an older build
 refuses a newer archive.
 
+## 0.13.16
+
+### Fixed
+
+- Skip an OpenCode `message` row whose `data` or `time_updated` column does not
+  hold what the schema promises, instead of aborting the whole scan — and with
+  it the unrelated Claude Code and Codex accounts — on the malformed row.
+
 ## 0.13.15
 
 ### Fixed

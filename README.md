@@ -154,7 +154,7 @@ Codex reports its provider per session (`model_provider`), OpenCode per message.
 | Claude Code | statusline snapshots (`<home>/*rate-limit*.json`, `$XDG_STATE_HOME/*/quota/claude.json`) | 5 h / weekly quota, newest snapshot wins. Claude Code only exposes quota to a statusline hook, e.g. the one installed by `abtop --setup`. |
 | Codex CLI | `<home>/sessions/**/rollout-*.jsonl`, `archived_sessions/` | `token_count` events; rate-limit refreshes repeat the same cumulative total, so one increment per `(thread, cumulative total)` across all homes — a copied home adds nothing and is flagged by `--doctor`. Compaction restarts the cumulative total; increments after a restart are kept apart from earlier ones with the same total. `input_tokens` includes the cached part and is split. Matches Codex's own `threads.tokens_used` (±0–2 %). |
 | Codex CLI | the same events | `rate_limits` per account — live 5 h and weekly quota for each `CODEX_HOME`. |
-| OpenCode | `opencode.db`, table `message` | per assistant message, read past a watermark. |
+| OpenCode | `opencode.db`, table `message` | per assistant message, read past a watermark. A row whose columns do not hold what the schema promises is skipped, like any other unreadable record. |
 
 All tools are normalised to *fresh input · cache read · cache write · output*
 (reasoning is a subset of output). Every request is attributed to its own
