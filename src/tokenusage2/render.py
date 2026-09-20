@@ -623,8 +623,10 @@ def draw_timeline(canvas: Canvas, rect: Rect, snapshot: Snapshot, view: View) ->
     select_x = plot_x + snapshot.selected * slot
     canvas.put(select_x, label_y, selected.short, "hi", limit=inner_x + inner_w - select_x)
     value_text = tally_amount(selected.total, metric)
-    value_y = inner_y + chart_h - 1 - heights[snapshot.selected]
-    if (totals[snapshot.selected] or selected.total.unpriced) and value_y >= inner_y:
+    # A bar that reaches the top of the chart leaves no row above it for its
+    # value, so the value moves onto the bar's own top row instead of vanishing.
+    value_y = max(inner_y, inner_y + chart_h - 1 - heights[snapshot.selected])
+    if totals[snapshot.selected] or selected.total.unpriced:
         value_x = min(select_x, inner_x + inner_w - len(value_text))
         canvas.put(value_x, value_y, value_text, "accent")
     if trend:

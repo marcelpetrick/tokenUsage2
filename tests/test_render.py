@@ -13,6 +13,7 @@ from tokenusage2.demo import DemoSource
 from tokenusage2.model import Account, Event, Tool, Usage
 from tokenusage2.pricing import Rates
 from tokenusage2.render import (
+    AXIS,
     THEME_NAMES,
     Column,
     View,
@@ -393,6 +394,35 @@ def test_timeline_shows_the_cache_trend(demo: DemoSource) -> None:
     assert "█" in row or "▇" in row
     short = "\n".join(frame(demo, View(theme="plain"), 100, 16))  # timeline too short
     assert "cache-hit share" not in short
+
+
+def test_the_selected_total_stays_visible_on_a_full_height_bar() -> None:
+    """The current bucket is usually the tallest, so its bar reaches the top row
+    and leaves nothing above it; the total then sits on the bar itself."""
+    accounts = [Account("a", Tool.CLAUDE, Path("/a"), "alpha")]
+
+    def event(ts: float, output: int) -> Event:
+        return Event(f"e{ts:.0f}", ts, Tool.CLAUDE, "a", "m", "", "", "", Usage(output=output))
+
+    def chart(events: list[Event]) -> tuple[str, list[str]]:
+        """The selected bucket's total, and the chart rows without the y axis."""
+        snapshot = build_snapshot(
+            events, accounts, [], now=NOW, tz=BERLIN, period=Period.DAY, count=7
+        )
+        lines = visible(render(snapshot, View(theme="plain"), 160, 48, tz=BERLIN))
+        top = next(index for index, line in enumerate(lines) if "Tokens per day" in line)
+        rows = lines[top + 1 :]
+        bottom = next(index for index, line in enumerate(rows) if line.startswith("\u2570"))
+        total = tally_amount(snapshot.buckets[snapshot.selected].total, Metric.TOTAL)
+        return total, [line[AXIS + 1 :] for line in rows[:bottom]]
+
+    old, current = NOW - 3 * 86400, NOW - 60
+    peak, rows = chart([event(old, 1_000), event(current, 900_000)])
+    assert peak in rows[0]  # drawn over the bar, because no row is left above it
+
+    small, rows = chart([event(old, 900_000), event(current, 1_000)])
+    assert any(small in row for row in rows)
+    assert small not in rows[0]  # a short bar still gets its total floated above
 
 
 def test_footer_shows_an_active_alert(demo: DemoSource) -> None:

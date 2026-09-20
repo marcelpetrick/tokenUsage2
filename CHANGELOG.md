@@ -10,6 +10,16 @@ All notable changes to tokenUsage2. Versions follow semantic versioning; the
 archive schema version is noted whenever it changes, because an older build
 refuses a newer archive.
 
+## 0.13.17
+
+### Fixed
+
+- Show the selected bucket's total when its bar reaches the top of the timeline.
+  The value was drawn on the row above the bar, which does not exist for the
+  tallest bucket, so it was dropped instead — and in the weekly and monthly
+  views the current bucket is usually the tallest one. It now sits on the bar's
+  own top row.
+
 ## 0.13.16
 
 ### Fixed
