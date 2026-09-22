@@ -344,6 +344,32 @@ def make_mp4(ffmpeg: str, frames: list[tuple[Path, float]], output: Path, scratc
     )
 
 
+def make_combined_mp4(ffmpeg: str, inputs: list[Path], output: Path, scratch: Path) -> None:
+    manifest = scratch / "combined.ffconcat"
+    lines = ["ffconcat version 1.0", *(f"file '{path}'" for path in inputs)]
+    manifest.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    subprocess.run(
+        [
+            ffmpeg,
+            "-loglevel",
+            "error",
+            "-y",
+            "-f",
+            "concat",
+            "-safe",
+            "0",
+            "-i",
+            str(manifest),
+            "-c",
+            "copy",
+            "-movflags",
+            "+faststart",
+            str(output),
+        ],
+        check=True,
+    )
+
+
 def render_story(browser: str, magick: str, ffmpeg: str, story: Story, scratch: Path) -> None:
     source = PublicDemo(ZoneInfo("Europe/Berlin"), clock=lambda: NOW)
     view = View(theme="default", redact=True)
@@ -379,10 +405,18 @@ def main() -> int:
         scratch = Path(directory)
         for story in STORIES:
             render_story(browser, magick, ffmpeg, story, scratch)
+        make_combined_mp4(
+            ffmpeg,
+            [OUTPUT_DIR / f"tokenUsage2-{story.slug}.mp4" for story in STORIES],
+            OUTPUT_DIR / "tokenUsage2-linkedin.mp4",
+            scratch,
+        )
     for story in STORIES:
         for suffix in ("gif", "mp4"):
             output = OUTPUT_DIR / f"tokenUsage2-{story.slug}.{suffix}"
             print(f"wrote {output.relative_to(ROOT)} ({output.stat().st_size / 1_000_000:.2f} MB)")
+    combined = OUTPUT_DIR / "tokenUsage2-linkedin.mp4"
+    print(f"wrote {combined.relative_to(ROOT)} ({combined.stat().st_size / 1_000_000:.2f} MB)")
     return 0
 
 

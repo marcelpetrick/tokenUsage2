@@ -49,9 +49,10 @@ synthetic data. Identities are fictional and remain redacted throughout. The
 animations use LinkedIn's feed-friendly 4:5 format (720 × 900); matching
 [tour](media/tokenUsage2-tour.mp4), [groupings](media/tokenUsage2-groupings.mp4)
 and [exploration](media/tokenUsage2-explore.mp4) MP4s are included for platforms
-that handle video more reliably than animated GIFs. Reproduce all six files
-with [`scripts/record_gifs.py`](scripts/record_gifs.py), or explore the same
-data interactively with `tokenusage2 --demo`.*
+that handle video more reliably than animated GIFs. The three tours are also
+available as one [38.6-second LinkedIn cut](media/tokenUsage2-linkedin.mp4).
+Reproduce all seven files with [`scripts/record_gifs.py`](scripts/record_gifs.py),
+or explore the same data interactively with `tokenusage2 --demo`.*
 
 ## Quick start
 
