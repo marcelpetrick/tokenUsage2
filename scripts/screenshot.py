@@ -4,11 +4,12 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-"""Render the ``--demo`` dashboard to the README's ``media/tokenUsage2.png``.
+"""Render a static ``--demo`` dashboard to ``media/tokenUsage2.png``.
 
 The frame is produced by the real renderer, its ANSI colours are translated to
-HTML, and headless Chromium takes the screenshot. Demo data is synthetic, so
-the image never shows a real account.
+HTML, and headless Chromium takes the screenshot. Demo data is synthetic, so the
+image never shows a real account. The README's animated tours are produced by
+``record_gifs.py`` instead.
 """
 
 import html

@@ -30,10 +30,27 @@ backend**, as daily, weekly and monthly views. Read-only, offline, no API keys.
 and moved here with its full history (see `CHANGELOG.md` 0.3.8); all work
 continues in this repository.
 
-![tokenUsage2 synthetic dashboard](media/tokenUsage2.png)
+### See tokenUsage2 in action
 
-*Rendered from deterministic synthetic data by the real dashboard. Reproduce
-it with [`scripts/screenshot.py`](scripts/screenshot.py), or explore the same
+#### Periods, metrics and colour themes
+
+![tokenUsage2 switches between daily, weekly and monthly periods, token metrics and colour themes](media/tokenUsage2-tour.gif)
+
+#### Timeline groupings, breakdowns and account filters
+
+![tokenUsage2 changes timeline groupings, breakdown dimensions and account filters](media/tokenUsage2-groupings.gif)
+
+#### Live feed, heatmap, history and keyboard help
+
+![tokenUsage2 opens its heatmap and keyboard help while exploring historical buckets](media/tokenUsage2-explore.gif)
+
+*Every frame above comes from the real dashboard renderer and deterministic
+synthetic data. Identities are fictional and remain redacted throughout. The
+animations use LinkedIn's feed-friendly 4:5 format (720 × 900); matching
+[tour](media/tokenUsage2-tour.mp4), [groupings](media/tokenUsage2-groupings.mp4)
+and [exploration](media/tokenUsage2-explore.mp4) MP4s are included for platforms
+that handle video more reliably than animated GIFs. Reproduce all six files
+with [`scripts/record_gifs.py`](scripts/record_gifs.py), or explore the same
 data interactively with `tokenusage2 --demo`.*
 
 ## Quick start
