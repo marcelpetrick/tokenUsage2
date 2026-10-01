@@ -41,6 +41,16 @@ def count(value: object) -> int:
     return max(0, int(value)) if type(value) is float and math.isfinite(value) else 0
 
 
+def finite_number(value: object) -> bool:
+    """Whether ``value`` is a real finite number, excluding booleans."""
+    if isinstance(value, bool) or not isinstance(value, int | float):
+        return False
+    try:
+        return math.isfinite(value)
+    except OverflowError:
+        return False
+
+
 def parse_ts(value: object) -> float | None:
     if not isinstance(value, str) or not value:
         return None
@@ -218,7 +228,7 @@ class CodexParser:
             if not isinstance(window, dict):
                 continue
             used = window.get("used_percent")
-            if isinstance(used, bool) or not isinstance(used, int | float):
+            if not finite_number(used):
                 continue
             minutes = count(window.get("window_minutes"))
             resets = window.get("resets_at")
@@ -227,7 +237,7 @@ class CodexParser:
                     account=self.account,
                     window=CODEX_WINDOWS.get(minutes, f"{minutes}m"),
                     used_percent=float(used),
-                    resets_at=float(resets) if isinstance(resets, int | float) else None,
+                    resets_at=float(resets) if finite_number(resets) else None,
                     observed_at=self._limits_ts,
                     source="codex rollout",
                     plan=plan,
@@ -294,7 +304,7 @@ def parse_opencode_message(account: str, row_id: str, data: object) -> Event | N
     if not isinstance(tokens, dict) or not isinstance(times, dict):
         return None
     created = times.get("created")
-    if isinstance(created, bool) or not isinstance(created, int | float):
+    if not finite_number(created):
         return None
     cache = tokens.get("cache") if isinstance(tokens.get("cache"), dict) else {}
     fresh = count(tokens.get("input"))
@@ -425,14 +435,14 @@ def parse_claude_quota(
 ) -> list[QuotaWindow]:
     """A Claude Code statusline snapshot with ``five_hour``/``seven_day`` windows."""
     observed = data.get("updated_at")
-    observed_at = float(observed) if isinstance(observed, int | float) else fallback_ts
+    observed_at = float(observed) if finite_number(observed) else fallback_ts
     quotas = []
     for key, name in (("five_hour", "5h"), ("seven_day", "week")):
         window = data.get(key)
         if not isinstance(window, dict):
             continue
         used = window.get("used_percentage", window.get("used_percent"))
-        if isinstance(used, bool) or not isinstance(used, int | float):
+        if not finite_number(used):
             continue
         resets = window.get("resets_at")
         quotas.append(
@@ -440,7 +450,7 @@ def parse_claude_quota(
                 account=account,
                 window=name,
                 used_percent=float(used),
-                resets_at=float(resets) if isinstance(resets, int | float) and resets else None,
+                resets_at=float(resets) if finite_number(resets) and resets else None,
                 observed_at=observed_at,
                 source=source,
             )

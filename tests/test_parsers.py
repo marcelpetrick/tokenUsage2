@@ -226,6 +226,16 @@ def test_an_opencode_row_that_is_not_text_is_skipped() -> None:
     assert parse_opencode_message("acct", "row", b'{"role": "user"}') is None
 
 
+def test_opencode_rejects_non_finite_or_unrepresentable_timestamps() -> None:
+    for created in (float("nan"), float("inf"), float("-inf"), 10**1000):
+        data = {
+            "role": "assistant",
+            "time": {"created": created},
+            "tokens": {"input": 1},
+        }
+        assert parse_opencode_message("acct", "row", json.dumps(data)) is None
+
+
 def test_stats_cache_backfill_only_before_the_first_transcript() -> None:
     data = {
         "dailyModelTokens": [
@@ -300,6 +310,17 @@ def test_claude_quota_snapshot() -> None:
     ]
     fallback = parse_claude_quota("acct", {"five_hour": {"used_percentage": True}}, 5.0, "f")
     assert fallback == []
+    invalid = parse_claude_quota(
+        "acct",
+        {
+            "updated_at": float("nan"),
+            "five_hour": {"used_percentage": float("nan"), "resets_at": float("nan")},
+            "seven_day": {"used_percent": 10, "resets_at": float("inf")},
+        },
+        5.0,
+        "f",
+    )
+    assert [(q.used_percent, q.resets_at, q.observed_at) for q in invalid] == [(10.0, None, 5.0)]
 
 
 def test_parse_ts_and_count() -> None:

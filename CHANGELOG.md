@@ -10,6 +10,13 @@ All notable changes to tokenUsage2. Versions follow semantic versioning; the
 archive schema version is noted whenever it changes, because an older build
 refuses a newer archive.
 
+## 0.13.20
+
+### Fixed
+
+- Reject non-finite or unrepresentable OpenCode timestamps and provider quota
+  values before they can abort archive writes or dashboard rendering.
+
 ## 0.13.19
 
 ### Fixed
