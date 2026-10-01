@@ -10,6 +10,13 @@ All notable changes to tokenUsage2. Versions follow semantic versioning; the
 archive schema version is noted whenever it changes, because an older build
 refuses a newer archive.
 
+## 0.13.24
+
+### Documentation
+
+- Synchronize the privacy guidance and architecture plan with the completed
+  full-project repair work.
+
 ## 0.13.23
 
 ### Fixed

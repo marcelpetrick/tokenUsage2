@@ -306,7 +306,8 @@ bell = false                 # terminal bell
   directory, session id and token counts. Prompt and response text is never
   stored. Identity discovery decodes e-mail/plan claims locally; credential
   values are never stored or shown.
-- `--redact` / `x` masks e-mail addresses on screen and in JSON.
+- `--redact` / `x` masks e-mail addresses on screen, in JSON and in the
+  sources/doctor report.
 
 ## Development
 

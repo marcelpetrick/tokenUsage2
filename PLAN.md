@@ -220,3 +220,22 @@ isolated, regression-tested, versioned and committed on its own.
 |---------|--------|------------------|---------------------|
 | 0.13.15 | ☑ | #1: normalize an unopenable or corrupt archive into the reported store error instead of a raw traceback. | Store coverage proves a junk archive file and an uncreatable archive directory raise `StoreUnusableError`; a CLI regression proves the corrupt case exits 2 with the rebuild instruction and no traceback. |
 | 0.13.16 | ☑ | #2: tolerate an OpenCode row whose `data` column is not text, instead of aborting the whole scan. | Parser coverage proves a `None`, integer or float column is skipped like any other unreadable record; ingestion coverage proves a scan over a database holding such rows still reports no problem, keeps the Claude and Codex accounts, and leaves the watermark on the newest integer timestamp. |
+
+## 11. Full project review repair plan (October 2026)
+
+The full code, documentation and architecture review found nine reproducible
+implementation defects plus an outdated audit. Each behavior change has a
+focused regression and a version entry; the final release runs the complete
+local gate again.
+
+| Version | Status | Finding and work |
+|---------|--------|------------------|
+| 0.13.18 | ☑ | Redact account identities and preserve split terminal key input. |
+| 0.13.19 | ☑ | Reconcile removed Claude stats-cache days with retained archive totals. |
+| 0.13.20 | ☑ | Reject invalid OpenCode timestamps and quota values. |
+| 0.13.21 | ☑ | Preserve ambiguous endpoint hints and shared multi-tool paths. |
+| 0.13.22 | ☑ | Keep colliding live and archived account labels in separate groups. |
+| 0.13.23 | ☑ | Reject non-finite configured thresholds and prices. |
+| 0.13.24 | ☑ | Synchronize user and architecture documentation with the repairs. |
+| 0.13.25 | ☑ | Refresh the full-state audit against the repaired project. |
+| 0.13.26 | ☑ | Run the complete release gate and prepare the public release. |
