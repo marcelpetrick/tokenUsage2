@@ -251,6 +251,23 @@ def test_retained_totals_are_scaled_to_requests_and_replaced(
     assert sum(event.usage.unsplit for event in ingestor.store.load_events()) == 1250
 
 
+def test_removed_stats_cache_days_remove_their_retained_totals(
+    home: FakeHome, make: Factory
+) -> None:
+    cache = home.root / ".claude" / "stats-cache.json"
+    ingestor = make()
+    ingestor.scan()
+    assert retained(ingestor, CLAUDE) == 5000
+
+    previous = cache.stat().st_mtime_ns
+    cache.write_text(json.dumps({"dailyModelTokens": []}))
+    os.utime(cache, ns=(previous + 10**9, previous + 10**9))
+
+    ingestor.scan()
+    assert retained(ingestor, CLAUDE) == 0
+    assert not any(event.usage.unsplit for event in ingestor.store.load_events())
+
+
 def test_retained_days_are_utc_days(home: FakeHome, make: Factory) -> None:
     write_jsonl(  # 23:30 UTC on 9 September is already 10 September in Berlin
         home.root / ".claude" / "projects" / "-work-alpha" / "old.jsonl",
@@ -1006,4 +1023,4 @@ def test_retained_totals_derived_by_a_newer_rule_are_left_alone(
     ingestor.store.set_meta(mark, "29296:1:2:None:None")  # an unversioned, older signature
     ingestor.store.commit()
     ingestor.scan()
-    assert retained(ingestor, CLAUDE) == derived + 700
+    assert retained(ingestor, CLAUDE) == 700

@@ -18,7 +18,6 @@ from collections.abc import Callable, Iterable, Iterator, Mapping
 from contextlib import closing
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, tzinfo
-from datetime import time as clock_time
 from pathlib import Path
 from typing import BinaryIO
 
@@ -522,10 +521,10 @@ class Ingestor:
             report.problems.append(f"{display_path(path, self.home)}: {error}")
             return
         prefix = keys.backfill_prefix(account.id)
-        if before is not None:
-            cutoff = datetime.combine(before, clock_time(0), tzinfo=UTC).timestamp()
-            self.index.discard(prefix, cutoff)
-            self.store.delete_events(prefix, cutoff)
+        # The cache is a snapshot, so records absent from a rewritten cache must
+        # disappear too. Rebuild this account's small retained set atomically.
+        removed = self.index.discard(prefix, float("-inf"))
+        self.store.delete_events(prefix, float("-inf"))
         data = data if isinstance(data, dict) else {}
         requests = [
             event
@@ -540,7 +539,7 @@ class Ingestor:
             if self.index.replace(event)
         ]
         self.store.replace_events(changed)
-        report.events_changed += len(changed)
+        report.events_changed += removed + len(changed)
         self.store.set_meta(keys.stats_cache_scale_key(account.id), keys.format_scale(scale, days))
         self.store.set_meta(mark, signature)
 

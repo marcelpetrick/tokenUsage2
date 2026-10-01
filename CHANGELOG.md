@@ -10,6 +10,13 @@ All notable changes to tokenUsage2. Versions follow semantic versioning; the
 archive schema version is noted whenever it changes, because an older build
 refuses a newer archive.
 
+## 0.13.19
+
+### Fixed
+
+- Remove retained daily totals when their day or model disappears from a
+  rewritten Claude stats cache, keeping the archive equal to the snapshot.
+
 ## 0.13.18
 
 ### Fixed
