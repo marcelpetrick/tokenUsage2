@@ -109,6 +109,8 @@ def test_prices_are_parsed_in_order_with_defaults(tmp_path: Path) -> None:
         '[prices."gpt"]\ninput = 1',
         '[prices."gpt"]\ninput = 1\noutput = -2',
         '[prices."gpt"]\ninput = true\noutput = 2',
+        '[prices."gpt"]\ninput = nan\noutput = 2',
+        '[prices."gpt"]\ninput = 1\noutput = inf',
         '[prices."gpt"]\ninput = 1\noutput = 2\nfree = 3',
     ],
 )
@@ -136,6 +138,8 @@ def test_alert_settings(tmp_path: Path) -> None:
         "[alerts]\nburn_factor = -1",
         "[alerts]\nnotify = 'yes'",
         "[alerts]\nquota_percent = true",
+        "[alerts]\nquota_percent = nan",
+        "[alerts]\nburn_floor = inf",
         "[alerts]\nsiren = true",
     ],
 )

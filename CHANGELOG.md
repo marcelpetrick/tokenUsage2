@@ -10,6 +10,13 @@ All notable changes to tokenUsage2. Versions follow semantic versioning; the
 archive schema version is noted whenever it changes, because an older build
 refuses a newer archive.
 
+## 0.13.23
+
+### Fixed
+
+- Reject `nan` and infinite alert thresholds and custom prices in the optional
+  configuration instead of propagating invalid comparisons and estimates.
+
 ## 0.13.22
 
 ### Fixed

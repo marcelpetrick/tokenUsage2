@@ -9,6 +9,7 @@ adds homes that cannot be found automatically, hides homes, renames accounts
 and pins models to backend labels.
 """
 
+import math
 import re
 import tomllib
 from collections.abc import Mapping
@@ -18,6 +19,15 @@ from pathlib import Path
 from tokenusage2.pricing import Rates
 
 _VARIABLE = re.compile(r"\$\{?([A-Za-z_][A-Za-z0-9_]*)\}?")
+
+
+def _finite_number(value: object) -> bool:
+    if isinstance(value, bool) or not isinstance(value, int | float):
+        return False
+    try:
+        return math.isfinite(value)
+    except OverflowError:
+        return False
 
 
 class ConfigError(ValueError):
@@ -102,7 +112,7 @@ def _alerts(data: Mapping[str, object]) -> AlertSettings:
         if name not in raw:
             continue
         value = raw[name]
-        valid = not isinstance(value, bool) and isinstance(value, int | float)
+        valid = _finite_number(value)
         if not valid or value < low or (high is not None and value > high):
             bound = f"between {low:g} and {high:g}" if high is not None else f">= {low:g}"
             raise ConfigError(f"alerts.{name} must be a number {bound}")
@@ -124,7 +134,7 @@ def _prices(data: Mapping[str, object]) -> tuple[tuple[str, Rates], ...]:
             raise ConfigError(f"prices.{pattern!r}: unknown keys {', '.join(unknown)}")
         values = {}
         for name, value in entry.items():
-            if isinstance(value, bool) or not isinstance(value, int | float) or value < 0:
+            if not _finite_number(value) or value < 0:
                 raise ConfigError(f"prices.{pattern!r}.{name} must be a number >= 0")
             values[name] = float(value)
         if "input" not in values or "output" not in values:
