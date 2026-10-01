@@ -10,6 +10,13 @@ All notable changes to tokenUsage2. Versions follow semantic versioning; the
 archive schema version is noted whenever it changes, because an older build
 refuses a newer archive.
 
+## 0.13.22
+
+### Fixed
+
+- Keep live and archived accounts with the same display label in separate
+  timeline groups by disambiguating colliding labels with their stable ids.
+
 ## 0.13.21
 
 ### Fixed

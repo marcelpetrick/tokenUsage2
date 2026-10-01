@@ -356,6 +356,19 @@ def group_key(
     return key_function(group, names, backend, project_label)(event)
 
 
+def account_group_names(accounts: Sequence[Account]) -> dict[str, str]:
+    """Unique display keys, even when archived and live account labels collide."""
+    counts: dict[str, int] = {}
+    for account in accounts:
+        counts[account.label] = counts.get(account.label, 0) + 1
+    return {
+        account.id: account.label
+        if counts[account.label] == 1
+        else f"{account.label} [{account.id}]"
+        for account in accounts
+    }
+
+
 def quota_view(quota: QuotaWindow, now: float) -> QuotaView:
     rolled = quota.resets_at is not None and quota.resets_at <= now
     return QuotaView(
@@ -408,7 +421,7 @@ def build_snapshot(
     timestamps = [event.ts for event in events]
     visible_end = math.nextafter(now, math.inf)
     visible_stop = bisect_left(timestamps, visible_end)
-    names = {account.id: account.label for account in accounts}
+    names = account_group_names(accounts)
     label = backend or logged_route
     label_project = project or project_name
     price = pricing or (lambda tool, model, route: None)

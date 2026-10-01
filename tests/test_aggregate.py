@@ -113,6 +113,23 @@ def test_totals_buckets_and_group_order() -> None:
     assert (snapshot.first_ts, snapshot.last_ts) == (at(40), at(0, 10))
 
 
+def test_duplicate_account_labels_remain_separate_groups() -> None:
+    accounts = [
+        Account("live", Tool.CLAUDE, Path("/live"), "same"),
+        Account("archived", Tool.CLAUDE, Path("/gone"), "same", origin="archive"),
+    ]
+    events = [
+        Event("one", at(), Tool.CLAUDE, "live", "m", "", "", "", Usage(input=10)),
+        Event("two", at(), Tool.CLAUDE, "archived", "m", "", "", "", Usage(input=20)),
+    ]
+    snapshot = build_snapshot(events, accounts, [], now=NOW, tz=BERLIN)
+    assert snapshot.groups == ["same [archived]", "same [live]"]
+    assert {name: tally.total for name, tally in snapshot.buckets[-1].groups.items()} == {
+        "same [live]": 10,
+        "same [archived]": 20,
+    }
+
+
 def test_cursor_scrolls_the_window_only_past_its_edge() -> None:
     inside = snap([ev(at(10))], count=5, cursor=2)
     assert inside.selected == 2
