@@ -10,6 +10,13 @@ All notable changes to tokenUsage2. Versions follow semantic versioning; the
 archive schema version is noted whenever it changes, because an older build
 refuses a newer archive.
 
+## 0.13.21
+
+### Fixed
+
+- Represent conflicting model-to-endpoint hints as multiple endpoints and
+  discover a configured physical path independently for each tool type.
+
 ## 0.13.20
 
 ### Fixed

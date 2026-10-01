@@ -135,6 +135,35 @@ def test_process_hints_come_first() -> None:
     assert found.backends.hint("m1") == "ollama@gpu"
 
 
+def test_conflicting_backend_hints_do_not_choose_one_endpoint(tmp_path: Path) -> None:
+    home = tmp_path / "home"
+    home.mkdir()
+    (home / ".zshrc").write_text(
+        "one() { ANTHROPIC_BASE_URL=http://one:11434 claude --model qwen; }\n"
+        "two() { ANTHROPIC_BASE_URL=http://two:11434 claude --model qwen; }\n"
+    )
+    found = discover(home, {}, Config())
+    assert found.backends.hint("qwen") == "multiple endpoints (ollama@one / ollama@two)"
+    assert found.backends.label(Tool.CLAUDE, "qwen", "") == (
+        "multiple endpoints (ollama@one / ollama@two)"
+    )
+
+
+def test_one_path_can_hold_two_tool_account_types(tmp_path: Path) -> None:
+    shared = tmp_path / "shared"
+    (shared / "projects").mkdir(parents=True)
+    (shared / "sessions").mkdir()
+    found = discover(
+        tmp_path,
+        {},
+        Config(claude_homes=(shared,), codex_homes=(shared,)),
+    )
+    assert [(account.tool, account.home) for account in found.accounts] == [
+        (Tool.CLAUDE, shared),
+        (Tool.CODEX, shared),
+    ]
+
+
 def test_backend_map_globs_override() -> None:
     backends = BackendMap({"qwen": "hinted"}, (("qw*", "configured"),))
     assert backends.override("qwen") == "configured"

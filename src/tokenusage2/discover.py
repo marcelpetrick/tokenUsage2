@@ -443,23 +443,24 @@ def discover(
     ignored = {path.resolve() for path in config.ignore}
     real_home = home.resolve()
     accounts: list[Account] = []
-    seen: set[Path] = set()
+    seen: set[tuple[Tool, Path]] = set()
     labels: set[str] = set()
     for tool in Tool:
         # The steadiest spelling of a directory comes first and names its account.
         for path, origin in sorted(candidates[tool], key=lambda found: _steadiness(found[1])):
             resolved = path.resolve()
-            if resolved in seen:
+            identity = (tool, resolved)
+            if identity in seen:
                 continue
             if resolved in ignored:
                 notes.append(f"ignored by config: {display_path(path, home)}")
-                seen.add(resolved)
+                seen.add(identity)
                 continue
             if not valid[tool](path):
                 if origin not in {"default", "scan"}:
                     notes.append(f"{tool} home without data ({origin}): {display_path(path, home)}")
                 continue
-            seen.add(resolved)
+            seen.add(identity)
             if tool is Tool.CLAUDE:
                 identity, plan = claude_identity(path, home)
             elif tool is Tool.CODEX:
@@ -487,10 +488,16 @@ def discover(
                 )
             )
 
-    model_hints: dict[str, str] = {}
+    model_labels: dict[str, set[str]] = {}
     for hint in hints:
         for model in hint.models:
-            model_hints.setdefault(model, hint.label)
+            model_labels.setdefault(model, set()).add(hint.label)
+    model_hints = {
+        model: next(iter(labels))
+        if len(labels) == 1
+        else f"multiple endpoints ({' / '.join(sorted(labels))})"
+        for model, labels in model_labels.items()
+    }
     return Discovery(
         accounts=tuple(accounts),
         hints=tuple(hints),
