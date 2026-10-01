@@ -92,6 +92,17 @@ def test_doctor_reports_discovery_and_reconciliation(
         assert secret not in out
 
 
+def test_doctor_redacts_identities(
+    home: FakeHome, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    code, out, _ = call(
+        ["--doctor", "--redact", "--no-archive", "--tz", "UTC"], home.env, tmp_path, capsys
+    )
+    assert code == 0
+    assert "w…@c….example" in out
+    assert "work@corp.example" not in out
+
+
 def test_live_frame_uses_the_archive(
     home: FakeHome, tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:

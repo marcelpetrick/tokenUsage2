@@ -288,7 +288,7 @@ def _run(
 
     if args.doctor:
         report = source.scan()
-        print("\n".join(source.sources()))
+        print("\n".join(source.sources(args.redact)))
         return _outdated(report)
     if args.json or args.once or args.csv:
         report = source.scan()

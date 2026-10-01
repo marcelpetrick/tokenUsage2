@@ -69,7 +69,7 @@ SEQUENCES = {
 _BY_LENGTH = sorted(SEQUENCES.items(), key=lambda item: -len(item[0]))
 
 
-def decode_keys(data: str) -> list[str]:
+def _decode_keys(data: str, *, final: bool) -> tuple[list[str], str]:
     keys, index = [], 0
     while index < len(data):
         if data[index] != "\x1b":
@@ -82,15 +82,26 @@ def decode_keys(data: str) -> list[str]:
                 index += len(sequence)
                 break
         else:
+            tail = data[index:]
+            incomplete = tail == "\x1b" or any(sequence.startswith(tail) for sequence in SEQUENCES)
+            if not final and incomplete:
+                return keys, tail
             if data.startswith("\x1b[", index):
                 index += 2
                 while index < len(data) and not "@" <= data[index] <= "~":
                     index += 1
+                if index == len(data) and not final:
+                    return keys, data[index - len(tail) :]
                 index += 1
             else:
                 keys.append("esc")
                 index += 1
-    return keys
+    return keys, ""
+
+
+def decode_keys(data: str) -> list[str]:
+    """Decode one complete input chunk; ``Terminal`` also buffers partial chunks."""
+    return _decode_keys(data, final=True)[0]
 
 
 def _cycle[T](options: Sequence[T], current: T) -> T:
@@ -242,6 +253,7 @@ class Terminal:
         self.stdout = stdout
         self.fd = stdin.fileno()
         self.saved: list | None = None
+        self.pending = ""
 
     def __enter__(self) -> Terminal:
         self.saved = termios.tcgetattr(self.fd)
@@ -273,8 +285,13 @@ class Terminal:
     def read_keys(self, timeout: float) -> list[str]:
         ready, _, _ = select.select([self.fd], [], [], timeout)
         if not ready:
-            return []
-        return decode_keys(os.read(self.fd, 64).decode(errors="ignore"))
+            if not self.pending:
+                return []
+            keys, self.pending = _decode_keys(self.pending, final=True)
+            return keys
+        data = self.pending + os.read(self.fd, 64).decode(errors="ignore")
+        keys, self.pending = _decode_keys(data, final=False)
+        return keys
 
 
 def run(
@@ -409,7 +426,7 @@ def _loop(
                     height,
                     tz=tz,
                     status=notice if now < notice_until else status_text(report, source, view),
-                    sources=source.sources() if view.sources else (),
+                    sources=source.sources(view.redact) if view.sources else (),
                     mode="PAUSED" if view.paused else source.mode,
                     # a fresh notice (an export) takes the footer for its ten seconds
                     alert=busy

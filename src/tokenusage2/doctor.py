@@ -16,7 +16,7 @@ from tokenusage2.discover import Discovery, display_path
 from tokenusage2.ingest import Ingestor
 from tokenusage2.model import Account, Event, Tool
 from tokenusage2.procscan import AgentProcess
-from tokenusage2.render import compact, duration
+from tokenusage2.render import compact, duration, mask
 
 
 def codex_thread_totals(account: Account) -> dict[str, int]:
@@ -113,6 +113,7 @@ def doctor_lines(
     home: Path,
     tz: tzinfo,
     now: float,
+    redact: bool = False,
 ) -> list[str]:
     events = ingestor.index.events()
     counts = ingestor.store.event_counts()
@@ -133,7 +134,8 @@ def doctor_lines(
             f"  {account.tool:<8} {account.label:<16} {display_path(account.home, home)}"
             f"  [found via {account.origin}]"
         )
-        who = " · ".join(filter(None, (account.identity, account.plan))) or "identity unknown"
+        identity = mask(account.identity) if redact else account.identity
+        who = " · ".join(filter(None, (identity, account.plan))) or "identity unknown"
         lines.append(f"           {who} · {running.get(account.id, 0)} running")
         stored = (
             "database" if account.tool is Tool.OPENCODE else f"{files.get(account.id, 0)} files"

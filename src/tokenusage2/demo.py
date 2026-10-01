@@ -18,6 +18,7 @@ from tokenusage2.ingest import Progress, ScanReport
 from tokenusage2.model import Account, Event, QuotaWindow, Tool, Usage
 from tokenusage2.pricing import Pricer, Rates
 from tokenusage2.projects import project_name
+from tokenusage2.render import mask
 
 _PRICER = Pricer()
 
@@ -244,8 +245,11 @@ class DemoSource:
     def alert_settings(self) -> AlertSettings:
         return AlertSettings()
 
-    def sources(self) -> list[str]:
+    def sources(self, redact: bool = False) -> list[str]:
         return [
             "demo mode — synthetic data, no files are read",
-            *(f"  {a.tool:<8} {a.label:<12} {a.identity or '—'}" for a in ACCOUNTS),
+            *(
+                f"  {a.tool:<8} {a.label:<12} {mask(a.identity) if redact else a.identity or '—'}"
+                for a in ACCOUNTS
+            ),
         ]

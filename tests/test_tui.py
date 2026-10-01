@@ -25,6 +25,7 @@ from tokenusage2.store import StoreBusyError
 from tokenusage2.tui import (
     Controller,
     Terminal,
+    _decode_keys,
     _terminate,
     bucket_count,
     decode_keys,
@@ -39,6 +40,19 @@ def test_decode_keys() -> None:
     assert decode_keys("\x1b") == ["esc"]
     assert decode_keys("\x1b[99zq") == ["q"]
     assert decode_keys("\x1b[5~\x1bOP") == ["pgup", "f1"]
+
+
+@pytest.mark.parametrize(
+    ("sequence", "expected"),
+    [("\x1b[D", "left"), ("\x1b[6~", "pgdn"), ("\x1bOP", "f1")],
+)
+def test_escape_sequences_survive_every_split(sequence: str, expected: str) -> None:
+    pending = ""
+    decoded: list[str] = []
+    for byte in sequence:
+        keys, pending = _decode_keys(pending + byte, final=False)
+        decoded.extend(keys)
+    assert (decoded, pending) == ([expected], "")
 
 
 def test_controller_maps_every_key() -> None:
@@ -143,6 +157,17 @@ def test_run_loop_draws_reacts_and_quits() -> None:
     assert view.cursor == 1
 
 
+def test_sources_overlay_honors_interactive_redaction() -> None:
+    source = DemoSource(BERLIN, clock=lambda: NOW, days=5)
+    screen = FakeScreen([["x", "s"], []])
+    assert (
+        run(source, View(theme="plain", paused=True), BERLIN, screen=screen, clock=lambda: NOW) == 0
+    )
+    text = "\n".join(screen.frames[-1])
+    assert "y…@e….com" in text
+    assert "you@example.com" not in text
+
+
 def test_manual_rediscovery_redraws_changed_account_metadata() -> None:
     source = DemoSource(BERLIN, clock=lambda: NOW, days=5)
     accounts = [source.accounts()]
@@ -191,6 +216,13 @@ def test_terminal_session_restores_the_tty() -> None:
             os.write(master, b"\x1b[Dq")
             assert terminal.read_keys(1.0) == ["left", "q"]
             assert terminal.read_keys(0.0) == []
+            os.write(master, b"\x1b[")
+            assert terminal.read_keys(1.0) == []
+            os.write(master, b"D")
+            assert terminal.read_keys(1.0) == ["left"]
+            os.write(master, b"\x1b")
+            assert terminal.read_keys(1.0) == []
+            assert terminal.read_keys(0.0) == ["esc"]
         assert termios.tcgetattr(slave) == before
     # A pty hands output over in chunks: read until the teardown arrives.
     output, deadline = b"", time.monotonic() + 2.0

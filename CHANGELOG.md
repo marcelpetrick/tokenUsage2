@@ -10,6 +10,13 @@ All notable changes to tokenUsage2. Versions follow semantic versioning; the
 archive schema version is noted whenever it changes, because an older build
 refuses a newer archive.
 
+## 0.13.18
+
+### Fixed
+
+- Apply redaction to CLI and interactive sources reports, and buffer terminal
+  escape sequences split across reads so navigation keys remain reliable.
+
 ## 0.13.17
 
 ### Fixed
