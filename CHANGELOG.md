@@ -10,6 +10,13 @@ All notable changes to tokenUsage2. Versions follow semantic versioning; the
 archive schema version is noted whenever it changes, because an older build
 refuses a newer archive.
 
+## 0.13.25
+
+### Quality
+
+- Refresh the full-state code, documentation and architecture audit after all
+  reported findings were repaired and covered by regressions.
+
 ## 0.13.24
 
 ### Documentation
