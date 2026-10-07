@@ -371,7 +371,8 @@ the blue marker is the current version. Generated chart files are excluded from
 their own count.
 
 - Current counts: [`docs/history/loc-current.md`](docs/history/loc-current.md).
-- Refresh: `.venv/bin/python scripts/history_chart.py`.
+- Refresh: `git fetch --tags && .venv/bin/python scripts/history_chart.py` so
+  release markers match the public repository even immediately after a release.
 - Enforcement: `localPipeline.sh` runs the generator in `--check` mode, so a
   stale chart fails local CI and the release workflow.
 
