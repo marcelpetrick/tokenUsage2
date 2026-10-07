@@ -10,6 +10,20 @@ All notable changes to tokenUsage2. Versions follow semantic versioning; the
 archive schema version is noted whenever it changes, because an older build
 refuses a newer archive.
 
+## 0.13.28
+
+### Documentation
+
+- Audit every maintained document against the released CLI, configuration,
+  privacy model, current reference corpus and performance measurements.
+- Add a generated lines-of-code history chart, current-count table, release
+  markers and an offline test-to-product-code ratio.
+
+### Quality
+
+- Make a stale project-history chart fail the shared local, CI and release
+  pipeline so the documentation stays current with future commits.
+
 ## 0.13.27
 
 ### Fixed

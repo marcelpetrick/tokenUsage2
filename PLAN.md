@@ -105,6 +105,7 @@ aggregate.py → buckets (DST-safe local midnights), tallies, account summaries
 render.py    → cell canvas → ANSI/plain frame, themes, panels, overlays
 tui.py       → alternate screen, cbreak keys, resize, refresh loop
 cli.py       → TUI, --once, --json, --csv, --doctor and --demo
+history_chart.py → reproducible Git-history metrics, SVG and current-count table
 ```
 
 Python 3.14, standard library only (`sqlite3`, `tomllib`, `zoneinfo`,
@@ -253,6 +254,7 @@ needed corrections are parser context, discovery and display-time pricing.
 | Version | Status | Finding and work |
 |---------|--------|------------------|
 | 0.13.27 | ☑ | Add current Claude/OpenAI model prices, OpenAI cache writes and exact per-request long-context tiers; follow Codex `turn_context.cwd`; honor `sqlite_home`; validate CLI numeric edges; remove the normal-frame full-archive last-request scan; and add opt-in background health checks for the official Claude API / Claude Code and Codex API / CLI components. |
+| 0.13.28 | ☑ | Audit every maintained document, replace stale performance/privacy claims, and add a reproducible project-history chart with release markers and an offline test-to-product-code ratio; make stale generated history fail the shared local/CI/release gate. |
 
 Compatibility evidence:
 

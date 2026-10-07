@@ -30,6 +30,7 @@ def test_help_lists_every_stage() -> None:
         "Interpreter",
         "Virtualenv",
         "Dependencies",
+        "History",
         "Ruff lint",
         "Ruff format",
         "ShellCheck",

@@ -18,7 +18,8 @@ SPDX-License-Identifier: GPL-3.0-or-later
 
 A live, btop-style terminal dashboard for the tokens your coding agents burn —
 **Claude Code, Codex CLI and OpenCode**, across **every local account and
-backend**, as daily, weekly and monthly views. Read-only, offline, no API keys.
+backend**, as daily, weekly and monthly views. Read-only, offline by default,
+and no API keys.
 
 **Author: Marcel Petrick <mail@marcelpetrick.it>**
 
@@ -73,9 +74,10 @@ ends with a verdict — see [Development](#development). Once it says
 By hand: `python3.14 -m venv .venv && .venv/bin/pip install -e .`. Without
 installing anything: `PYTHONPATH=src python3.14 -m tokenusage2`.
 
-The first start indexes every transcript once (about 2 s for 1.5 GB of logs)
-into a local archive; every later start and refresh only reads what was
-appended, so a restart takes about 0.2 s.
+The first start indexes every transcript once into a local archive; every later
+start and refresh only reads what was appended. On the current 3.0 GiB reference
+corpus, cold indexing takes 5.6–23.3 s depending on host load and warm starts
+take 0.48–0.82 s.
 
 ## What it shows
 
@@ -221,18 +223,18 @@ move aside so the next start rebuilds it.
 
 ## Performance
 
-Measured with [`scripts/profile_app.py`](scripts/profile_app.py) against a real
-home directory (1.5 GB of Claude Code and Codex logs, 46k requests, Python
-3.14, medians). Every optimisation was driven by its cProfile output, and the
-ingest changes were checked to produce an identical event fingerprint.
+Measured with [`scripts/profile_app.py`](scripts/profile_app.py) against the
+current real corpus: 1,987 Claude Code and Codex logs, about 3.0 GiB and 104,332
+normalised events, on Python 3.14. Ranges are repeated observations under
+different host loads; historical baselines remain in the changelog.
 
-| Stage | 0.3.0 | now | What changed |
-|-------|------:|----:|--------------|
-| Cold index (first start) | 4.1 s | 1.8 s | Codex record types checked in a 256-byte line head; only the newest rate limits kept |
-| Warm start (load archive) | 207 ms | 150–170 ms | plain slots dataclasses, no second sort |
-| Idle rescan (every refresh) | 21 ms | 4.7 ms | incremental `/proc` scan, `os.scandir` string paths, O(1) backfill check |
-| Snapshot · day / week / month | 69 / 78 / 79 ms | 20 / 25 / 26 ms | running all-time totals; buckets walked by slice |
-| Render 160 × 48 | 1.9 ms | 1.7 ms | — |
+| Stage | Current range | Why steady-state work stays bounded |
+|-------|--------------:|-------------------------------------|
+| Cold index (first start) | 5.6–23.3 s | JSONL is streamed; irrelevant Codex lines are rejected from a 256-byte head |
+| Warm start (load archive) | 0.48–0.82 s | one archive load and one in-memory index build |
+| Idle rescan | 10–39 ms | append-only offsets, sampled checkpoints and incremental `/proc` scanning |
+| Snapshot · day / week / month | 61–144 ms | lifetime totals are maintained incrementally; only visible periods are walked |
+| Render 160 × 48 | 2–4 ms | fixed-size cell canvas; no network or archive work in rendering |
 
 ## Compared with the neighbours
 
@@ -335,12 +337,13 @@ timeout_seconds = 2          # 0.1–10 per official status endpoint
 .venv/bin/python scripts/profile_app.py   # time and cProfile every stage on your real data
 ```
 
-The pipeline's twelve stages: find Python 3.14 → create or reuse `.venv` →
-install the project editable with the pinned tools → ruff lint → ruff format
-check → ShellCheck on the script itself (skipped when it is not installed) →
-pytest with the 95 % branch-coverage gate → one `--demo` frame → sdist and
-wheel → install that wheel into a clean throwaway venv and run it → check that
-`.venv/bin/tokenusage2` reports the current version → launch. A failing stage
+The pipeline's thirteen stages: find Python 3.14 → create or reuse `.venv` →
+install the project editable with the pinned tools → verify the generated
+project-history chart → ruff lint → ruff format check → ShellCheck on the script
+itself (skipped when it is not installed) → pytest with the 95 % branch-coverage
+gate → one `--demo` frame → sdist and wheel → install that wheel into a clean
+throwaway venv and run it → check that `.venv/bin/tokenusage2` reports the
+current version → launch. A failing stage
 prints the tail of its log and skips the stages that depend on it. Every stage
 is timed, and the run ends with a summary and a verdict; the exit status is 0
 only on `PASS`.
@@ -355,6 +358,25 @@ sdist, wheel and that version's changelog section as the notes
 ([`release.yml`](.github/workflows/release.yml)). Architecture and design
 rationale are in [`PLAN.md`](PLAN.md); the latest requested branch audit is in
 [`review.md`](review.md).
+
+## Project history
+
+![Lines of code per area across the tokenUsage2 project history](docs/history/loc-history.svg)
+
+The chart measures every first-parent commit without checking out or changing
+the working tree. It stacks non-blank, non-comment-only lines for core logic,
+terminal UI, tests, tooling and documentation; the black line uses the right
+axis for the test-to-product-code ratio. Red lines are public release tags and
+the blue marker is the current version. Generated chart files are excluded from
+their own count.
+
+- Current counts: [`docs/history/loc-current.md`](docs/history/loc-current.md).
+- Refresh: `.venv/bin/python scripts/history_chart.py`.
+- Enforcement: `localPipeline.sh` runs the generator in `--check` mode, so a
+  stale chart fails local CI and the release workflow.
+
+The SVG and current-count table are documentation only; neither is packaged in
+the runtime wheel.
 
 ## Requirements
 

@@ -5,11 +5,11 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 
 # One command from a fresh clone to a verified, runnable tokenusage2. It finds
-# Python 3.14, creates .venv, installs the pinned development tools, runs every
-# quality gate, builds sdist and wheel, proves the wheel works from a clean
-# environment, checks .venv/bin/tokenusage2 and launches the dashboard. Every
-# stage is timed, and the run closes with a summary and a verdict. CI and the
-# release workflow run the same script with --noRun.
+# Python 3.14, creates .venv, installs the pinned development tools, verifies
+# generated history, runs every quality gate, builds sdist and wheel, proves
+# the wheel works from a clean environment, checks .venv/bin/tokenusage2 and
+# launches the dashboard. Every stage is timed, and the run closes with a
+# summary and a verdict. CI and releases run the same script with --noRun.
 
 # Stage functions are called indirectly through run_stage (SC2317 before
 # ShellCheck 0.10, SC2329 since).
@@ -46,15 +46,16 @@ From a fresh clone to a verified, runnable tokenusage2:
    1. Interpreter    find Python 3.14+ (override with PYTHON=/path/to/python)
    2. Virtualenv     create or reuse .venv
    3. Dependencies   install the project editable with the pinned dev tools
-   4. Ruff lint      ruff check
-   5. Ruff format    ruff format --check
-   6. ShellCheck     this script, when shellcheck is installed
-   7. Tests          pytest with a 95 % branch-coverage gate
-   8. Smoke run      render one --demo frame
-   9. Build          sdist and wheel into dist/
-  10. Wheel check    install the wheel into a clean throwaway venv and run it
-  11. Binary         .venv/bin/tokenusage2 reports the expected version
-  12. Launch         start the live dashboard (skipped with --noRun or no TTY)
+   4. History        generated project-history chart is current
+   5. Ruff lint      ruff check
+   6. Ruff format    ruff format --check
+   7. ShellCheck     this script, when shellcheck is installed
+   8. Tests          pytest with a 95 % branch-coverage gate
+   9. Smoke run      render one --demo frame
+  10. Build          sdist and wheel into dist/
+  11. Wheel check    install the wheel into a clean throwaway venv and run it
+  12. Binary         .venv/bin/tokenusage2 reports the expected version
+  13. Launch         start the live dashboard (skipped with --noRun or no TTY)
 
 Every stage is timed; a summary and a verdict close the run. The exit status
 is 0 only when every mandatory stage passed. Afterwards, run the dashboard
@@ -210,6 +211,15 @@ stage_dependencies() {
     fi
     DETAILS="editable install via ${installer}; $("${VENV_PYTHON}" -m ruff --version),"
     DETAILS+=" $("${VENV_PYTHON}" -m pytest --version 2>&1 | head -n 1)"
+}
+
+stage_history() {
+    if capture history "${VENV_PYTHON}" scripts/history_chart.py --check; then
+        DETAILS="project-history SVG and current-count table are up to date"
+        return 0
+    fi
+    DETAILS="run .venv/bin/python scripts/history_chart.py and commit the outputs"
+    return 1
 }
 
 stage_lint() {
@@ -432,8 +442,8 @@ main() {
         skip_stage "Dependencies" "no Python 3.14+"
     fi
 
-    for entry in "Ruff lint:stage_lint" "Ruff format:stage_format" "ShellCheck:stage_shellcheck" \
-        "Tests:stage_tests" "Smoke run:stage_smoke"; do
+    for entry in "History:stage_history" "Ruff lint:stage_lint" "Ruff format:stage_format" \
+        "ShellCheck:stage_shellcheck" "Tests:stage_tests" "Smoke run:stage_smoke"; do
         if [[ "${ready}" == true ]]; then
             run_stage "${entry%%:*}" "${entry#*:}" || gates=false
         else

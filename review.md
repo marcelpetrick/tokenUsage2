@@ -1,4 +1,4 @@
-Base: `origin/master` @ `75976ce`  Scope: full current working tree and repository state
+Base: public `v0.13.27` @ `3f23d00`  Scope: full 0.13.28 release candidate
 
 ## Findings
 
@@ -24,6 +24,13 @@ standard-rate estimate: fast/batch tiers, geography uplifts and non-token tool
 charges are not silently guessed. Unpriced models and retained unsplit totals
 continue to be marked incomplete instead of appearing free.
 
+The documentation follow-up found three stale statements and repaired them:
+the top-level privacy summary described an unqualified offline application,
+the README still quoted the older 1.5 GB performance corpus, and the LinkedIn
+fact sheet omitted session grouping and provider health. CLI syntax,
+configuration examples, architecture, token semantics and local links now
+match the implemented 0.13.28 behavior.
+
 ## Architecture and performance
 
 The architecture remains appropriate for the workload: append-aware parsers
@@ -35,6 +42,11 @@ Provider health is isolated behind an opt-in monitor. It contacts only fixed
 official HTTPS endpoints, sends no credentials or usage data, caps response
 size, validates the response schema, applies strict timeouts and performs every
 request on a daemon thread so provider latency cannot freeze the dashboard.
+
+Project-history measurement is also isolated from the application. A
+standard-library generator reads immutable Git objects without checking out
+commits, excludes its own outputs from the count, produces a deterministic SVG
+and current-count table, and runs in `--check` mode in the shared quality gate.
 
 The main corpus contains 1,987 logs (about 3.0 GiB). Repeated runs observed
 5.6–23.3 s cold indexes depending on host load, 0.48–0.82 s warm starts,
@@ -56,9 +68,10 @@ and rebuilding the in-memory index; steady-state polling is already cheap.
 
 ## Verification
 
-- All 11 mandatory local pipeline stages pass: 354 tests with 99.15% branch
+- All 12 mandatory local pipeline stages pass: 366 tests with 99.15% branch
   coverage, Ruff lint/format, ShellCheck, smoke rendering, sdist/wheel builds,
-  a clean-wheel render and the installed 0.13.27 version check.
+  generated-history verification, a clean-wheel render and the installed
+  0.13.28 version check.
 - The real archive holds 104,332 normalized events. Every event routed through
   Anthropic or OpenAI resolves to a published standard rate, including 109
   OpenAI requests in the >272K prompt tier.
@@ -67,5 +80,6 @@ and rebuilding the in-memory index; steady-state polling is already cheap.
 
 ## Verdict
 
-The repaired working tree fits Claude Code 2.1.292 and Codex CLI 0.160.1. It is
-releaseable; no review finding remains open.
+The release candidate fits Claude Code 2.1.292 and Codex CLI 0.160.1. Its user,
+architecture, release and supporting media documentation is synchronized; no
+review finding remains open.
