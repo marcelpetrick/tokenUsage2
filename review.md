@@ -1,4 +1,4 @@
-Base: public `v0.13.27` @ `3f23d00`  Scope: full 0.13.28 release candidate
+Base: public `v0.13.27` @ `3f23d00`  Scope: full 0.13.29 release candidate
 
 ## Findings
 
@@ -29,7 +29,7 @@ the top-level privacy summary described an unqualified offline application,
 the README still quoted the older 1.5 GB performance corpus, and the LinkedIn
 fact sheet omitted session grouping and provider health. CLI syntax,
 configuration examples, architecture, token semantics and local links now
-match the implemented 0.13.28 behavior.
+match the implemented 0.13.29 behavior.
 
 ## Architecture and performance
 
@@ -68,10 +68,10 @@ and rebuilding the in-memory index; steady-state polling is already cheap.
 
 ## Verification
 
-- All 12 mandatory local pipeline stages pass: 366 tests with 99.15% branch
+- All 12 mandatory local pipeline stages pass: 367 tests with 99.15% branch
   coverage, Ruff lint/format, ShellCheck, smoke rendering, sdist/wheel builds,
   generated-history verification, a clean-wheel render and the installed
-  0.13.28 version check.
+  0.13.29 version check.
 - The real archive holds 104,332 normalized events. Every event routed through
   Anthropic or OpenAI resolves to a published standard rate, including 109
   OpenAI requests in the >272K prompt tier.

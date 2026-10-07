@@ -10,6 +10,14 @@ All notable changes to tokenUsage2. Versions follow semantic versioning; the
 archive schema version is noted whenever it changes, because an older build
 refuses a newer archive.
 
+## 0.13.29
+
+### Fixed
+
+- Fetch full Git history in the normal CI workflow so generated-history
+  verification sees the same commits and release tags as local and release
+  builds.
+
 ## 0.13.28
 
 ### Documentation

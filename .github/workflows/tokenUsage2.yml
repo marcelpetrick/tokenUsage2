@@ -36,6 +36,9 @@ jobs:
     steps:
       - name: Check out the repository
         uses: actions/checkout@v7.0.1
+        with:
+          # The generated history chart measures every first-parent commit.
+          fetch-depth: 0
 
       - name: Set up Python 3.14
         uses: actions/setup-python@v7.0.0

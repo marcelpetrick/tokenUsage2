@@ -11,6 +11,7 @@ from pathlib import Path
 import pytest
 
 SCRIPT = Path(__file__).resolve().parents[1] / "localPipeline.sh"
+WORKFLOW = SCRIPT.parent / ".github" / "workflows" / "tokenUsage2.yml"
 
 
 def pipeline(*args: str) -> subprocess.CompletedProcess[str]:
@@ -21,6 +22,11 @@ def pipeline(*args: str) -> subprocess.CompletedProcess[str]:
 
 def test_the_script_is_valid_bash() -> None:
     assert subprocess.run(["bash", "-n", str(SCRIPT)], check=False).returncode == 0
+
+
+def test_ci_fetches_the_full_history_required_by_the_chart() -> None:
+    workflow = WORKFLOW.read_text(encoding="utf-8")
+    assert "fetch-depth: 0" in workflow
 
 
 def test_help_lists_every_stage() -> None:
