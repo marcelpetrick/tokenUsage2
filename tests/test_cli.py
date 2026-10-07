@@ -151,6 +151,10 @@ def test_account_filter(home: FakeHome, tmp_path: Path, capsys: pytest.CaptureFi
     [
         (["--tz", "Mars/Olympus"], "unknown time zone"),
         (["--interval", "0"], "--interval"),
+        (["--interval", "nan"], "finite positive"),
+        (["--interval", "inf"], "finite positive"),
+        (["--width", "0"], "--width and --height"),
+        (["--height", "-1"], "--width and --height"),
         (["--config", "/nonexistent/tokenusage2.toml"], "config file not found"),
     ],
 )

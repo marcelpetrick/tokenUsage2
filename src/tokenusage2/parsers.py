@@ -207,8 +207,13 @@ class CodexParser:
                 self.ctx["thread"] = str(payload["id"])
             self.ctx["cwd"] = str(payload.get("cwd") or "")
             self.ctx["provider"] = str(payload.get("model_provider") or "openai")
-        elif obj.get("type") == "turn_context" and payload.get("model"):
-            self.ctx["model"] = str(payload["model"])
+        elif obj.get("type") == "turn_context":
+            if payload.get("model"):
+                self.ctx["model"] = str(payload["model"])
+            # Codex records the working directory per turn. It can change after
+            # `/cd`, on resume, or when a host changes workspace roots.
+            if payload.get("cwd"):
+                self.ctx["cwd"] = str(payload["cwd"])
 
     def _rate_limits(self, limits: object, ts: float) -> None:
         # Only the newest account-level limits matter; build windows once, at the end.

@@ -22,7 +22,7 @@ from pathlib import Path
 from typing import BinaryIO
 
 from tokenusage2 import keys
-from tokenusage2.aggregate import Lifetime, Tally, lifetimes_of
+from tokenusage2.aggregate import Lifetime, Tally, lifetime_key, lifetimes_of
 from tokenusage2.discover import Discovery, display_path
 from tokenusage2.keys import BACKFILL_PREFIX
 from tokenusage2.model import Account, Event, QuotaWindow, Tool
@@ -113,9 +113,10 @@ class EventIndex:
         if lifetime is None:
             lifetime = self._lifetimes[event.account] = Lifetime()
         lifetime.tally.add(event.usage)
-        per_model = lifetime.models.get((event.tool, event.model, event.route))
+        key = lifetime_key(event)
+        per_model = lifetime.models.get(key)
         if per_model is None:
-            per_model = lifetime.models[event.tool, event.model, event.route] = Tally()
+            per_model = lifetime.models[key] = Tally()
         per_model.add(event.usage)
         if not event.usage.unsplit and (lifetime.last_ts is None or event.ts > lifetime.last_ts):
             lifetime.last_ts = event.ts
@@ -125,10 +126,11 @@ class EventIndex:
         account = event.account
         lifetime = self._lifetimes[account]
         lifetime.tally.remove(event.usage)
-        per_model = lifetime.models[event.tool, event.model, event.route]
+        key = lifetime_key(event)
+        per_model = lifetime.models[key]
         per_model.remove(event.usage)
         if not per_model.calls and not per_model.total:
-            del lifetime.models[event.tool, event.model, event.route]
+            del lifetime.models[key]
         if event.ts in (lifetime.last_ts, self._first.get(account)):
             self._stale.add(account)
         if not event.key.startswith(BACKFILL_PREFIX):

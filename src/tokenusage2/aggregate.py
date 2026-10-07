@@ -140,8 +140,16 @@ class Lifetime:
 
     tally: Tally = field(default_factory=Tally)
     last_ts: float | None = None
-    #: Per (tool, model, route): all-time cost is priced from these few sums.
-    models: dict[tuple[Tool, str, str], Tally] = field(default_factory=dict)
+    #: Per (tool, model, route, >272K prompt): all-time cost comes from these sums.
+    #: The tier split keeps request-level long-context pricing exact after aggregation.
+    models: dict[tuple[Tool, str, str, bool], Tally] = field(default_factory=dict)
+
+
+def lifetime_key(event: Event) -> tuple[Tool, str, str, bool]:
+    """The dimensions that can change one request's standard token rates."""
+    usage = event.usage
+    long_context = usage.input + usage.cache_read + usage.cache_write > 272_000
+    return event.tool, event.model, event.route, long_context
 
 
 def lifetimes_of(events: Iterable[Event]) -> dict[str, Lifetime]:
@@ -152,9 +160,10 @@ def lifetimes_of(events: Iterable[Event]) -> dict[str, Lifetime]:
         if lifetime is None:
             lifetime = found[event.account] = Lifetime()
         lifetime.tally.add(event.usage)
-        per_model = lifetime.models.get((event.tool, event.model, event.route))
+        key = lifetime_key(event)
+        per_model = lifetime.models.get(key)
         if per_model is None:
-            per_model = lifetime.models[event.tool, event.model, event.route] = Tally()
+            per_model = lifetime.models[key] = Tally()
         per_model.add(event.usage)
         if not event.usage.unsplit and (lifetime.last_ts is None or event.ts > lifetime.last_ts):
             lifetime.last_ts = event.ts
@@ -167,12 +176,12 @@ type Pricing = Callable[[Tool, str, str], Rates | None]
 def lifetime_cost(lifetime: Lifetime, pricing: Pricing) -> tuple[float, int]:
     """All-time cost and unpriced tokens of an account, from its per-model sums."""
     cost, unpriced = 0.0, 0
-    for (tool, model, route), tally in lifetime.models.items():
+    for (tool, model, route, long_context), tally in lifetime.models.items():
         rates = pricing(tool, model, route)
         if rates is None:
             unpriced += tally.total
         else:
-            cost += rates.cost(tally)
+            cost += rates.cost(tally, long_context=long_context)
             unpriced += tally.unsplit
     return cost, unpriced
 
@@ -522,12 +531,21 @@ def build_snapshot(
         if row is not None:
             row.all = all_time
             row.last_ts = lifetime.last_ts
-    visible_last: dict[str, float] = {}
-    for event in events[:visible_stop]:
-        visible_last[event.account] = event.ts
-    for row in rows.values():
-        if row.last_ts is not None and row.last_ts > now:
-            row.last_ts = visible_last.get(row.id)
+    future_accounts = {
+        row.id for row in rows.values() if row.last_ts is not None and row.last_ts > now
+    }
+    if future_accounts:
+        # Future-dated records are rare. Avoid walking the entire archive on
+        # every ordinary frame; when needed, find only the affected accounts'
+        # newest visible real request in one reverse pass.
+        visible_last: dict[str, float] = {}
+        for event in reversed(events[:visible_stop]):
+            if event.account in future_accounts and not event.usage.unsplit:
+                visible_last.setdefault(event.account, event.ts)
+                if len(visible_last) == len(future_accounts):
+                    break
+        for account_id in future_accounts:
+            rows[account_id].last_ts = visible_last.get(account_id)
     # Only the current month, week and day are walked; all-time totals are kept.
     for name, start in (("month", month_start), ("week", week_start), ("today", day_start)):
         per_account: dict[str, Tally] = {}

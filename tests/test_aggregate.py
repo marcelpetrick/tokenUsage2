@@ -186,6 +186,19 @@ def test_supplied_lifetimes_replace_the_full_recount() -> None:
     assert snap(events, lifetimes={}, account_filter="a").all.total == 0
 
 
+def test_lifetime_cost_keeps_short_and_long_context_requests_in_separate_tiers() -> None:
+    short = ev(at(1), account="b", model="gpt-6-sol", backend="openai", usage=Usage(input=100_000))
+    long = ev(at(0), account="b", model="gpt-6-sol", backend="openai", usage=Usage(input=300_000))
+    snapshot = snap(
+        [short, long],
+        metric=Metric.COST,
+        pricing=Pricer().rates,
+        lifetimes=lifetimes_of([short, long]),
+    )
+    # $0.20 for the short request + $1.20 for the >272K request at 2x input.
+    assert snapshot.all.cost == pytest.approx(1.4)
+
+
 def test_account_filter() -> None:
     snapshot = snap([ev(at(0)), ev(at(0), "b")], account_filter="b")
     assert [row.id for row in snapshot.accounts] == ["b"]

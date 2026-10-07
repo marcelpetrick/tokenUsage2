@@ -6,6 +6,7 @@
 
 import argparse
 import json
+import math
 import os
 import shutil
 import sys
@@ -24,6 +25,7 @@ from tokenusage2.demo import DemoSource
 from tokenusage2.export import TIMELINE_FIELDS, timeline_rows, to_csv
 from tokenusage2.ingest import ScanReport
 from tokenusage2.live import LiveSource, Source
+from tokenusage2.provider_status import ProviderStatus
 from tokenusage2.render import THEME_NAMES, View, mask, render
 from tokenusage2.store import Store, StoreBusyError, StoreError
 from tokenusage2.tui import bucket_count, data_span, run, status_text, take_snapshot
@@ -89,6 +91,20 @@ def build_parser() -> argparse.ArgumentParser:
         help="colour for --once (auto: only on a terminal)",
     )
     parser.add_argument("--redact", action="store_true", help="mask e-mail addresses")
+    provider_status = parser.add_mutually_exclusive_group()
+    provider_status.add_argument(
+        "--provider-status",
+        dest="provider_status",
+        action="store_true",
+        help="check the official Claude and Codex status APIs",
+    )
+    provider_status.add_argument(
+        "--no-provider-status",
+        dest="provider_status",
+        action="store_false",
+        help="disable provider checks configured in config.toml",
+    )
+    parser.set_defaults(provider_status=None)
     parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
     return parser
 
@@ -143,7 +159,12 @@ def _iso(ts: float | None, tz: tzinfo) -> str | None:
     return datetime.fromtimestamp(ts, tz).isoformat(timespec="seconds") if ts else None
 
 
-def snapshot_json(snapshot: Snapshot, tz: tzinfo, redact: bool) -> dict:
+def snapshot_json(
+    snapshot: Snapshot,
+    tz: tzinfo,
+    redact: bool,
+    provider_statuses: Sequence[ProviderStatus] = (),
+) -> dict:
     return {
         "generated_at": _iso(snapshot.now, tz),
         "period": str(snapshot.period),
@@ -153,6 +174,16 @@ def snapshot_json(snapshot: Snapshot, tz: tzinfo, redact: bool) -> dict:
             name: _tally(getattr(snapshot, name)) for name in ("today", "week", "month", "all")
         },
         "rate_tokens_per_minute": round(snapshot.rate, 1),
+        "provider_status": [
+            {
+                "provider": status.provider,
+                "health": str(status.health),
+                "detail": status.detail,
+                "checked_at": _iso(status.checked_at, tz),
+                "url": status.url,
+            }
+            for status in provider_statuses
+        ],
         "accounts": [
             {
                 "id": row.id,
@@ -222,8 +253,11 @@ def main(
     except ZoneInfoNotFoundError, ValueError:
         print(f"tokenusage2: unknown time zone: {args.tz}", file=sys.stderr)
         return 2
-    if args.interval <= 0:
-        print("tokenusage2: --interval must be positive", file=sys.stderr)
+    if not math.isfinite(args.interval) or args.interval <= 0:
+        print("tokenusage2: --interval must be a finite positive number", file=sys.stderr)
+        return 2
+    if any(value is not None and value <= 0 for value in (args.width, args.height)):
+        print("tokenusage2: --width and --height must be positive", file=sys.stderr)
         return 2
 
     source: Source
@@ -238,7 +272,16 @@ def main(
             print(f"tokenusage2: {error}", file=sys.stderr)
             return 2
         try:
-            source = LiveSource(store, home, env, config, tz, proc, clock)
+            source = LiveSource(
+                store,
+                home,
+                env,
+                config,
+                tz,
+                proc,
+                clock,
+                provider_status=args.provider_status,
+            )
         except StoreBusyError as error:
             store.close()
             print(f"tokenusage2: {error}", file=sys.stderr)
@@ -288,10 +331,13 @@ def _run(
 
     if args.doctor:
         report = source.scan()
+        source.wait_provider_status()
         print("\n".join(source.sources(args.redact)))
         return _outdated(report)
     if args.json or args.once or args.csv:
         report = source.scan()
+        if args.json or args.once:
+            source.wait_provider_status()
         if report.outdated:
             return _outdated(report)
         width, height = shutil.get_terminal_size((160, 48))
@@ -315,7 +361,7 @@ def _run(
             print(to_csv(timeline_rows(snapshot), TIMELINE_FIELDS), end="")
             return 0
         if args.json:
-            data = snapshot_json(snapshot, tz, args.redact)
+            data = snapshot_json(snapshot, tz, args.redact, source.provider_statuses())
             data["alerts"] = [alert.text for alert in alerts]
             print(json.dumps(data, indent=2))
             return 0
@@ -330,6 +376,7 @@ def _run(
             tz=tz,
             status=status_text(report, source, view),
             mode=source.mode,
+            provider_statuses=source.provider_statuses(),
             alert=alerts[0].text if alerts else "",
         )
         print("\n".join(lines))

@@ -26,6 +26,7 @@ from tokenusage2.aggregate import (
     Tally,
 )
 from tokenusage2.model import Tool
+from tokenusage2.provider_status import ProviderStatus, status_badge, status_problem
 from tokenusage2.version import __version__
 
 MIN_WIDTH, MIN_HEIGHT = 70, 16
@@ -816,12 +817,16 @@ def draw_header(
     mode: str,
     tz: tzinfo,
     filter_label: str | None,
+    provider_statuses: Sequence[ProviderStatus] = (),
 ) -> None:
     canvas.fill(Rect(0, 0, width, 1), "header")
-    left = f" ◆ tokenUsage2 {__version__}  {mode} "
-    canvas.put(0, 0, left, "header")
+    base_left = f" ◆ tokenUsage2 {__version__}  {mode} "
+    badge = status_badge(provider_statuses)
     clock = datetime.fromtimestamp(snapshot.now, tz).strftime("%a %d %b  %H:%M:%S")
     right = f" ⚡ {compact(snapshot.rate)} tok/min   {clock} "
+    extra = f" {badge} " if badge else ""
+    left = base_left + extra if len(base_left) + len(extra) + len(right) <= width else base_left
+    canvas.put(0, 0, left, "header")
     metric = snapshot.metric
     middle = (
         f"today {tally_amount(snapshot.today, metric)}  ·  "
@@ -876,6 +881,7 @@ def render(
     sources: Sequence[str] = (),
     mode: str = "LIVE",
     alert: str = "",
+    provider_statuses: Sequence[ProviderStatus] = (),
 ) -> list[str]:
     """One full frame as ``height`` lines of exactly ``width`` cells."""
     canvas = Canvas(width, height)
@@ -893,7 +899,7 @@ def render(
         if snapshot.account_filter in names
         else (snapshot.account_filter)
     )
-    draw_header(canvas, width, snapshot, view, mode, tz, filter_label)
+    draw_header(canvas, width, snapshot, view, mode, tz, filter_label, provider_statuses)
     draw_accounts(canvas, frame.accounts, snapshot, view, frame.account_rows)
     if frame.timeline is not None:
         draw_timeline(canvas, frame.timeline, snapshot, view)
@@ -904,7 +910,7 @@ def render(
             draw_heatmap(canvas, frame.right, snapshot)
         else:
             draw_feed(canvas, frame.right, snapshot, tz, names)
-    draw_footer(canvas, frame.footer, status, alert)
+    draw_footer(canvas, frame.footer, status, alert or status_problem(provider_statuses))
     if view.help:
         draw_overlay(canvas, "Keys", HELP_LINES)
     elif view.sources:

@@ -389,6 +389,7 @@ def _loop(
             next_scan = now + view.interval
             dirty = dirty or report.changed
         accounts = source.accounts()
+        provider_statuses = source.provider_statuses()
         count = bucket_count(view, width, height, len(accounts), data_span(source, view, now, tz))
         quotas = tuple((q.account, q.window, q.observed_at) for q in source.quotas())
         key = (
@@ -404,6 +405,7 @@ def _loop(
             tuple(sorted(source.running().items())),
             tuple(accounts),
             tuple(sorted(source.archived())),
+            provider_statuses,
             int(now // 5),
         )
         if key != memo or snapshot is None:
@@ -428,6 +430,7 @@ def _loop(
                     status=notice if now < notice_until else status_text(report, source, view),
                     sources=source.sources(view.redact) if view.sources else (),
                     mode="PAUSED" if view.paused else source.mode,
+                    provider_statuses=provider_statuses,
                     # a fresh notice (an export) takes the footer for its ten seconds
                     alert=busy
                     or report.outdated

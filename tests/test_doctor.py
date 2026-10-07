@@ -34,6 +34,31 @@ def test_codex_reconciliation_sets_increments_before_a_restart_apart(tmp_path: P
     assert reconcile(Account("codex:y", Tool.CODEX, tmp_path / "none", "y"), events) is None
 
 
+def test_codex_reconciliation_honors_sqlite_home_and_numeric_schema_versions(
+    tmp_path: Path,
+) -> None:
+    account_home = tmp_path / "codex"
+    state_home = tmp_path / "state"
+    account_home.mkdir()
+    state_home.mkdir()
+    (account_home / "config.toml").write_text(f'sqlite_home = "{state_home}"\n')
+    # A stale default database must not override the explicitly configured root.
+    with closing(sqlite3.connect(account_home / "state_99.sqlite")) as connection, connection:
+        connection.execute("CREATE TABLE threads (id TEXT, tokens_used INTEGER)")
+        connection.execute("INSERT INTO threads VALUES ('t', 999)")
+    for version, total in ((9, 90), (10, 100)):
+        with (
+            closing(sqlite3.connect(state_home / f"state_{version}.sqlite")) as connection,
+            connection,
+        ):
+            connection.execute("CREATE TABLE threads (id TEXT, tokens_used INTEGER)")
+            connection.execute("INSERT INTO threads VALUES ('t', ?)", (total,))
+    account = Account("codex:x", Tool.CODEX, account_home, "x")
+    assert reconcile(account, [increment("codex:t:100", 100)]) == (
+        "parsed 100 vs Codex threads.tokens_used 100 (+0.0%)"
+    )
+
+
 def test_claude_reconciliation_shows_its_sources_and_the_stats_cache_scale() -> None:
     account = Account("claude:x", Tool.CLAUDE, Path("/x"), "x")
     events = [

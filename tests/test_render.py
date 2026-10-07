@@ -12,6 +12,7 @@ from tokenusage2.aggregate import GroupBy, Metric, Period, QuotaView, build_snap
 from tokenusage2.demo import DemoSource
 from tokenusage2.model import Account, Event, Tool, Usage
 from tokenusage2.pricing import Rates
+from tokenusage2.provider_status import Health, ProviderStatus
 from tokenusage2.render import (
     AXIS,
     THEME_NAMES,
@@ -85,6 +86,22 @@ def test_plain_frame_shows_every_panel(demo: DemoSource) -> None:
         "cache hit",
     ):
         assert needle in text
+
+
+def test_provider_health_is_compact_when_healthy_and_prominent_when_broken(
+    demo: DemoSource,
+) -> None:
+    good = ProviderStatus("Claude", Health.OPERATIONAL, "ok", NOW, "https://status")
+    healthy = "\n".join(
+        frame(demo, View(theme="plain"), provider_statuses=(good,), status="status")
+    )
+    assert "● APIs operational" in healthy.splitlines()[0]
+    assert "▲" not in healthy.splitlines()[-1]
+
+    bad = ProviderStatus("Codex", Health.OUTAGE, "CLI: outage", NOW, "https://status")
+    outage = "\n".join(frame(demo, View(theme="plain"), provider_statuses=(bad,), status="status"))
+    assert "▲ Codex outage" in outage.splitlines()[0]
+    assert "▲ Codex outage: CLI: outage" in outage.splitlines()[-1]
 
 
 def test_retained_history_is_drawn_hatched() -> None:

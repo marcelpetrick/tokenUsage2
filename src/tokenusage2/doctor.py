@@ -5,6 +5,7 @@
 """The sources report: what was found, where, how, and whether it adds up."""
 
 import sqlite3
+import tomllib
 from collections.abc import Mapping, Sequence
 from contextlib import closing
 from datetime import datetime, tzinfo
@@ -21,11 +22,31 @@ from tokenusage2.render import compact, duration, mask
 
 def codex_thread_totals(account: Account) -> dict[str, int]:
     """Codex's own ``threads.tokens_used`` per thread id (empty when unreadable)."""
-    databases = sorted(account.home.glob("state_*.sqlite"))
+    roots = [account.home]
+    try:
+        config = tomllib.loads((account.home / "config.toml").read_text(encoding="utf-8"))
+        configured = config.get("sqlite_home")
+        if isinstance(configured, str):
+            roots.insert(0, Path(configured).expanduser())
+    except OSError, tomllib.TOMLDecodeError:
+        pass
+    databases: list[Path] = []
+    for root in roots:
+        databases = list(root.glob("state_*.sqlite"))
+        if databases:
+            break
     if not databases:
         return {}
+    database = max(
+        databases,
+        key=lambda path: (
+            int(path.stem.removeprefix("state_") or -1)
+            if path.stem.removeprefix("state_").isdigit()
+            else -1
+        ),
+    )
     try:
-        uri = f"{databases[-1].resolve().as_uri()}?mode=ro"
+        uri = f"{database.resolve().as_uri()}?mode=ro"
         with closing(sqlite3.connect(uri, uri=True, timeout=1.0)) as connection:
             rows = connection.execute("SELECT id, tokens_used FROM threads").fetchall()
     except sqlite3.Error:

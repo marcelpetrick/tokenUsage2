@@ -129,6 +129,22 @@ def test_codex_parser_carries_context_and_collapses_repeats() -> None:
     assert later.model == "gpt-5.6-sol"
 
 
+def test_codex_turn_context_updates_the_request_working_directory() -> None:
+    parser = CodexParser("acct", {}, "fallback")
+    parser.feed(encode(codex_meta("thread-1", "/work/original")))
+    parser.feed(
+        encode(
+            {
+                "type": "turn_context",
+                "payload": {"model": "gpt-6-sol", "cwd": "/work/after-cd"},
+            }
+        )
+    )
+    event = parser.feed(encode(codex_tokens("2026-09-10T10:00:05Z", 100, inp=100)))
+    assert event is not None
+    assert (event.model, event.project) == ("gpt-6-sol", "/work/after-cd")
+
+
 def test_codex_increments_after_a_counter_restart_keep_their_own_keys() -> None:
     parser = CodexParser("acct", {}, "t")
     first = parser.feed(encode(codex_tokens("2026-09-10T10:00:00Z", 1100, inp=1100)))

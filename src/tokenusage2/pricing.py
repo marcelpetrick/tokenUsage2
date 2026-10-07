@@ -36,15 +36,25 @@ class Rates:
     cache_read: float
     cache_write: float
     cache_write_1h: float
+    long_context_threshold: int | None = None
+    long_input_multiplier: float = 1.0
+    long_output_multiplier: float = 1.0
 
-    def cost(self, tokens: Tokens) -> float:
+    def cost(self, tokens: Tokens, *, long_context: bool | None = None) -> float:
+        prompt = tokens.input + tokens.cache_read + tokens.cache_write
+        if long_context is None:
+            long_context = (
+                self.long_context_threshold is not None and prompt > self.long_context_threshold
+            )
+        input_multiplier = self.long_input_multiplier if long_context else 1.0
+        output_multiplier = self.long_output_multiplier if long_context else 1.0
         five_minute = tokens.cache_write - tokens.cache_write_1h
         return (
-            tokens.input * self.input
-            + tokens.output * self.output
-            + tokens.cache_read * self.cache_read
-            + five_minute * self.cache_write
-            + tokens.cache_write_1h * self.cache_write_1h
+            tokens.input * self.input * input_multiplier
+            + tokens.output * self.output * output_multiplier
+            + tokens.cache_read * self.cache_read * input_multiplier
+            + five_minute * self.cache_write * input_multiplier
+            + tokens.cache_write_1h * self.cache_write_1h * input_multiplier
         ) / 1_000_000
 
 
@@ -57,16 +67,35 @@ def anthropic(input_price: float, output_price: float, cache_read: float | None 
     return Rates(input_price, output_price, read, input_price * 1.25, input_price * 2)
 
 
-def openai(input_price: float, cache_read: float, output_price: float) -> Rates:
-    """OpenAI token rates; Codex does not charge for cache writes."""
-    return Rates(input_price, output_price, cache_read, 0.0, 0.0)
+def openai(
+    input_price: float,
+    cache_read: float,
+    output_price: float,
+    *,
+    cache_write: float = 0.0,
+    long_context: bool = False,
+) -> Rates:
+    """OpenAI standard rates, optionally including cache writes and the >272K tier."""
+    return Rates(
+        input_price,
+        output_price,
+        cache_read,
+        cache_write,
+        cache_write,
+        272_000 if long_context else None,
+        2.0 if long_context else 1.0,
+        1.5 if long_context else 1.0,
+    )
 
 
-#: Anthropic list prices per model glob, USD per 1M tokens (as of 2026-06-24).
+#: Anthropic list prices per model glob, USD per 1M tokens (as of 2026-10-07).
 #: The first matching glob wins, so more specific names come first.
 ANTHROPIC_PRICES: tuple[tuple[str, Rates], ...] = (
     ("claude-fable-5-1*", anthropic(10, 50, cache_read=0.25)),
     ("claude-fable-5*", anthropic(10, 50)),
+    ("claude-mythos-5-1*", anthropic(10, 50, cache_read=0.25)),
+    ("claude-mythos-5*", anthropic(10, 50)),
+    ("claude-opus-5-5*", anthropic(4, 20, cache_read=0.2)),
     ("claude-opus-5*", anthropic(5, 25)),
     ("claude-opus-4-8*", anthropic(5, 25)),
     ("claude-opus-4-7*", anthropic(5, 25)),
@@ -76,21 +105,24 @@ ANTHROPIC_PRICES: tuple[tuple[str, Rates], ...] = (
     ("claude-haiku-4-5*", anthropic(1, 5)),
 )
 
-#: OpenAI ChatGPT Work and Codex rates per model glob, USD per 1M tokens
-#: (as of 2026-09-16). Source: https://help.openai.com/en/articles/20001415
+#: OpenAI standard rates per model glob, USD per 1M tokens (as of 2026-10-07).
+#: Source: https://developers.openai.com/api/docs/pricing
 #: More specific names precede their families. Models without a final price,
 #: such as GPT-5.3-Codex-Spark, are deliberately absent and blocked below.
 OPENAI_PRICES: tuple[tuple[str, Rates], ...] = (
-    ("gpt-6-astra*", openai(10, 1, 50)),
-    ("gpt-5.6-sol*", openai(4, 0.4, 20)),
-    ("gpt-5.6-terra*", openai(2, 0.2, 12)),
-    ("gpt-5.6-luna*", openai(0.2, 0.02, 1.2)),
+    ("gpt-6-astra*", openai(10, 1, 50, cache_write=12.5, long_context=True)),
+    ("gpt-6.1-sol*", openai(2, 0.1, 10, cache_write=2.5, long_context=True)),
+    ("gpt-6-sol*", openai(2, 0.2, 10, cache_write=2.5, long_context=True)),
+    ("gpt-6-luna*", openai(0.1, 0.01, 0.5, cache_write=0.125, long_context=True)),
+    ("gpt-5.6-sol*", openai(4, 0.4, 20, cache_write=5, long_context=True)),
+    ("gpt-5.6-terra*", openai(2, 0.2, 12, cache_write=2.5, long_context=True)),
+    ("gpt-5.6-luna*", openai(0.2, 0.02, 1.2, cache_write=0.25, long_context=True)),
     ("gpt-rosalind-research*", openai(5, 0.5, 25)),
-    ("gpt-5.5*", openai(5, 0.5, 30)),
+    ("gpt-5.5*", openai(5, 0.5, 30, long_context=True)),
     ("daybreak-blue*", openai(4, 0.4, 20)),
     ("daybreak-red*", openai(12.5, 1.25, 75)),
     ("gpt-5.4-mini*", openai(0.75, 0.075, 4.5)),
-    ("gpt-5.4*", openai(2.5, 0.25, 15)),
+    ("gpt-5.4*", openai(2.5, 0.25, 15, long_context=True)),
     ("gpt-5.3-codex*", openai(1.75, 0.175, 14)),
     ("gpt-5.3*", openai(1.75, 0.175, 14)),
     ("gpt-5.2*", openai(1.75, 0.175, 14)),

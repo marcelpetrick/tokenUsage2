@@ -81,13 +81,13 @@ appended, so a restart takes about 0.2 s.
 
 | Panel | Content |
 |-------|---------|
-| **Header** | Clock, live burn rate (tokens/min over the last 5 min), today / week / month / all-time totals. |
+| **Header** | Clock, live burn rate (tokens/min over the last 5 min), today / week / month / all-time totals, and an optional live Claude/Codex service-health badge. |
 | **Accounts** | One row per discovered account: tool, label, e-mail, plan, today/week/month/all, a 24 h sparkline, idle time, and **live 5 h and weekly quota bars** with reset countdowns. `●` marks accounts with a running agent process. |
 | **Timeline** | Stacked bars for the last N days, ISO weeks or months — coloured by account, tool, backend, model or project. The cursor selects a bar and scrolls back through the whole history. Retained history whose split is unknown is drawn hatched (`▒`) — in the fresh, output and cost views, which cannot count it, a bucket holding it is marked `░`; a row below the dates shows each bucket's cache-hit share. |
 | **Breakdown** | The selected bar by model (with backend), project, session (with its first and last request), backend, account or tool: calls, fresh input, cache read, cache write, output, total, share, cache-hit rate. |
 | **Live feed** | The newest requests as they land — model, project and token split; rows younger than 20 s are highlighted. |
 | **Heatmap** | Hour-of-day × weekday activity over the last four weeks (replaces the feed on `h`). |
-| **Sources** | Discovered homes and *how* each was found, file/event counts, archive path, quota freshness, backend hints, a reconciliation against Codex's own thread totals, and where Claude's tokens come from with the stats-cache scale (`s`, or `--doctor`). |
+| **Sources** | Discovered homes and *how* each was found, file/event counts, archive path, quota freshness, backend hints, provider health, a reconciliation against Codex's own thread totals, and where Claude's tokens come from with the stats-cache scale (`s`, or `--doctor`). |
 
 Four metrics are available: all tokens including cache (the raw total), fresh
 input + output, output only, and the standard-rate cost estimate.
@@ -195,18 +195,18 @@ that distinguishes them (for example `work/api` and `personal/api`).
 
 The `cost` metric (`v`) and the breakdown's cost column estimate what the tokens
 would cost at standard token rates — a list-price figure, not an invoice. Requests
-Anthropic's API answered use Anthropic's list prices per model (cache reads
-0.1x input, cache writes 1.25x for the 5-minute and 2x for the 1-hour TTL,
-which is why the split is recorded). Requests a local backend answered cost
-nothing. OpenAI-routed Codex and OpenCode records use the
-[published ChatGPT Work/Codex token rates](https://help.openai.com/en/articles/20001415-chatgpt-rate-card-enterprise-token-based-pricing);
+that Anthropic's API answered use Anthropic's published per-model input, output
+and cache rates; cache writes distinguish the 5-minute and 1-hour TTL. Requests
+a local backend answered cost nothing. OpenAI-routed Codex and OpenCode records
+use the [published OpenAI token rates](https://developers.openai.com/api/docs/pricing),
+including cache writes and the higher full-request tier above 272K prompt tokens;
 models without a final published rate show as `—`.
 An aggregate that mixes priced and unpriced usage is prefixed with `≥`, because
 the displayed amount is a known lower bound rather than a complete estimate.
-Fast mode, long-context, regional-processing and tool-call extras are not
-inferable from the local token records and are excluded. `[prices]` entries
-override all built-in rates. Retained daily totals stay unpriced because their
-split is unknown.
+Fast/batch service tiers, regional-processing uplifts and non-token tool-call
+fees are deliberately excluded from this standard-rate estimate. `[prices]`
+entries override all built-in rates. Retained daily totals stay unpriced
+because their split is unknown.
 
 ### The archive
 
@@ -256,6 +256,7 @@ tokenusage2 [--once | --json | --csv | --doctor] [--demo]
             [--theme default|midnight|amber|plain] [--interval SECONDS]
             [--archive PATH] [--no-archive] [--config PATH] [--home DIR] [--tz ZONE]
             [--width N] [--height N] [--color auto|always|never] [--redact]
+            [--provider-status | --no-provider-status]
             [--version]
 ```
 
@@ -263,6 +264,10 @@ tokenusage2 [--once | --json | --csv | --doctor] [--demo]
   machine-readable snapshot, `--csv` the timeline as CSV, `--doctor` the
   sources report.
 - `--demo` uses deterministic synthetic data, for screenshots and trying it out.
+- `--provider-status` opts into non-blocking checks of the official Claude API,
+  Claude Code, Codex API and Codex CLI components. A healthy badge stays compact;
+  degradation, maintenance or an outage also takes the footer. `--no-provider-status`
+  overrides an enabled config for one run.
 - `NO_COLOR` selects the plain theme.
 
 ## Configuration (optional)
@@ -296,12 +301,22 @@ burn_factor = 5              # a burn rate above 5x the typical active minute �
 burn_floor = 250000          # … and above this many tokens per minute
 notify = true                # desktop notification through notify-send
 bell = false                 # terminal bell
+
+[provider_status]
+enabled = false              # opt in; or pass --provider-status
+refresh_seconds = 300        # 30–3600; refresh runs off the TUI thread
+timeout_seconds = 2          # 0.1–10 per official status endpoint
 ```
 
 ## Privacy
 
-- Read-only: it never writes into any tool's directory and makes no network
-  requests.
+- Read-only: it never writes into any tool's directory. By default it makes no
+  network requests.
+- Provider health is explicitly opt-in. When enabled, it sends unauthenticated
+  GET requests—without account, token or usage data—to the official
+  [Claude](https://status.claude.com/) and [OpenAI](https://status.openai.com/)
+  status APIs. Requests have a strict timeout and run outside the rendering
+  thread.
 - Only usage metadata is retained — timestamps, model, backend, working
   directory, session id and token counts. Prompt and response text is never
   stored. Identity discovery decodes e-mail/plan claims locally; credential

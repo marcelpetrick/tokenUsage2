@@ -19,6 +19,7 @@ from tokenusage2.model import Account, Event, QuotaWindow, Tool
 from tokenusage2.pricing import Pricer, Rates
 from tokenusage2.procscan import ProcessScanner, running_by_account
 from tokenusage2.projects import ProjectResolver
+from tokenusage2.provider_status import ProviderStatus, ProviderStatusMonitor, status_lines
 from tokenusage2.store import Store
 
 REDISCOVER_SECONDS = 30.0
@@ -41,6 +42,8 @@ class Source(Protocol):
     def lifetimes(self) -> Mapping[str, Lifetime] | None: ...
     def rates(self, tool: Tool, model: str, route: str) -> Rates | None: ...
     def alert_settings(self) -> AlertSettings: ...
+    def provider_statuses(self) -> tuple[ProviderStatus, ...]: ...
+    def wait_provider_status(self) -> tuple[ProviderStatus, ...]: ...
     def close(self) -> None: ...
 
 
@@ -58,6 +61,7 @@ class LiveSource:
         tz: tzinfo,
         proc: Path = Path("/proc"),
         clock: Callable[[], float] = time.time,
+        provider_status: bool | None = None,
     ) -> None:
         self.store = store
         self.home = home
@@ -71,6 +75,12 @@ class LiveSource:
         self.discovery = discover(home, env, config, self.processes)
         self.ingestor = Ingestor(store, self.discovery, tz, home, env, clock)
         self.pricer = Pricer(config.prices)
+        status = config.provider_status
+        self.status_monitor = ProviderStatusMonitor(
+            status.enabled if provider_status is None else provider_status,
+            refresh_seconds=status.refresh_seconds,
+            timeout_seconds=status.timeout_seconds,
+        )
         self._project_generation = -1
         self._projects = ProjectResolver(())
         self._discovery_generation = 0
@@ -118,7 +128,7 @@ class LiveSource:
         return running_by_account(self.processes, self.discovery.accounts, self.home, self.env)
 
     def sources(self, redact: bool = False) -> list[str]:
-        return doctor_lines(
+        lines = doctor_lines(
             self.discovery,
             self.ingestor,
             self.processes,
@@ -130,6 +140,8 @@ class LiveSource:
             self.clock(),
             redact,
         )
+        lines.extend(("", "PROVIDER STATUS", *status_lines(self.provider_statuses(), self.clock())))
+        return lines
 
     def backend_of(self, event: Event) -> str:
         return self.discovery.backends.label(event.tool, event.model, event.route)
@@ -149,6 +161,13 @@ class LiveSource:
 
     def alert_settings(self) -> AlertSettings:
         return self.config.alerts
+
+    def provider_statuses(self) -> tuple[ProviderStatus, ...]:
+        return self.status_monitor.statuses()
+
+    def wait_provider_status(self) -> tuple[ProviderStatus, ...]:
+        timeout = self.status_monitor.timeout_seconds * len(self.status_monitor.endpoints) + 0.5
+        return self.status_monitor.wait(timeout)
 
     def close(self) -> None:
         self.store.close()

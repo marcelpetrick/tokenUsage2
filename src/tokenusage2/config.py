@@ -6,7 +6,8 @@
 
 Everything here is optional: discovery works without a file. The file only
 adds homes that cannot be found automatically, hides homes, renames accounts
-and pins models to backend labels.
+and pins models to backend labels. Provider status checks are opt-in because
+they are the only feature that makes network requests.
 """
 
 import math
@@ -46,6 +47,15 @@ class AlertSettings:
 
 
 @dataclass(frozen=True, slots=True)
+class ProviderStatusSettings:
+    """Opt-in polling of the providers' public status pages."""
+
+    enabled: bool = False
+    refresh_seconds: float = 300.0
+    timeout_seconds: float = 2.0
+
+
+@dataclass(frozen=True, slots=True)
 class Config:
     claude_homes: tuple[Path, ...] = ()
     codex_homes: tuple[Path, ...] = ()
@@ -57,6 +67,7 @@ class Config:
     backends: Mapping[str, str] = field(default_factory=dict)
     prices: tuple[tuple[str, Rates], ...] = ()
     alerts: AlertSettings = field(default_factory=AlertSettings)
+    provider_status: ProviderStatusSettings = field(default_factory=ProviderStatusSettings)
     source: Path | None = None
 
 
@@ -118,6 +129,31 @@ def _alerts(data: Mapping[str, object]) -> AlertSettings:
             raise ConfigError(f"alerts.{name} must be a number {bound}")
         values[name] = float(value)
     return AlertSettings(**values)
+
+
+def _provider_status(data: Mapping[str, object]) -> ProviderStatusSettings:
+    """``[provider_status]``: opt-in refresh and request timeout controls."""
+    raw = data.get("provider_status", {})
+    if not isinstance(raw, dict):
+        raise ConfigError("[provider_status] must be a table")
+    known = {"enabled", "refresh_seconds", "timeout_seconds"}
+    unknown = sorted(set(raw) - known)
+    if unknown:
+        raise ConfigError(f"[provider_status]: unknown keys {', '.join(unknown)}")
+    values: dict[str, object] = {}
+    enabled = raw.get("enabled", False)
+    if not isinstance(enabled, bool):
+        raise ConfigError("provider_status.enabled must be true or false")
+    values["enabled"] = enabled
+    limits = {"refresh_seconds": (30.0, 3600.0), "timeout_seconds": (0.1, 10.0)}
+    for name, (low, high) in limits.items():
+        if name not in raw:
+            continue
+        value = raw[name]
+        if not _finite_number(value) or not low <= value <= high:
+            raise ConfigError(f"provider_status.{name} must be between {low:g} and {high:g}")
+        values[name] = float(value)
+    return ProviderStatusSettings(**values)
 
 
 def _prices(data: Mapping[str, object]) -> tuple[tuple[str, Rates], ...]:
@@ -185,5 +221,6 @@ def load_config(path: Path | None, home: Path, env: Mapping[str, str]) -> Config
         backends=_strings(data, "backends"),
         prices=_prices(data),
         alerts=_alerts(data),
+        provider_status=_provider_status(data),
         source=target,
     )

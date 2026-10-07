@@ -18,6 +18,7 @@ from tokenusage2.ingest import Progress, ScanReport
 from tokenusage2.model import Account, Event, QuotaWindow, Tool, Usage
 from tokenusage2.pricing import Pricer, Rates
 from tokenusage2.projects import project_name
+from tokenusage2.provider_status import ProviderStatus
 from tokenusage2.render import mask
 
 _PRICER = Pricer()
@@ -244,6 +245,12 @@ class DemoSource:
 
     def alert_settings(self) -> AlertSettings:
         return AlertSettings()
+
+    def provider_statuses(self) -> tuple[ProviderStatus, ...]:
+        return ()
+
+    def wait_provider_status(self) -> tuple[ProviderStatus, ...]:
+        return ()
 
     def sources(self, redact: bool = False) -> list[str]:
         return [

@@ -48,6 +48,7 @@ Findings that shape tokenUsage2:
 | Codex CLI | same events | `rate_limits.primary/secondary` | Per account, newest observation wins. |
 | Codex CLI | `<home>/auth.json` | `id_token` JWT claims | e-mail + plan only; tokens are never stored or shown. |
 | OpenCode | `$XDG_DATA_HOME/opencode/opencode.db` | `message.data.tokens` | message id. |
+| Provider health (opt-in) | Official Claude and OpenAI Statuspage component feeds | Claude API / Claude Code and Codex API / CLI component states | Cached for the configured refresh interval; bounded background requests never block rendering. |
 
 Token semantics are normalised to *fresh input / cache read / cache write /
 output (reasoning is a subset of output)*. Codex's `input_tokens` includes the
@@ -85,6 +86,8 @@ Implemented in v0.1 (✓) and backlog (·):
 - ✓ Per-session drill-down (0.8.0).
 - ✓ CSV export of the current view (0.9.0).
 - ✓ A GitHub release per version, with a README badge (0.10.0).
+- ✓ Opt-in, non-blocking Claude/Codex provider-health indicator, doctor detail
+  and JSON output (0.13.27).
 - · Aider / Gemini CLI / other agents as further parsers.
 
 ## 4. Architecture
@@ -97,6 +100,7 @@ store.py     → SQLite archive (files, events, quotas, accounts), upsert-with-m
 ingest.py    → incremental tail of append-only JSONL, OpenCode watermark, backfill
 projects.py  → display-time Git roots, Claude scratchpads and temporary labels
 pricing.py   → provider-gated standard rates plus configured overrides
+provider_status.py → bounded background checks of official service components
 aggregate.py → buckets (DST-safe local midnights), tallies, account summaries
 render.py    → cell canvas → ANSI/plain frame, themes, panels, overlays
 tui.py       → alternate screen, cbreak keys, resize, refresh loop
@@ -123,7 +127,7 @@ The open ideas from §3, in delivery order — one commit and one version each:
 | Version | Item | Approach |
 |---------|------|----------|
 | 0.4.0 | Cache-write TTL split | Claude Code writes most of its cache at the 1-hour TTL (2× the input price) and the rest at 5 minutes (1.25×) — measured 106M vs 3.6M tokens for Opus 5, 15.5M vs 5.2M for Sonnet 5. Record the 1-hour share per request (archive schema 4; Claude transcripts are re-read once) so costs can be exact. |
-| 0.5.0 | Standard-rate cost estimate | A price table per model glob in USD per 1M tokens (input, output, cache read, cache write 5 m / 1 h). It began with Anthropic defaults; 0.13.0 added provider-gated OpenAI Work/Codex rates. Requests answered by a local backend cost nothing unless config supplies an override. Metric `cost` (`v`) and the breakdown cost column use per-model lifetime sums. Retained daily totals stay unpriced — their split is unknown. |
+| 0.5.0 | Standard-rate cost estimate | A price table per model glob in USD per 1M tokens (input, output, cache read, cache write 5 m / 1 h). It began with Anthropic defaults; 0.13.0 added provider-gated OpenAI Work/Codex rates. Requests answered by a local backend cost nothing unless config supplies an override. Metric `cost` (`v`) and the breakdown cost column use per-model and pricing-tier lifetime sums. Retained daily totals stay unpriced — their split is unknown. |
 | 0.6.0 | Cache-efficiency trend | A row under the timeline bars: the cache-read share of prompt tokens per bucket. |
 | 0.7.0 | Alerts | Quota ≥ 90 % (configurable) and a burn rate far above the typical active-minute rate of the last seven days — shown in the status line, optionally through `notify-send` and the terminal bell; each alert fires once per quota window or burn episode. |
 | 0.8.0 | Session drill-down | `session` as a breakdown dimension: project · session id with first and last request. |
@@ -239,3 +243,31 @@ local gate again.
 | 0.13.24 | ☑ | Synchronize user and architecture documentation with the repairs. |
 | 0.13.25 | ☑ | Refresh the full-state audit against the repaired project. |
 | 0.13.26 | ☑ | Run the complete release gate and prepare the public release. |
+
+## 12. Current CLI compatibility and performance audit (October 2026)
+
+The full request path was rechecked against current local data, installed CLIs
+and official provider documentation. The archive format stays unchanged: the
+needed corrections are parser context, discovery and display-time pricing.
+
+| Version | Status | Finding and work |
+|---------|--------|------------------|
+| 0.13.27 | ☑ | Add current Claude/OpenAI model prices, OpenAI cache writes and exact per-request long-context tiers; follow Codex `turn_context.cwd`; honor `sqlite_home`; validate CLI numeric edges; remove the normal-frame full-archive last-request scan; and add opt-in background health checks for the official Claude API / Claude Code and Codex API / CLI components. |
+
+Compatibility evidence:
+
+- Claude Code 2.1.292 transcript usage fields, statusline quota snapshots and
+  current model families remain covered. Claude 4.6+ long context uses standard
+  rates; service-tier, geography and non-token tool extras remain explicit
+  standard-rate-estimate exclusions.
+- Codex CLI 0.160.1 `token_count` records reconcile with
+  `threads.tokens_used`. The parallel `token_usage_record` stream is still not
+  added because it does not reconcile with that authoritative total.
+- Current Codex per-turn working directories and configurable SQLite state
+  location are covered by focused regressions.
+- On the 3.0 GiB local corpus (1,987 log files), repeated profiling observed
+  5.6–23.3 s cold indexes depending on host load, 0.48–0.82 s warm starts,
+  10–39 ms idle rescans and roughly 61–144 ms snapshot builds.
+- The complete release gate passes with 354 tests, 99.15% branch coverage,
+  lint/format/ShellCheck, smoke rendering, package builds, a clean-wheel render
+  and the installed 0.13.27 version check.

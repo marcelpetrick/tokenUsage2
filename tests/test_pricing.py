@@ -28,21 +28,27 @@ def test_cost_prices_every_part_of_the_split() -> None:
     assert FREE.cost(usage) == 0.0
 
 
-def test_openai_prices_cached_input_but_not_cache_writes() -> None:
+def test_openai_prices_cache_writes_and_long_context_when_the_model_does() -> None:
     usage = Usage(input=10, cache_read=1000, cache_write=100, output=50)
-    # 10*4 + 1000*0.4 + 100*0 + 50*20
+    # Older models without a published write rate retain the zero default.
     assert openai(4, 0.4, 20).cost(usage) == pytest.approx(1440 / 1_000_000)
+    current = openai(2, 0.2, 10, cache_write=2.5, long_context=True)
+    assert current.cost(usage) == pytest.approx((20 + 200 + 250 + 500) / 1_000_000)
+    large = Usage(input=1000, cache_read=271_001, cache_write=0, output=100)
+    assert current.cost(large) == pytest.approx((4000 + 108_400.4 + 1500) / 1_000_000)
 
 
 @pytest.mark.parametrize(
     ("model", "expected"),
     [
         ("claude-opus-5", anthropic(5, 25)),
+        ("claude-opus-5-5", anthropic(4, 20, cache_read=0.2)),
         ("claude-sonnet-5", anthropic(2, 10)),
         ("claude-sonnet-4-6", anthropic(3, 15)),
         ("claude-haiku-4-5-20251001", anthropic(1, 5)),
         ("claude-fable-5-1", anthropic(10, 50, cache_read=0.25)),
         ("claude-fable-5", anthropic(10, 50)),
+        ("claude-mythos-5-1", anthropic(10, 50, cache_read=0.25)),
         ("claude-unknown-9", None),
     ],
 )
@@ -53,17 +59,20 @@ def test_anthropic_list_prices(model: str, expected: Rates | None) -> None:
 @pytest.mark.parametrize(
     ("model", "expected"),
     [
-        ("gpt-6-astra", openai(10, 1, 50)),
-        ("gpt-5.6-sol", openai(4, 0.4, 20)),
-        ("gpt-5.6-terra", openai(2, 0.2, 12)),
-        ("gpt-5.6-luna", openai(0.2, 0.02, 1.2)),
+        ("gpt-6-astra", openai(10, 1, 50, cache_write=12.5, long_context=True)),
+        ("gpt-6.1-sol", openai(2, 0.1, 10, cache_write=2.5, long_context=True)),
+        ("gpt-6-sol", openai(2, 0.2, 10, cache_write=2.5, long_context=True)),
+        ("gpt-6-luna", openai(0.1, 0.01, 0.5, cache_write=0.125, long_context=True)),
+        ("gpt-5.6-sol", openai(4, 0.4, 20, cache_write=5, long_context=True)),
+        ("gpt-5.6-terra", openai(2, 0.2, 12, cache_write=2.5, long_context=True)),
+        ("gpt-5.6-luna", openai(0.2, 0.02, 1.2, cache_write=0.25, long_context=True)),
         ("gpt-rosalind-research", openai(5, 0.5, 25)),
         ("gpt-5.5-pro", None),
-        ("gpt-5.5", openai(5, 0.5, 30)),
+        ("gpt-5.5", openai(5, 0.5, 30, long_context=True)),
         ("daybreak-blue", openai(4, 0.4, 20)),
         ("daybreak-red", openai(12.5, 1.25, 75)),
         ("gpt-5.4-mini", openai(0.75, 0.075, 4.5)),
-        ("gpt-5.4", openai(2.5, 0.25, 15)),
+        ("gpt-5.4", openai(2.5, 0.25, 15, long_context=True)),
         ("gpt-5.3-codex", openai(1.75, 0.175, 14)),
         ("gpt-5.3", openai(1.75, 0.175, 14)),
         ("gpt-5.2", openai(1.75, 0.175, 14)),
@@ -81,13 +90,17 @@ def test_resolution_order() -> None:
     assert pricer.rates(Tool.CODEX, "gpt-5.6-sol", "openai") is custom
     assert pricer.rates(Tool.CLAUDE, "claude-opus-5", "anthropic") is FREE
     assert pricer.rates(Tool.CLAUDE, "north-mini:q4", "") is FREE
-    assert pricer.rates(Tool.CODEX, "gpt-6-astra", "openai") == openai(10, 1, 50)
+    assert pricer.rates(Tool.CODEX, "gpt-6-astra", "openai") == openai(
+        10, 1, 50, cache_write=12.5, long_context=True
+    )
     assert pricer.rates(Tool.OPENCODE, "claude-sonnet-5", "anthropic") == anthropic(2, 10)
     assert pricer.rates(Tool.OPENCODE, "qwen", "ollama-local") is None
     assert Pricer().rates(Tool.CODEX, "gpt-5.6-sol", "ollama-local") is None
     assert pricer.rates(Tool.CODEX, "gpt-5.6-sol", "ollama-local") is custom
     assert pricer.rates(Tool.CODEX, "gpt-5.3-codex-spark", "openai") is custom
-    assert Pricer().rates(Tool.OPENCODE, "gpt-5.6-sol", "openai") == openai(4, 0.4, 20)
+    assert Pricer().rates(Tool.OPENCODE, "gpt-5.6-sol", "openai") == openai(
+        4, 0.4, 20, cache_write=5, long_context=True
+    )
     assert pricer.rates(Tool.OPENCODE, "gpt-5.6-sol", "openai") is custom
 
 

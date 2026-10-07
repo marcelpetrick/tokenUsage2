@@ -10,6 +10,7 @@ from tokenusage2.config import (
     AlertSettings,
     Config,
     ConfigError,
+    ProviderStatusSettings,
     default_config_path,
     expand,
     load_config,
@@ -144,6 +145,35 @@ def test_alert_settings(tmp_path: Path) -> None:
     ],
 )
 def test_invalid_alert_settings_raise(tmp_path: Path, content: str) -> None:
+    path = tmp_path / "config.toml"
+    path.write_text(content)
+    with pytest.raises(ConfigError):
+        load_config(path, tmp_path, {})
+
+
+def test_provider_status_settings_are_opt_in_and_bounded(tmp_path: Path) -> None:
+    path = tmp_path / "config.toml"
+    path.write_text(
+        "[provider_status]\nenabled = true\nrefresh_seconds = 60\ntimeout_seconds = 1.5\n"
+    )
+    assert load_config(path, tmp_path, {}).provider_status == ProviderStatusSettings(
+        enabled=True, refresh_seconds=60.0, timeout_seconds=1.5
+    )
+    assert load_config(None, tmp_path, {}).provider_status == ProviderStatusSettings()
+
+
+@pytest.mark.parametrize(
+    "content",
+    [
+        "provider_status = 1",
+        "[provider_status]\nenabled = 'yes'",
+        "[provider_status]\nrefresh_seconds = 10",
+        "[provider_status]\nrefresh_seconds = inf",
+        "[provider_status]\ntimeout_seconds = 0",
+        "[provider_status]\nextra = true",
+    ],
+)
+def test_invalid_provider_status_settings_raise(tmp_path: Path, content: str) -> None:
     path = tmp_path / "config.toml"
     path.write_text(content)
     with pytest.raises(ConfigError):

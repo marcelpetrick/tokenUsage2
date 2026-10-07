@@ -10,6 +10,37 @@ All notable changes to tokenUsage2. Versions follow semantic versioning; the
 archive schema version is noted whenever it changes, because an older build
 refuses a newer archive.
 
+## 0.13.27
+
+### Fixed
+
+- Track the current Claude and OpenAI model catalog, including Claude Opus 5.5,
+  GPT-6 Sol / 6.1 Sol / Luna, OpenAI cache-write prices and the per-request
+  OpenAI long-context tier.
+- Attribute Codex requests to the working directory recorded for each turn and
+  reconcile thread totals from a configured `sqlite_home`, choosing numbered
+  state databases numerically.
+- Reject non-finite scan intervals and invalid output dimensions at the command
+  line instead of entering an inert loop or failing during rendering.
+
+### Performance
+
+- Avoid walking the complete archive on ordinary snapshot builds merely to
+  defend the last-request timestamp against rare future-dated records.
+
+### Added
+
+- Add opt-in, non-blocking health checks for the official Claude API, Claude
+  Code, Codex API and Codex CLI status components. The TUI shows a compact
+  healthy badge, promotes service problems to the footer, and exposes details
+  through Sources, `--doctor` and JSON output.
+
+### Quality
+
+- Audit the full ingestion, archive, pricing, aggregation and rendering path
+  against Claude Code 2.1.292, Codex CLI 0.160.1 and their current official
+  documentation.
+
 ## 0.13.26
 
 ### Quality
