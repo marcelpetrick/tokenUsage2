@@ -10,6 +10,20 @@ All notable changes to tokenUsage2. Versions follow semantic versioning; the
 archive schema version is noted whenever it changes, because an older build
 refuses a newer archive.
 
+## 0.13.33
+
+### Fixed
+
+- Treat explicit local OpenCode and Codex routes such as Ollama and LM Studio
+  as zero token-price backends instead of reporting their models as unpriced.
+- Keep unknown hosted and custom providers unpriced, preserving the distinction
+  between a known local route and a model whose billing cannot be inferred.
+
+### Quality
+
+- Verify local-route precedence, JSON unpriced totals and the real archive's
+  separation between local and unknown-provider models.
+
 ## 0.13.32
 
 ### Added

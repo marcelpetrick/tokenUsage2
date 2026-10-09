@@ -263,6 +263,7 @@ needed corrections are parser context, discovery and display-time pricing.
 | 0.13.30 | ☑ | Distinguish five-minute total-token throughput including cache from fresh input/output throughput in the header, account table, alerts and JSON; split provider health into independently coloured Claude and OpenAI bubbles. |
 | 0.13.31 | ☑ | Label both header throughput values explicitly as per-minute rates in wide and narrow layouts; simulate every provider-health severity mapping and refresh all maintained documentation. |
 | 0.13.32 | ☑ | Expand grouping palettes to 20 colours; define the neutral cache-read / prompt share; label cost charts correctly; and cover current provider model IDs, including Sonnet 5.5 cache pricing and Haiku 5.5's per-request long-prompt tier. |
+| 0.13.33 | ☑ | Complete the real-model audit by pricing explicit local OpenCode/Codex routes at zero while leaving unknown hosted providers visibly unpriced. |
 
 Compatibility evidence:
 
@@ -279,6 +280,6 @@ Compatibility evidence:
 - On the 3.0 GiB local corpus (1,987 log files), repeated profiling observed
   5.6–23.3 s cold indexes depending on host load, 0.48–0.82 s warm starts,
   10–39 ms idle rescans and roughly 61–144 ms snapshot builds.
-- The complete release gate passes with 374 tests, 99.15% branch coverage,
+- The complete release gate passes with 374 tests, 99.16% branch coverage,
   lint/format/ShellCheck, smoke rendering, package builds, a clean-wheel render
-  and the installed 0.13.32 version check.
+  and the installed 0.13.33 version check.
