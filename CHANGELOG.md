@@ -10,6 +10,21 @@ All notable changes to tokenUsage2. Versions follow semantic versioning; the
 archive schema version is noted whenever it changes, because an older build
 refuses a newer archive.
 
+## 0.13.31
+
+### Fixed
+
+- Label both five-minute throughput values with their own `/min` unit in wide
+  and narrow headers, removing ambiguity about whether the total including
+  cache was a rate or a five-minute total.
+
+### Quality
+
+- Simulate every provider-health mapping from operational through partial
+  issues and maintenance to a complete major outage and unknown status.
+- Re-run the branch and full Markdown documentation reviews, synchronizing the
+  plan, current audit, LinkedIn fact sheet and generated project history.
+
 ## 0.13.30
 
 ### Added

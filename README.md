@@ -31,17 +31,17 @@ and no API keys.
 and moved here with its full history (see `CHANGELOG.md` 0.3.8); all work
 continues in this repository.
 
-### See tokenUsage2 in action
+## See tokenUsage2 in action
 
-#### Periods, metrics and colour themes
+### Periods, metrics and colour themes
 
 ![tokenUsage2 switches between daily, weekly and monthly periods, token metrics and colour themes](media/tokenUsage2-tour.gif)
 
-#### Timeline groupings, breakdowns and account filters
+### Timeline groupings, breakdowns and account filters
 
 ![tokenUsage2 changes timeline groupings, breakdown dimensions and account filters](media/tokenUsage2-groupings.gif)
 
-#### Live feed, heatmap, history and keyboard help
+### Live feed, heatmap, history and keyboard help
 
 ![tokenUsage2 opens its heatmap and keyboard help while exploring historical buckets](media/tokenUsage2-explore.gif)
 
@@ -83,7 +83,7 @@ take 0.48–0.82 s.
 
 | Panel | Content |
 |-------|---------|
-| **Header** | Clock, trailing 5-minute rates for total tokens including cache and fresh tokens (uncached input + output), today / week / month / all-time totals, and optional separate Claude/OpenAI health bubbles. Green means fully operational, yellow means a partial issue or maintenance, red means all tracked components are down, and grey means unknown/checking. |
+| **Header** | Clock, trailing 5-minute rates shown as `<total>/min incl cache · <fresh>/min fresh · 5m avg`, today / week / month / all-time totals, and optional separate Claude/OpenAI health bubbles. Green means fully operational, yellow means a partial issue or maintenance, red means all tracked components are down, and grey means unknown/checking. |
 | **Accounts** | One row per discovered account: tool, label, e-mail, plan, today/week/month/all, a 24 h sparkline, idle time, total and fresh 5-minute rates, and **live 5 h and weekly quota bars** with reset countdowns. `●` marks accounts with a running agent process. |
 | **Timeline** | Stacked bars for the last N days, ISO weeks or months — coloured by account, tool, backend, model or project. The cursor selects a bar and scrolls back through the whole history. Retained history whose split is unknown is drawn hatched (`▒`) — in the fresh, output and cost views, which cannot count it, a bucket holding it is marked `░`; a row below the dates shows each bucket's cache-hit share. |
 | **Breakdown** | The selected bar by model (with backend), project, session (with its first and last request), backend, account or tool: calls, fresh input, cache read, cache write, output, total, share, cache-hit rate. |
@@ -95,9 +95,10 @@ Four metrics are available: all tokens including cache (the raw total), fresh
 input + output, output only, and the standard-rate cost estimate.
 
 **Alerts** appear in the status line when a 5 h or weekly quota reaches 90 %
-or the five-minute average total-token burn (including cache) climbs far above the typical active minute of the last seven
-days — optionally also as a desktop notification (`notify-send`) and a terminal
-bell. Each fires once per quota window or burn episode; `--json` lists them.
+or the five-minute average total-token burn (including cache) climbs far above
+the typical active minute of the last seven days — optionally also as a desktop
+notification (`notify-send`) and a terminal bell. Each fires once per quota
+window or burn episode; `--json` lists them.
 
 ## Keys
 

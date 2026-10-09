@@ -58,8 +58,9 @@ cached part and is split accordingly.
 
 Implemented in v0.1 (✓) and backlog (·):
 
-- ✓ Header: clock, live burn rate (tokens/min over 5 min), today / week /
-  month / all-time totals.
+- ✓ Header: clock, trailing five-minute total rate including cache and fresh
+  input/output rate, each explicitly labelled `/min`, plus today / week / month /
+  all-time totals.
 - ✓ Accounts panel: one row per discovered account — tool, label, identity
   (e-mail, redactable), plan, today/week/month, 24 h sparkline, last activity,
   **live quota bars** (5 h and weekly) with reset countdown.
@@ -86,8 +87,9 @@ Implemented in v0.1 (✓) and backlog (·):
 - ✓ Per-session drill-down (0.8.0).
 - ✓ CSV export of the current view (0.9.0).
 - ✓ A GitHub release per version, with a README badge (0.10.0).
-- ✓ Opt-in, non-blocking Claude/Codex provider-health indicator, doctor detail
-  and JSON output (0.13.27).
+- ✓ Opt-in, non-blocking Claude/OpenAI provider-health bubbles, doctor detail
+  and JSON output; each bubble independently shows operational, partial-issue,
+  complete-outage or unknown state (0.13.27, split in 0.13.30).
 - · Aider / Gemini CLI / other agents as further parsers.
 
 ## 4. Architecture
@@ -257,6 +259,7 @@ needed corrections are parser context, discovery and display-time pricing.
 | 0.13.28 | ☑ | Audit every maintained document, replace stale performance/privacy claims, and add a reproducible project-history chart with release markers and an offline test-to-product-code ratio; make stale generated history fail the shared local/CI/release gate. |
 | 0.13.29 | ☑ | Fetch complete Git history in the normal GitHub Actions checkout and cover that maintenance requirement with a regression test. |
 | 0.13.30 | ☑ | Distinguish five-minute total-token throughput including cache from fresh input/output throughput in the header, account table, alerts and JSON; split provider health into independently coloured Claude and OpenAI bubbles. |
+| 0.13.31 | ☑ | Label both header throughput values explicitly as per-minute rates in wide and narrow layouts; simulate every provider-health severity mapping and refresh all maintained documentation. |
 
 Compatibility evidence:
 
