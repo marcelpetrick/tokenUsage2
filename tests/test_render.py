@@ -101,17 +101,46 @@ def test_header_names_total_and_fresh_five_minute_rates(demo: DemoSource) -> Non
 def test_provider_health_is_compact_when_healthy_and_prominent_when_broken(
     demo: DemoSource,
 ) -> None:
-    good = ProviderStatus("Claude", Health.OPERATIONAL, "ok", NOW, "https://status")
+    claude = ProviderStatus("Claude", Health.OPERATIONAL, "ok", NOW, "https://status")
+    openai = ProviderStatus("OpenAI", Health.DEGRADED, "CLI: degraded", NOW, "https://status")
     healthy = "\n".join(
-        frame(demo, View(theme="plain"), provider_statuses=(good,), status="status")
+        frame(
+            demo,
+            View(theme="plain"),
+            width=180,
+            provider_statuses=(claude, openai),
+            status="status",
+        )
     )
-    assert "● APIs operational" in healthy.splitlines()[0]
-    assert "▲" not in healthy.splitlines()[-1]
+    assert "● Claude" in healthy.splitlines()[0]
+    assert "● OpenAI" in healthy.splitlines()[0]
+    assert "▲ OpenAI degraded: CLI: degraded" in healthy.splitlines()[-1]
 
-    bad = ProviderStatus("Codex", Health.OUTAGE, "CLI: outage", NOW, "https://status")
-    outage = "\n".join(frame(demo, View(theme="plain"), provider_statuses=(bad,), status="status"))
-    assert "▲ Codex outage" in outage.splitlines()[0]
-    assert "▲ Codex outage: CLI: outage" in outage.splitlines()[-1]
+    coloured = "\n".join(
+        frame(
+            demo,
+            View(theme="default"),
+            width=180,
+            provider_statuses=(claude, openai),
+        )
+    )
+    assert "\x1b[0;1;38;5;22;48;5;114m● Claude" in coloured
+    assert "\x1b[0;1;38;5;52;48;5;221m● OpenAI" in coloured
+
+    bad = ProviderStatus(
+        "OpenAI", Health.OUTAGE, "all tracked services down", NOW, "https://status"
+    )
+    outage = "\n".join(
+        frame(
+            demo,
+            View(theme="default"),
+            width=180,
+            provider_statuses=(claude, bad),
+            status="status",
+        )
+    )
+    assert "\x1b[0;1;38;5;231;48;5;203m● OpenAI" in outage.splitlines()[0]
+    assert "▲ OpenAI outage: all tracked services down" in visible(outage.splitlines())[-1]
 
 
 def test_retained_history_is_drawn_hatched() -> None:

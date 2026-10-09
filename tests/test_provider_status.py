@@ -12,7 +12,7 @@ from tokenusage2.provider_status import (
     StatusEndpoint,
     fetch_status,
     parse_summary,
-    status_badge,
+    status_badges,
     status_lines,
     status_problem,
 )
@@ -57,6 +57,19 @@ def test_summary_tracks_only_relevant_components_and_the_worst_state() -> None:
     )
     partial = parse_summary(ENDPOINT, summary(("CLI", "operational")), 1)
     assert (partial.health, partial.detail) == (Health.UNKNOWN, "not listed: Codex API")
+
+    partial_outage = parse_summary(
+        ENDPOINT,
+        summary(("Codex API", "major_outage"), ("CLI", "operational")),
+        2,
+    )
+    full_outage = parse_summary(
+        ENDPOINT,
+        summary(("Codex API", "major_outage"), ("CLI", "major_outage")),
+        3,
+    )
+    assert partial_outage.health is Health.DEGRADED
+    assert full_outage.health is Health.OUTAGE
 
 
 def test_summary_rejects_invalid_or_missing_components() -> None:
@@ -135,11 +148,16 @@ def test_badges_problems_and_report_lines() -> None:
     bad = ProviderStatus("Codex", Health.OUTAGE, "CLI: outage", 8.0, "https://status")
     unknown = ProviderStatus("Codex", Health.UNKNOWN, "offline", 7.0, "https://status")
     pending = ProviderStatus("Claude", Health.UNKNOWN, "checking…", None, "https://status")
-    assert status_badge(()) == ""
-    assert status_badge((good,)) == "● APIs operational"
-    assert status_badge((bad, good)) == "▲ Codex outage"
-    assert status_badge((unknown,)) == "◇ Codex unknown"
-    assert status_badge((pending,)) == "◇ APIs checking"
+    degraded = ProviderStatus("OpenAI", Health.DEGRADED, "CLI: degraded", 8.0, "https://status")
+    assert status_badges(()) == ()
+    assert status_badges((good,)) == (("● Claude", Health.OPERATIONAL),)
+    assert status_badges((bad, good)) == (
+        ("● Codex", Health.OUTAGE),
+        ("● Claude", Health.OPERATIONAL),
+    )
+    assert status_badges((degraded,)) == (("● OpenAI", Health.DEGRADED),)
+    assert status_badges((unknown,)) == (("○ Codex", Health.UNKNOWN),)
+    assert status_badges((pending,)) == (("○ Claude", Health.UNKNOWN),)
     assert status_problem((good,)) == ""
     assert status_problem((bad,)) == "Codex outage: CLI: outage"
     assert "checked 2s ago" in status_lines((good,), 11)[0]

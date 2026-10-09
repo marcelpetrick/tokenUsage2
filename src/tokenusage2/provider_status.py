@@ -47,7 +47,7 @@ ENDPOINTS = (
         ("Claude API (api.anthropic.com)", "Claude Code"),
     ),
     StatusEndpoint(
-        "Codex",
+        "OpenAI",
         "https://status.openai.com/api/v2/components.json",
         ("Codex API", "CLI"),
     ),
@@ -115,8 +115,13 @@ def parse_summary(endpoint: StatusEndpoint, data: object, checked_at: float) -> 
     missing = [name for name in endpoint.components if name.casefold() not in found]
     states = [state for _, state in found.values()]
     problems = [state for state in states if state not in {Health.OPERATIONAL, Health.UNKNOWN}]
-    if problems:
-        health = max(problems, key=_SEVERITY.__getitem__)
+    if states and all(state is Health.OUTAGE for state in states) and not missing:
+        health = Health.OUTAGE
+    elif problems:
+        health = max(
+            (Health.DEGRADED if state is Health.OUTAGE else state for state in problems),
+            key=_SEVERITY.__getitem__,
+        )
     elif missing or Health.UNKNOWN in states:
         health = Health.UNKNOWN
     else:
@@ -233,24 +238,15 @@ class ProviderStatusMonitor:
             return self._statuses
 
 
-def status_badge(statuses: Sequence[ProviderStatus]) -> str:
-    """Compact header text; disabled checks consume no space."""
-    if not statuses:
-        return ""
-    pending = [status for status in statuses if status.checked_at is None]
-    problems = [
-        status for status in statuses if status.health not in {Health.OPERATIONAL, Health.UNKNOWN}
-    ]
-    unknown = [status for status in statuses if status.health is Health.UNKNOWN]
-    if problems:
-        worst = max(problems, key=lambda status: _SEVERITY[status.health])
-        return f"▲ {worst.provider} {worst.health}"
-    if pending:
-        return "◇ APIs checking"
-    if unknown:
-        names = "/".join(status.provider for status in unknown)
-        return f"◇ {names} unknown"
-    return "● APIs operational"
+def status_badges(statuses: Sequence[ProviderStatus]) -> tuple[tuple[str, Health], ...]:
+    """One compact, independently colourable bubble per provider."""
+    return tuple(
+        (
+            f"{'○' if status.health is Health.UNKNOWN else '●'} {status.provider}",
+            status.health,
+        )
+        for status in statuses
+    )
 
 
 def status_problem(statuses: Sequence[ProviderStatus]) -> str:

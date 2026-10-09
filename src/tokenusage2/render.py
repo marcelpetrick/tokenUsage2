@@ -26,7 +26,7 @@ from tokenusage2.aggregate import (
     Tally,
 )
 from tokenusage2.model import Tool
-from tokenusage2.provider_status import ProviderStatus, status_badge, status_problem
+from tokenusage2.provider_status import Health, ProviderStatus, status_badges, status_problem
 from tokenusage2.version import __version__
 
 MIN_WIDTH, MIN_HEIGHT = 70, 16
@@ -36,6 +36,13 @@ SPARK = " ▁▂▃▄▅▆▇█"
 HEAT = " ░▒▓█"
 SERIES = 8
 TOOL_STYLE = {Tool.CLAUDE: "claude", Tool.CODEX: "codex", Tool.OPENCODE: "opencode"}
+STATUS_STYLE = {
+    Health.OPERATIONAL: "status_ok",
+    Health.MAINTENANCE: "status_warn",
+    Health.DEGRADED: "status_warn",
+    Health.OUTAGE: "status_bad",
+    Health.UNKNOWN: "status_unknown",
+}
 
 _DEFAULT = {
     "base": "",
@@ -49,6 +56,10 @@ _DEFAULT = {
     "warn": "38;5;221",
     "bad": "1;38;5;203",
     "header": "1;38;5;16;48;5;117",
+    "status_ok": "1;38;5;22;48;5;114",
+    "status_warn": "1;38;5;52;48;5;221",
+    "status_bad": "1;38;5;231;48;5;203",
+    "status_unknown": "1;38;5;236;48;5;250",
     "claude": "38;5;209",
     "codex": "38;5;75",
     "opencode": "38;5;114",
@@ -73,6 +84,10 @@ _AMBER = {
     "warn": "38;5;208",
     "bad": "1;38;5;196",
     "header": "1;38;5;52;48;5;214",
+    "status_ok": "1;38;5;22;48;5;114",
+    "status_warn": "1;38;5;52;48;5;221",
+    "status_bad": "1;38;5;231;48;5;196",
+    "status_unknown": "1;38;5;236;48;5;250",
     "claude": "38;5;215",
     "codex": "38;5;221",
     "opencode": "38;5;180",
@@ -827,7 +842,7 @@ def draw_header(
 ) -> None:
     canvas.fill(Rect(0, 0, width, 1), "header")
     base_left = f" ◆ tokenUsage2 {__version__}  {mode} "
-    badge = status_badge(provider_statuses)
+    badges = status_badges(provider_statuses)
     metric = snapshot.metric
     middle = (
         f"today {tally_amount(snapshot.today, metric)}  ·  "
@@ -847,8 +862,10 @@ def draw_header(
         wide_rate,
         short_rate,
     )
-    extra = f" {badge} " if badge else ""
-    left = base_left + extra if len(base_left) + len(extra) < width else base_left
+    extra = " " + " ".join(text for text, _ in badges) + " " if badges else ""
+    left = (
+        base_left + extra if len(base_left) + len(extra) + len(short_rate) <= width else base_left
+    )
     right = next(
         (
             candidate
@@ -857,7 +874,12 @@ def draw_header(
         ),
         next((candidate for candidate in candidates if len(left) + len(candidate) <= width), ""),
     )
-    canvas.put(0, 0, left, "header")
+    canvas.put(0, 0, base_left, "header")
+    if left != base_left:
+        cursor = canvas.put(len(base_left), 0, " ", "header")
+        for text, health in badges:
+            cursor = canvas.put(cursor, 0, text, STATUS_STYLE[health])
+            cursor = canvas.put(cursor, 0, " ", "header")
     if len(left) + len(right) <= width:
         canvas.put(width - len(right), 0, right, "header")
         room = width - len(left) - len(right)

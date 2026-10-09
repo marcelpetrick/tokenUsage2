@@ -83,7 +83,7 @@ take 0.48–0.82 s.
 
 | Panel | Content |
 |-------|---------|
-| **Header** | Clock, trailing 5-minute rates for total tokens including cache and fresh tokens (uncached input + output), today / week / month / all-time totals, and an optional live Claude/Codex service-health badge. |
+| **Header** | Clock, trailing 5-minute rates for total tokens including cache and fresh tokens (uncached input + output), today / week / month / all-time totals, and optional separate Claude/OpenAI health bubbles. Green means fully operational, yellow means a partial issue or maintenance, red means all tracked components are down, and grey means unknown/checking. |
 | **Accounts** | One row per discovered account: tool, label, e-mail, plan, today/week/month/all, a 24 h sparkline, idle time, total and fresh 5-minute rates, and **live 5 h and weekly quota bars** with reset countdowns. `●` marks accounts with a running agent process. |
 | **Timeline** | Stacked bars for the last N days, ISO weeks or months — coloured by account, tool, backend, model or project. The cursor selects a bar and scrolls back through the whole history. Retained history whose split is unknown is drawn hatched (`▒`) — in the fresh, output and cost views, which cannot count it, a bucket holding it is marked `░`; a row below the dates shows each bucket's cache-hit share. |
 | **Breakdown** | The selected bar by model (with backend), project, session (with its first and last request), backend, account or tool: calls, fresh input, cache read, cache write, output, total, share, cache-hit rate. |
@@ -267,9 +267,11 @@ tokenusage2 [--once | --json | --csv | --doctor] [--demo]
   sources report.
 - `--demo` uses deterministic synthetic data, for screenshots and trying it out.
 - `--provider-status` opts into non-blocking checks of the official Claude API,
-  Claude Code, Codex API and Codex CLI components. A healthy badge stays compact;
-  degradation, maintenance or an outage also takes the footer. `--no-provider-status`
-  overrides an enabled config for one run.
+  Claude Code, Codex API and Codex CLI components. Separate Claude and OpenAI
+  bubbles show green when all tracked components are operational, yellow for a
+  partial issue or maintenance, red when every tracked component has a major
+  outage, and grey while checking or when status is unknown. Known problems also
+  take the footer. `--no-provider-status` overrides an enabled config for one run.
 - `NO_COLOR` selects the plain theme.
 
 ## Configuration (optional)
