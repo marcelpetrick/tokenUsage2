@@ -10,6 +10,32 @@ All notable changes to tokenUsage2. Versions follow semantic versioning; the
 archive schema version is noted whenever it changes, because an older build
 refuses a newer archive.
 
+## 0.13.32
+
+### Added
+
+- Expand the timeline's categorical palettes from 8 to 20 stable colours, so
+  account, backend, model and project colours do not repeat until category 21.
+- Recognize and price Claude Sonnet 5.5, Claude Haiku 5.5 and GPT-5.6 Cyber;
+  apply Haiku 5.5's published higher tier per request above 100K prompt tokens.
+
+### Changed
+
+- Rename the timeline row to `cache%`, define it as cache reads divided by all
+  prompt tokens, and render it in a neutral colour below its aligned buckets.
+- Label cost timelines as `Cost per …` while retaining dollar-scaled axes and
+  the explicit standard-rate-estimate qualifier.
+
+### Fixed
+
+- Use Claude Sonnet 5.5's $0.10/MTok cache-read price instead of allowing the
+  broader Sonnet 5 rule to apply $0.20/MTok.
+
+### Quality
+
+- Cover 20-colour uniqueness and wraparound, cache-row semantics, cost-chart
+  titles, current model matching and both sides of Haiku 5.5's tier boundary.
+
 ## 0.13.31
 
 ### Fixed

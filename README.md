@@ -208,6 +208,9 @@ The cost timeline uses dollar-scaled bars and a `Cost per …` title; token view
 retain token-scaled axes. Current built-ins cover the provider model IDs used by
 Claude Code and Codex/OpenCode, including per-request long-prompt tiers where
 the provider publishes them.
+Model recognition itself is not allow-list based: the parsers retain every
+model ID reported by the tools. An unfamiliar model stays visible, but its cost
+is marked unpriced until a built-in or `[prices]` entry supplies a rate.
 An aggregate that mixes priced and unpriced usage is prefixed with `≥`, because
 the displayed amount is a known lower bound rather than a complete estimate.
 Fast/batch service tiers, regional-processing uplifts and non-token tool-call
