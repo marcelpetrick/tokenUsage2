@@ -1,8 +1,27 @@
-Base: public `v0.13.27` @ `3f23d00`  Scope: full 0.13.29 release candidate
+Base: public `v0.13.30` @ `fae6abc`  Scope: full 0.13.31 release candidate
 
 ## Findings
 
 No unresolved HIGH, MEDIUM or LOW code or architecture finding remains.
+
+The formal `origin/master...HEAD` branch review covered the rate-label fix and
+its provider-state regression matrix. It found no Code or Architecture defect:
+both displayed throughput values carry their own `/min` unit in wide and
+70-column layouts, while the shared `5m avg` suffix states the sampling window.
+
+The full Markdown audit found and repaired eight documentation/release gaps:
+
+1. The latest-audit link pointed here while this report still described 0.13.29.
+2. The already-tagged 0.13.30 version would have suppressed a new release.
+3. The plan still described one burn rate rather than total and fresh rates.
+4. The plan still described one combined provider-health indicator.
+5. The LinkedIn fact sheet used the same stale singular-rate/status wording.
+6. The README heading hierarchy skipped levels around the media tour.
+7. The README did not show that each header number independently carries `/min`.
+8. Generated history/version documentation needed regeneration for 0.13.31.
+
+All eight are fixed. Every local Markdown link resolves, headings advance one
+level at a time, code fences are balanced, and Markdown whitespace is clean.
 
 The October compatibility pass found and repaired six concrete gaps:
 
@@ -29,7 +48,7 @@ the top-level privacy summary described an unqualified offline application,
 the README still quoted the older 1.5 GB performance corpus, and the LinkedIn
 fact sheet omitted session grouping and provider health. CLI syntax,
 configuration examples, architecture, token semantics and local links now
-match the implemented 0.13.29 behavior.
+match the implemented 0.13.31 behavior.
 
 ## Architecture and performance
 
@@ -42,6 +61,9 @@ Provider health is isolated behind an opt-in monitor. It contacts only fixed
 official HTTPS endpoints, sends no credentials or usage data, caps response
 size, validates the response schema, applies strict timeouts and performs every
 request on a daemon thread so provider latency cannot freeze the dashboard.
+Independent Claude and OpenAI bubbles map fully operational to green, partial
+issues and maintenance to yellow, complete tracked-component outages to red,
+and unknown/checking states to grey; synthetic responses cover every mapping.
 
 Project-history measurement is also isolated from the application. A
 standard-library generator reads immutable Git objects without checking out
@@ -65,21 +87,25 @@ and rebuilding the in-memory index; steady-state polling is already cheap.
 - OpenCode input/output/reasoning and cache read/write fields remain covered.
 - Local/custom models stay free only when a local route proves that fact;
   unknown remote prices remain visibly unpriced.
+- The trailing five-minute window retains every token component. Its total rate
+  includes cache, while its fresh rate is uncached input plus output; each is
+  divided by five and rendered with its own `/min` unit.
 
 ## Verification
 
-- All 12 mandatory local pipeline stages pass: 367 tests with 99.15% branch
+- All 12 mandatory local pipeline stages pass: 370 tests with 99.15% branch
   coverage, Ruff lint/format, ShellCheck, smoke rendering, sdist/wheel builds,
   generated-history verification, a clean-wheel render and the installed
-  0.13.29 version check.
-- The real archive holds 104,332 normalized events. Every event routed through
+  0.13.31 version check.
+- The real archive holds 109,907 normalized events. Every event routed through
   Anthropic or OpenAI resolves to a published standard rate, including 109
   OpenAI requests in the >272K prompt tier.
-- `--doctor --redact` scans 1,987 files without parse errors and reconciles both
+- `--doctor --redact` scans 2,071 files without parse errors and reconciles both
   Codex accounts against `threads.tokens_used` at the displayed ±0.0%.
 
 ## Verdict
 
-The release candidate fits Claude Code 2.1.292 and Codex CLI 0.160.1. Its user,
-architecture, release and supporting media documentation is synchronized; no
-review finding remains open.
+The 0.13.31 release candidate preserves the existing accounting semantics while
+making both live rates unambiguous and the provider-state behavior exhaustively
+testable. Code, architecture, user, release and supporting documentation are
+synchronized; no review finding remains open.
