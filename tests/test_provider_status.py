@@ -72,6 +72,25 @@ def test_summary_tracks_only_relevant_components_and_the_worst_state() -> None:
     assert full_outage.health is Health.OUTAGE
 
 
+def test_summary_simulates_every_provider_bubble_level() -> None:
+    cases = (
+        (("operational", "operational"), Health.OPERATIONAL),
+        (("operational", "degraded_performance"), Health.DEGRADED),
+        (("operational", "partial_outage"), Health.DEGRADED),
+        (("operational", "under_maintenance"), Health.MAINTENANCE),
+        (("operational", "major_outage"), Health.DEGRADED),
+        (("major_outage", "major_outage"), Health.OUTAGE),
+        (("operational", "unexpected"), Health.UNKNOWN),
+    )
+    for (api, cli), expected in cases:
+        result = parse_summary(
+            ENDPOINT,
+            summary(("Codex API", api), ("CLI", cli)),
+            1.0,
+        )
+        assert result.health is expected
+
+
 def test_summary_rejects_invalid_or_missing_components() -> None:
     assert parse_summary(ENDPOINT, [], 1).detail == "invalid response"
     missing = parse_summary(ENDPOINT, summary(("Other", "operational")), 1)

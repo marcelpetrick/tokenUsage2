@@ -854,8 +854,8 @@ def draw_header(
         middle += f"  ·  [{clean(filter_label)}]"
     clock = datetime.fromtimestamp(snapshot.now, tz).strftime("%a %d %b  %H:%M:%S")
     total, fresh = compact(snapshot.rate), compact(snapshot.fresh_rate)
-    wide_rate = f" ⚡ {total} incl cache · {fresh} fresh tok/min · 5m avg "
-    short_rate = f" ⚡ {total} incl cache · {fresh} fresh/m "
+    wide_rate = f" ⚡ {total}/min incl cache · {fresh}/min fresh · 5m avg "
+    short_rate = f"⚡ {total}/min incl cache · {fresh}/min fresh"
     candidates = (
         f"{wide_rate}  {clock} ",
         f"{short_rate}  {clock} ",

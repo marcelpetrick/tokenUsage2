@@ -90,12 +90,12 @@ def test_plain_frame_shows_every_panel(demo: DemoSource) -> None:
 
 def test_header_names_total_and_fresh_five_minute_rates(demo: DemoSource) -> None:
     wide = visible(frame(demo, View(theme="plain"), width=180))[0]
-    assert "incl cache" in wide
-    assert "fresh tok/min · 5m avg" in wide
+    assert "/min incl cache" in wide
+    assert "/min fresh · 5m avg" in wide
 
     narrow = visible(frame(demo, View(theme="plain"), width=70))[0]
-    assert "incl cache" in narrow
-    assert "fresh/m" in narrow
+    assert "/min incl cache" in narrow
+    assert "/min fresh" in narrow
 
 
 def test_provider_health_is_compact_when_healthy_and_prominent_when_broken(
