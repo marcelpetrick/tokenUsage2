@@ -10,6 +10,23 @@ All notable changes to tokenUsage2. Versions follow semantic versioning; the
 archive schema version is noted whenever it changes, because an older build
 refuses a newer archive.
 
+## 0.13.30
+
+### Added
+
+- Show separate trailing five-minute rates for total tokens including cache and
+  fresh tokens (uncached input plus output), both globally and per account.
+- Expose the five-minute request count, token-component totals and per-minute
+  rates as structured JSON while keeping the existing total-rate field.
+- Replace the combined provider-health badge with separate Claude and OpenAI
+  bubbles: green when fully operational, yellow for partial issues or
+  maintenance, red when all tracked components are down and grey when unknown.
+
+### Changed
+
+- Make total-token burn alerts state their five-minute averaging window and
+  inclusion of cached tokens explicitly.
+
 ## 0.13.29
 
 ### Fixed
