@@ -211,6 +211,8 @@ the provider publishes them.
 Model recognition itself is not allow-list based: the parsers retain every
 model ID reported by the tools. An unfamiliar model stays visible, but its cost
 is marked unpriced until a built-in or `[prices]` entry supplies a rate.
+Recognized local OpenCode routes such as Ollama and LM Studio have a zero token
+price; unknown hosted or custom providers remain unpriced rather than assumed free.
 An aggregate that mixes priced and unpriced usage is prefixed with `≥`, because
 the displayed amount is a known lower bound rather than a complete estimate.
 Fast/batch service tiers, regional-processing uplifts and non-token tool-call

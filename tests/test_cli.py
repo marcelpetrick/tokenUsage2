@@ -306,8 +306,8 @@ def test_json_is_always_priced(
     assert code == 0
     # Anthropic costs 2,425 millionths; Sol 10,440; Astra 63,000.
     assert data["totals"]["all"]["cost"] == pytest.approx(75_865 / 1_000_000)
-    # 5,005 retained Claude tokens have no split; OpenCode's local qwen adds 120.
-    assert data["totals"]["all"]["unpriced"] == 5125
+    # Only the 5,000 retained Claude tokens lack a billable split; local qwen is free.
+    assert data["totals"]["all"]["unpriced"] == 5000
 
 
 def test_json_buckets_carry_their_cache_share(

@@ -59,6 +59,7 @@ class Rates:
 
 
 FREE = Rates(0.0, 0.0, 0.0, 0.0, 0.0)
+LOCAL_ROUTES = frozenset({"local", "ollama", "ollama-local", "lmstudio", "lm-studio"})
 
 
 def anthropic(
@@ -191,6 +192,6 @@ class Pricer:
             if any(fnmatchcase(model, pattern) for pattern in OPENAI_UNPRICED):
                 return None
             return _match(model, OPENAI_PRICES)
-        if tool is Tool.CLAUDE:
+        if tool is Tool.CLAUDE or route.casefold() in LOCAL_ROUTES:
             return FREE
         return None

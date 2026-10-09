@@ -118,8 +118,10 @@ def test_resolution_order() -> None:
         10, 1, 50, cache_write=12.5, long_context=True
     )
     assert pricer.rates(Tool.OPENCODE, "claude-sonnet-5", "anthropic") == anthropic(2, 10)
-    assert pricer.rates(Tool.OPENCODE, "qwen", "ollama-local") is None
-    assert Pricer().rates(Tool.CODEX, "gpt-5.6-sol", "ollama-local") is None
+    assert pricer.rates(Tool.OPENCODE, "qwen", "ollama-local") is FREE
+    assert pricer.rates(Tool.OPENCODE, "qwen", "lmstudio") is FREE
+    assert pricer.rates(Tool.OPENCODE, "big-pickle", "opencode") is None
+    assert Pricer().rates(Tool.CODEX, "gpt-5.6-sol", "ollama-local") is FREE
     assert pricer.rates(Tool.CODEX, "gpt-5.6-sol", "ollama-local") is custom
     assert pricer.rates(Tool.CODEX, "gpt-5.3-codex-spark", "openai") is custom
     assert Pricer().rates(Tool.OPENCODE, "gpt-5.6-sol", "openai") == openai(
