@@ -64,6 +64,10 @@ def test_demo_json_is_redactable(tmp_path: Path, capsys: pytest.CaptureFixture[s
     assert len(data["accounts"]) == 4
     assert data["accounts"][0]["identity"] == "y…@e….com"
     assert data["totals"]["all"]["total"] > 0
+    assert data["rate_tokens_per_minute"] == data["rate"]["tokens_per_minute"]["total"]
+    assert data["fresh_rate_tokens_per_minute"] == data["rate"]["tokens_per_minute"]["fresh"]
+    assert data["rate"]["window_seconds"] == 300
+    assert data["rate"]["tokens"]["cache_read"] > 0
     assert data["buckets"]
     assert data["breakdown"]["by"] == "model"
 

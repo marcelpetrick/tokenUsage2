@@ -18,7 +18,16 @@ from datetime import datetime, tzinfo
 from pathlib import Path
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
-from tokenusage2.aggregate import DEFAULT_BUCKETS, GroupBy, Metric, Period, Snapshot, Tally
+from tokenusage2.aggregate import (
+    DEFAULT_BUCKETS,
+    RATE_MINUTES,
+    RATE_SECONDS,
+    GroupBy,
+    Metric,
+    Period,
+    Snapshot,
+    Tally,
+)
 from tokenusage2.alerts import evaluate, typical_rate
 from tokenusage2.config import ConfigError, load_config
 from tokenusage2.demo import DemoSource
@@ -155,6 +164,18 @@ def _tally(tally: Tally) -> dict:
     return {**asdict(tally), "total": tally.total}
 
 
+def _rate(tally: Tally) -> dict:
+    names = ("input", "cache_read", "cache_write", "output", "reasoning", "fresh", "total")
+    return {
+        "window_seconds": RATE_SECONDS,
+        "requests": tally.calls,
+        "tokens": {name: getattr(tally, name) for name in names},
+        "tokens_per_minute": {
+            name: round(getattr(tally, name) / RATE_MINUTES, 1) for name in names
+        },
+    }
+
+
 def _iso(ts: float | None, tz: tzinfo) -> str | None:
     return datetime.fromtimestamp(ts, tz).isoformat(timespec="seconds") if ts else None
 
@@ -174,6 +195,8 @@ def snapshot_json(
             name: _tally(getattr(snapshot, name)) for name in ("today", "week", "month", "all")
         },
         "rate_tokens_per_minute": round(snapshot.rate, 1),
+        "fresh_rate_tokens_per_minute": round(snapshot.fresh_rate, 1),
+        "rate": _rate(snapshot.rate_window),
         "provider_status": [
             {
                 "provider": status.provider,

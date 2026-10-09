@@ -54,10 +54,14 @@ def test_burn_alert_needs_factor_and_floor() -> None:
     settings = AlertSettings(burn_factor=5, burn_floor=250_000)
     [alert] = evaluate(burst, settings, typical=100_000.0)
     assert alert.key == f"burn:{int(NOW // 900)}"
-    assert alert.text == "burn rate 1.0M tok/min, 10x the typical 100k"
+    assert alert.text == (
+        "total-token burn 1.0M tok/min (5m avg, incl cache), 10x the typical 100k"
+    )
     assert evaluate(burst, settings, typical=300_000.0) == []
     assert evaluate(burst, AlertSettings(burn_floor=2_000_000), typical=0.0) == []
-    assert evaluate(burst, settings, typical=0.0)[0].text == "burn rate 1.0M tok/min"
+    assert evaluate(burst, settings, typical=0.0)[0].text == (
+        "total-token burn 1.0M tok/min (5m avg, incl cache)"
+    )
 
 
 def test_tracker_fires_each_alert_once() -> None:

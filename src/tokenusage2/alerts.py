@@ -15,7 +15,7 @@ from bisect import bisect_left
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 
-from tokenusage2.aggregate import Snapshot
+from tokenusage2.aggregate import RATE_SECONDS, Snapshot
 from tokenusage2.config import AlertSettings
 from tokenusage2.model import Event
 from tokenusage2.render import compact
@@ -36,7 +36,7 @@ def _ts(event: Event) -> float:
 def typical_rate(events: Sequence[Event], now: float, days: int = 7) -> float:
     """Median tokens per active minute over the last ``days``, the last 5 minutes excluded."""
     start = bisect_left(events, now - days * 86400, key=_ts)
-    end = bisect_left(events, now - 300, key=_ts)
+    end = bisect_left(events, now - RATE_SECONDS, key=_ts)
     minutes: dict[int, int] = {}
     for position in range(start, end):
         event = events[position]
@@ -61,7 +61,7 @@ def evaluate(snapshot: Snapshot, settings: AlertSettings, typical: float) -> lis
             )
     threshold = max(settings.burn_floor, typical * settings.burn_factor)
     if snapshot.rate > threshold:
-        text = f"burn rate {compact(snapshot.rate)} tok/min"
+        text = f"total-token burn {compact(snapshot.rate)} tok/min (5m avg, incl cache)"
         if typical:
             text += f", {snapshot.rate / typical:.0f}x the typical {compact(typical)}"
         alerts.append(Alert(f"burn:{int(snapshot.now // BURN_EPISODE_SECONDS)}", text))

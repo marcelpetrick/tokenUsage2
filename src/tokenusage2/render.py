@@ -110,6 +110,7 @@ HELP_LINES = (
     "g          colour the timeline by account, tool, backend or model",
     "b          break the selected bucket down by model, project, session, backend, …",
     "v          metric: all tokens incl. cache, fresh input+output, output, cost (USD)",
+    "rate       trailing 5m average: total incl. cache, then fresh input+output",
     "a          filter to one account (cycles, then back to all)",
     "h          swap the live feed for the hour × weekday heatmap",
     "s          sources: discovered homes, files, quota snapshots, reconciliation",
@@ -458,7 +459,8 @@ ACCOUNT_COLUMNS = (
     Column("5h quota", 19, "<", 4),
     Column("weekly quota", 19, "<", 4),
     Column("idle", 6, ">", 6),
-    Column("rate", 7, ">", 6),
+    Column("incl/m", 7, ">", 6),
+    Column("fresh/m", 7, ">", 6),
 )
 
 
@@ -502,7 +504,11 @@ def account_cells(row: AccountRow, snapshot: Snapshot, view: View) -> list[Cell]
         quota_cell(quotas.get("5h"), snapshot.now),
         quota_cell(quotas.get("week"), snapshot.now),
         (idle, "dim"),
-        (f"{compact(row.rate)}/m" if row.rate else "—", "accent" if row.rate else "dim"),
+        (compact(row.rate) if row.rate else "—", "accent" if row.rate else "dim"),
+        (
+            compact(row.fresh_rate) if row.fresh_rate else "—",
+            "accent" if row.fresh_rate else "dim",
+        ),
     ]
 
 
@@ -822,11 +828,6 @@ def draw_header(
     canvas.fill(Rect(0, 0, width, 1), "header")
     base_left = f" ◆ tokenUsage2 {__version__}  {mode} "
     badge = status_badge(provider_statuses)
-    clock = datetime.fromtimestamp(snapshot.now, tz).strftime("%a %d %b  %H:%M:%S")
-    right = f" ⚡ {compact(snapshot.rate)} tok/min   {clock} "
-    extra = f" {badge} " if badge else ""
-    left = base_left + extra if len(base_left) + len(extra) + len(right) <= width else base_left
-    canvas.put(0, 0, left, "header")
     metric = snapshot.metric
     middle = (
         f"today {tally_amount(snapshot.today, metric)}  ·  "
@@ -836,6 +837,27 @@ def draw_header(
     )
     if filter_label:
         middle += f"  ·  [{clean(filter_label)}]"
+    clock = datetime.fromtimestamp(snapshot.now, tz).strftime("%a %d %b  %H:%M:%S")
+    total, fresh = compact(snapshot.rate), compact(snapshot.fresh_rate)
+    wide_rate = f" ⚡ {total} incl cache · {fresh} fresh tok/min · 5m avg "
+    short_rate = f" ⚡ {total} incl cache · {fresh} fresh/m "
+    candidates = (
+        f"{wide_rate}  {clock} ",
+        f"{short_rate}  {clock} ",
+        wide_rate,
+        short_rate,
+    )
+    extra = f" {badge} " if badge else ""
+    left = base_left + extra if len(base_left) + len(extra) < width else base_left
+    right = next(
+        (
+            candidate
+            for candidate in candidates
+            if len(left) + len(middle) + 2 + len(candidate) <= width
+        ),
+        next((candidate for candidate in candidates if len(left) + len(candidate) <= width), ""),
+    )
+    canvas.put(0, 0, left, "header")
     if len(left) + len(right) <= width:
         canvas.put(width - len(right), 0, right, "header")
         room = width - len(left) - len(right)

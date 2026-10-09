@@ -83,8 +83,8 @@ take 0.48–0.82 s.
 
 | Panel | Content |
 |-------|---------|
-| **Header** | Clock, live burn rate (tokens/min over the last 5 min), today / week / month / all-time totals, and an optional live Claude/Codex service-health badge. |
-| **Accounts** | One row per discovered account: tool, label, e-mail, plan, today/week/month/all, a 24 h sparkline, idle time, and **live 5 h and weekly quota bars** with reset countdowns. `●` marks accounts with a running agent process. |
+| **Header** | Clock, trailing 5-minute rates for total tokens including cache and fresh tokens (uncached input + output), today / week / month / all-time totals, and an optional live Claude/Codex service-health badge. |
+| **Accounts** | One row per discovered account: tool, label, e-mail, plan, today/week/month/all, a 24 h sparkline, idle time, total and fresh 5-minute rates, and **live 5 h and weekly quota bars** with reset countdowns. `●` marks accounts with a running agent process. |
 | **Timeline** | Stacked bars for the last N days, ISO weeks or months — coloured by account, tool, backend, model or project. The cursor selects a bar and scrolls back through the whole history. Retained history whose split is unknown is drawn hatched (`▒`) — in the fresh, output and cost views, which cannot count it, a bucket holding it is marked `░`; a row below the dates shows each bucket's cache-hit share. |
 | **Breakdown** | The selected bar by model (with backend), project, session (with its first and last request), backend, account or tool: calls, fresh input, cache read, cache write, output, total, share, cache-hit rate. |
 | **Live feed** | The newest requests as they land — model, project and token split; rows younger than 20 s are highlighted. |
@@ -95,7 +95,7 @@ Four metrics are available: all tokens including cache (the raw total), fresh
 input + output, output only, and the standard-rate cost estimate.
 
 **Alerts** appear in the status line when a 5 h or weekly quota reaches 90 %
-or the burn rate climbs far above the typical active minute of the last seven
+or the five-minute average total-token burn (including cache) climbs far above the typical active minute of the last seven
 days — optionally also as a desktop notification (`notify-send`) and a terminal
 bell. Each fires once per quota window or burn episode; `--json` lists them.
 

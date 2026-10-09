@@ -206,12 +206,33 @@ def test_account_filter() -> None:
 
 
 def test_rate_hourly_running_and_last_request() -> None:
-    snapshot = snap([ev(NOW - 60, usage=Usage(input=500)), ev(NOW - 2 * 3600)], running={"a": 2})
+    snapshot = snap(
+        [
+            ev(NOW - 60, usage=Usage(input=100, cache_read=400, output=50)),
+            ev(NOW - 2 * 3600),
+        ],
+        running={"a": 2},
+    )
     row = next(r for r in snapshot.accounts if r.id == "a")
-    assert row.running == 2
-    assert row.rate == snapshot.rate == 100.0
-    assert (row.hourly[23], row.hourly[21]) == (500, 100)
+    assert (row.running, row.rate, row.fresh_rate) == (2, 110.0, 30.0)
+    assert (snapshot.rate, snapshot.fresh_rate) == (110.0, 30.0)
+    assert (
+        snapshot.rate_window.input,
+        snapshot.rate_window.cache_read,
+        snapshot.rate_window.output,
+    ) == (100, 400, 50)
+    assert (row.hourly[23], row.hourly[21]) == (550, 100)
     assert row.last_ts == NOW - 60
+
+
+def test_rate_uses_the_trailing_five_minutes_and_excludes_retained_totals() -> None:
+    inside = ev(NOW - 300, usage=Usage(input=5, cache_read=10, output=15))
+    too_old = ev(NOW - 300.001, usage=Usage(input=1_000_000))
+    retained = ev(NOW - 60, usage=Usage(unsplit=2_000_000))
+    snapshot = snap([too_old, inside, retained])
+
+    assert (snapshot.rate, snapshot.fresh_rate) == (6.0, 4.0)
+    assert snapshot.rate_window.calls == 1
 
 
 def test_quota_windows_roll_over_and_sort() -> None:

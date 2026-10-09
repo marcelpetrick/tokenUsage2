@@ -20,6 +20,8 @@ from tokenusage2.pricing import Rates
 from tokenusage2.projects import project_name
 
 WINDOW_SECONDS = {"5h": 5 * 3600, "week": 7 * 86400}
+RATE_SECONDS = 5 * 60
+RATE_MINUTES = RATE_SECONDS / 60
 #: Keeps date arithmetic in range however far back a cursor is pushed.
 MAX_CURSOR = 5000
 
@@ -114,6 +116,10 @@ class Tally:
     @property
     def total(self) -> int:
         return self.input + self.cache_read + self.cache_write + self.output + self.unsplit
+
+    @property
+    def fresh(self) -> int:
+        return self.input + self.output
 
     @property
     def cache_share(self) -> float:
@@ -269,10 +275,18 @@ class AccountRow:
     month: Tally = field(default_factory=Tally)
     all: Tally = field(default_factory=Tally)
     hourly: list[int] = field(default_factory=lambda: [0] * 24)
-    rate: float = 0.0
+    rate_window: Tally = field(default_factory=Tally)
     last_ts: float | None = None
     running: int = 0
     quotas: list[QuotaView] = field(default_factory=list)
+
+    @property
+    def rate(self) -> float:
+        return self.rate_window.total / RATE_MINUTES
+
+    @property
+    def fresh_rate(self) -> float:
+        return self.rate_window.fresh / RATE_MINUTES
 
 
 @dataclass(slots=True)
@@ -300,13 +314,21 @@ class Snapshot:
     week: Tally
     month: Tally
     all: Tally
-    rate: float
+    rate_window: Tally
     recent: list[Event]
     project_labels: dict[str, str]
     heatmap: list[list[int]]
     first_ts: float | None
     last_ts: float | None
     account_filter: str | None = None
+
+    @property
+    def rate(self) -> float:
+        return self.rate_window.total / RATE_MINUTES
+
+    @property
+    def fresh_rate(self) -> float:
+        return self.rate_window.fresh / RATE_MINUTES
 
     @property
     def selected_bucket(self) -> Bucket | None:
@@ -561,17 +583,17 @@ def build_snapshot(
             if row is not None:
                 setattr(row, name, tally)
 
-    rate_total = 0
+    rate_window = Tally()
     for position in _slice(timestamps, now - 24 * 3600, visible_end):
         event = events[position]
         row = rows.get(event.account)
         hours_ago = int((now - event.ts) // 3600)
         if row is not None and 0 <= hours_ago < 24 and not event.usage.unsplit:
             row.hourly[23 - hours_ago] += usage_value(event.usage, metric)
-        if now - event.ts <= 300 and not event.usage.unsplit:
-            rate_total += event.usage.total
+        if now - event.ts <= RATE_SECONDS and not event.usage.unsplit:
+            rate_window.add(event.usage)
             if row is not None:
-                row.rate += event.usage.total / 5.0
+                row.rate_window.add(event.usage)
 
     for quota in quotas:
         row = rows.get(quota.account)
@@ -615,7 +637,7 @@ def build_snapshot(
         week=overall["week"],
         month=overall["month"],
         all=overall["all"],
-        rate=rate_total / 5.0,
+        rate_window=rate_window,
         recent=recent_events,
         project_labels={event.project: label_project(event.project) for event in recent_events},
         heatmap=heatmap,
