@@ -34,7 +34,51 @@ AXIS = 8
 BLOCKS = "▁▂▃▄▅▆▇█"
 SPARK = " ▁▂▃▄▅▆▇█"
 HEAT = " ░▒▓█"
-SERIES = 8
+_DEFAULT_SERIES = (
+    209,
+    75,
+    114,
+    177,
+    221,
+    45,
+    204,
+    145,
+    208,
+    39,
+    150,
+    135,
+    203,
+    51,
+    170,
+    180,
+    81,
+    118,
+    216,
+    99,
+)
+_AMBER_SERIES = (
+    214,
+    223,
+    172,
+    229,
+    208,
+    180,
+    130,
+    187,
+    202,
+    220,
+    166,
+    230,
+    136,
+    215,
+    94,
+    222,
+    178,
+    216,
+    101,
+    228,
+)
+SERIES = len(_DEFAULT_SERIES)
 TOOL_STYLE = {Tool.CLAUDE: "claude", Tool.CODEX: "codex", Tool.OPENCODE: "opencode"}
 STATUS_STYLE = {
     Health.OPERATIONAL: "status_ok",
@@ -51,6 +95,7 @@ _DEFAULT = {
     "border": "38;5;61",
     "title": "1;38;5;117",
     "accent": "1;38;5;214",
+    "cache": "38;5;117",
     "hi": "1;38;5;16;48;5;117",
     "ok": "38;5;114",
     "warn": "38;5;221",
@@ -63,14 +108,7 @@ _DEFAULT = {
     "claude": "38;5;209",
     "codex": "38;5;75",
     "opencode": "38;5;114",
-    "s0": "38;5;209",
-    "s1": "38;5;75",
-    "s2": "38;5;114",
-    "s3": "38;5;177",
-    "s4": "38;5;221",
-    "s5": "38;5;45",
-    "s6": "38;5;204",
-    "s7": "38;5;145",
+    **{f"s{index}": f"38;5;{colour}" for index, colour in enumerate(_DEFAULT_SERIES)},
 }
 _AMBER = {
     "base": "",
@@ -79,6 +117,7 @@ _AMBER = {
     "border": "38;5;130",
     "title": "1;38;5;214",
     "accent": "1;38;5;228",
+    "cache": "38;5;228",
     "hi": "1;38;5;52;48;5;214",
     "ok": "38;5;220",
     "warn": "38;5;208",
@@ -91,14 +130,7 @@ _AMBER = {
     "claude": "38;5;215",
     "codex": "38;5;221",
     "opencode": "38;5;180",
-    "s0": "38;5;214",
-    "s1": "38;5;223",
-    "s2": "38;5;172",
-    "s3": "38;5;229",
-    "s4": "38;5;208",
-    "s5": "38;5;180",
-    "s6": "38;5;130",
-    "s7": "38;5;187",
+    **{f"s{index}": f"38;5;{colour}" for index, colour in enumerate(_AMBER_SERIES)},
 }
 
 
@@ -126,6 +158,7 @@ HELP_LINES = (
     "b          break the selected bucket down by model, project, session, backend, …",
     "v          metric: all tokens incl. cache, fresh input+output, output, cost (USD)",
     "rate       trailing 5m average: total incl. cache, then fresh input+output",
+    "cache%     cache reads / all prompt tokens, aligned below timeline buckets",
     "a          filter to one account (cycles, then back to all)",
     "h          swap the live feed for the hour × weekday heatmap",
     "s          sources: discovered homes, files, quota snapshots, reconciliation",
@@ -585,7 +618,8 @@ def stack_cells(
 
 def draw_timeline(canvas: Canvas, rect: Rect, snapshot: Snapshot, view: View) -> None:
     metric = snapshot.metric
-    title = f"Tokens per {snapshot.period} · by {snapshot.group} · {METRIC_HELP[metric]}"
+    measure = "Cost" if metric is Metric.COST else "Tokens"
+    title = f"{measure} per {snapshot.period} · by {snapshot.group} · {METRIC_HELP[metric]}"
     canvas.box(rect, title, "←→ select · d/w/m · g · v")
     inner_x, inner_y = rect.x + 1, rect.y + 1
     inner_w, inner_h = rect.w - 2, rect.h - 2
@@ -653,14 +687,13 @@ def draw_timeline(canvas: Canvas, rect: Rect, snapshot: Snapshot, view: View) ->
         canvas.put(value_x, value_y, value_text, "accent")
     if trend:
         cache_y = label_y + 1
-        canvas.put(inner_x, cache_y, "cache".rjust(AXIS - 2), "dim")
+        canvas.put(inner_x, cache_y, "cache%".rjust(AXIS - 2), "dim")
         for index, bucket in enumerate(buckets):
             if not bucket.total.calls:
                 continue
             share = bucket.total.cache_share
-            level = "ok" if share >= 0.8 else "warn" if share >= 0.5 else "bad"
-            glyph = SPARK[max(1, round(share * 8))]
-            canvas.put(plot_x + index * slot, cache_y, glyph * bar_w, level)
+            glyph = SPARK[round(share * 8)]
+            canvas.put(plot_x + index * slot, cache_y, glyph * bar_w, "cache")
     legend_y = label_y + (2 if trend else 1)
     x = inner_x + 1
     entries = [("■", view.series(name), clean(name)) for name in snapshot.groups]
@@ -668,8 +701,8 @@ def draw_timeline(canvas: Canvas, rect: Rect, snapshot: Snapshot, view: View) ->
         entries.append(("▒", "dim", "retained daily total (split unknown)"))
     elif snapshot.has_retained:
         entries.append(("░", "dim", "retained daily total (only in the total view)"))
-    if trend and snapshot.groups:
-        entries.append(("▆", "ok", "cache-hit share"))
+    if trend and any(bucket.total.calls for bucket in buckets):
+        entries.append(("▆", "cache", "cache read / prompt"))
     if metric is Metric.COST and any(bucket.total.unpriced for bucket in buckets):
         entries.append(("░", "dim", "unpriced usage (cost unknown)"))
     if not entries:
@@ -693,7 +726,7 @@ def draw_breakdown(canvas: Canvas, rect: Rect, snapshot: Snapshot, view: View) -
     bucket = snapshot.selected_bucket
     title = f"{bucket.long if bucket else ''} · by {snapshot.detail}"
     if bucket is not None and bucket.total.calls:
-        title += f" · cache hit {bucket.total.cache_share:.0%}"
+        title += f" · cache read {bucket.total.cache_share:.0%} of prompt"
     canvas.box(rect, title, "b: switch")
     extra = BREAKDOWN_EXTRA.get(snapshot.detail)
     columns = [Column(str(snapshot.detail), 10, "<", 0, flex=True)]

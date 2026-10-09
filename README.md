@@ -85,8 +85,8 @@ take 0.48–0.82 s.
 |-------|---------|
 | **Header** | Clock, trailing 5-minute rates shown as `<total>/min incl cache · <fresh>/min fresh · 5m avg`, today / week / month / all-time totals, and optional separate Claude/OpenAI health bubbles. Green means fully operational, yellow means a partial issue or maintenance, red means all tracked components are down, and grey means unknown/checking. |
 | **Accounts** | One row per discovered account: tool, label, e-mail, plan, today/week/month/all, a 24 h sparkline, idle time, total and fresh 5-minute rates, and **live 5 h and weekly quota bars** with reset countdowns. `●` marks accounts with a running agent process. |
-| **Timeline** | Stacked bars for the last N days, ISO weeks or months — coloured by account, tool, backend, model or project. The cursor selects a bar and scrolls back through the whole history. Retained history whose split is unknown is drawn hatched (`▒`) — in the fresh, output and cost views, which cannot count it, a bucket holding it is marked `░`; a row below the dates shows each bucket's cache-hit share. |
-| **Breakdown** | The selected bar by model (with backend), project, session (with its first and last request), backend, account or tool: calls, fresh input, cache read, cache write, output, total, share, cache-hit rate. |
+| **Timeline** | Stacked bars for the last N days, ISO weeks or months — coloured by account, tool, backend, model or project with 20 distinct series colours before the palette repeats. The cursor selects a bar and scrolls back through the whole history. Retained history whose split is unknown is drawn hatched (`▒`) — in the fresh, output and cost views, which cannot count it, a bucket holding it is marked `░`. The neutral `cache%` row below the dates is aligned with the buckets and shows cache reads / (fresh input + cache reads + cache writes); it is a reuse ratio, not a health status. |
+| **Breakdown** | The selected bar by model (with backend), project, session (with its first and last request), backend, account or tool: calls, fresh input, cache read, cache write, output, total, share, and the same cache-read share of prompt tokens. |
 | **Live feed** | The newest requests as they land — model, project and token split; rows younger than 20 s are highlighted. |
 | **Heatmap** | Hour-of-day × weekday activity over the last four weeks (replaces the feed on `h`). |
 | **Sources** | Discovered homes and *how* each was found, file/event counts, archive path, quota freshness, backend hints, provider health, a reconciliation against Codex's own thread totals, and where Claude's tokens come from with the stats-cache scale (`s`, or `--doctor`). |
@@ -204,6 +204,10 @@ a local backend answered cost nothing. OpenAI-routed Codex and OpenCode records
 use the [published OpenAI token rates](https://developers.openai.com/api/docs/pricing),
 including cache writes and the higher full-request tier above 272K prompt tokens;
 models without a final published rate show as `—`.
+The cost timeline uses dollar-scaled bars and a `Cost per …` title; token views
+retain token-scaled axes. Current built-ins cover the provider model IDs used by
+Claude Code and Codex/OpenCode, including per-request long-prompt tiers where
+the provider publishes them.
 An aggregate that mixes priced and unpriced usage is prefixed with `≥`, because
 the displayed amount is a known lower bound rather than a complete estimate.
 Fast/batch service tiers, regional-processing uplifts and non-token tool-call

@@ -61,10 +61,27 @@ class Rates:
 FREE = Rates(0.0, 0.0, 0.0, 0.0, 0.0)
 
 
-def anthropic(input_price: float, output_price: float, cache_read: float | None = None) -> Rates:
+def anthropic(
+    input_price: float,
+    output_price: float,
+    cache_read: float | None = None,
+    *,
+    long_context_threshold: int | None = None,
+    long_input_multiplier: float = 1.0,
+    long_output_multiplier: float = 1.0,
+) -> Rates:
     """Anthropic's cache pricing: reads 0.1x input, writes 1.25x (5 min) or 2x (1 h)."""
     read = input_price * 0.1 if cache_read is None else cache_read
-    return Rates(input_price, output_price, read, input_price * 1.25, input_price * 2)
+    return Rates(
+        input_price,
+        output_price,
+        read,
+        input_price * 1.25,
+        input_price * 2,
+        long_context_threshold,
+        long_input_multiplier,
+        long_output_multiplier,
+    )
 
 
 def openai(
@@ -88,7 +105,7 @@ def openai(
     )
 
 
-#: Anthropic list prices per model glob, USD per 1M tokens (as of 2026-10-07).
+#: Anthropic list prices per model glob, USD per 1M tokens (as of 2026-10-09).
 #: The first matching glob wins, so more specific names come first.
 ANTHROPIC_PRICES: tuple[tuple[str, Rates], ...] = (
     ("claude-fable-5-1*", anthropic(10, 50, cache_read=0.25)),
@@ -100,12 +117,23 @@ ANTHROPIC_PRICES: tuple[tuple[str, Rates], ...] = (
     ("claude-opus-4-8*", anthropic(5, 25)),
     ("claude-opus-4-7*", anthropic(5, 25)),
     ("claude-opus-4-6*", anthropic(5, 25)),
+    ("claude-sonnet-5-5*", anthropic(2, 10, cache_read=0.1)),
     ("claude-sonnet-5*", anthropic(2, 10)),
     ("claude-sonnet-4-6*", anthropic(3, 15)),
+    (
+        "claude-haiku-5-5*",
+        anthropic(
+            0.1,
+            0.5,
+            long_context_threshold=100_000,
+            long_input_multiplier=5,
+            long_output_multiplier=5,
+        ),
+    ),
     ("claude-haiku-4-5*", anthropic(1, 5)),
 )
 
-#: OpenAI standard rates per model glob, USD per 1M tokens (as of 2026-10-07).
+#: OpenAI standard rates per model glob, USD per 1M tokens (as of 2026-10-09).
 #: Source: https://developers.openai.com/api/docs/pricing
 #: More specific names precede their families. Models without a final price,
 #: such as GPT-5.3-Codex-Spark, are deliberately absent and blocked below.
@@ -115,6 +143,7 @@ OPENAI_PRICES: tuple[tuple[str, Rates], ...] = (
     ("gpt-6-sol*", openai(2, 0.2, 10, cache_write=2.5, long_context=True)),
     ("gpt-6-luna*", openai(0.1, 0.01, 0.5, cache_write=0.125, long_context=True)),
     ("gpt-5.6-sol*", openai(4, 0.4, 20, cache_write=5, long_context=True)),
+    ("gpt-5.6-cyber*", openai(12.5, 1.25, 75, cache_write=15.625)),
     ("gpt-5.6-terra*", openai(2, 0.2, 12, cache_write=2.5, long_context=True)),
     ("gpt-5.6-luna*", openai(0.2, 0.02, 1.2, cache_write=0.25, long_context=True)),
     ("gpt-rosalind-research*", openai(5, 0.5, 25)),

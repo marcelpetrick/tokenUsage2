@@ -15,7 +15,9 @@ from tokenusage2.pricing import Rates
 from tokenusage2.provider_status import Health, ProviderStatus
 from tokenusage2.render import (
     AXIS,
+    SERIES,
     THEME_NAMES,
+    THEMES,
     Column,
     View,
     amount,
@@ -83,7 +85,7 @@ def test_plain_frame_shows_every_panel(demo: DemoSource) -> None:
         "5h quota",
         "claude-opus-5",
         "status!",
-        "cache hit",
+        "cache read",
     ):
         assert needle in text
 
@@ -346,11 +348,14 @@ def test_quota_cell_states() -> None:
     assert unknown_reset[0][1] == "ok"
 
 
-def test_series_colours_are_stable() -> None:
+def test_series_colours_are_stable_and_repeat_only_after_twenty_categories() -> None:
     view = View()
-    first = view.series("x")
-    view.series("y")
-    assert view.series("x") == first == "s0"
+    styles = [view.series(f"group-{index}") for index in range(SERIES + 1)]
+    assert styles[:SERIES] == [f"s{index}" for index in range(SERIES)]
+    assert styles[SERIES] == "s0"
+    assert view.series("group-0") == "s0"
+    for name in ("default", "midnight", "amber"):
+        assert len({THEMES[name][f"s{index}"] for index in range(SERIES)}) == SERIES
 
 
 def test_render_message() -> None:
@@ -438,6 +443,8 @@ def test_cost_view_marks_partial_and_wholly_unpriced_estimates() -> None:
 
 def test_cost_view_shows_dollars(demo: DemoSource) -> None:
     text = "\n".join(frame(demo, View(theme="plain", metric=Metric.COST)))
+    assert "Cost per day" in text
+    assert "Tokens per day" not in text
     assert "standard-rate estimate" in text
     assert "today $" in text
     assert " cost" in text
@@ -445,11 +452,14 @@ def test_cost_view_shows_dollars(demo: DemoSource) -> None:
 
 def test_timeline_shows_the_cache_trend(demo: DemoSource) -> None:
     lines = frame(demo, View(theme="plain"))
-    assert "cache-hit share" in "\n".join(lines)
-    row = next(line for line in lines if line.startswith("│ cache "))
+    assert "cache read / prompt" in "\n".join(lines)
+    row = next(line for line in lines if line.startswith("│cache%"))
     assert "█" in row or "▇" in row
     short = "\n".join(frame(demo, View(theme="plain"), 100, 16))  # timeline too short
-    assert "cache-hit share" not in short
+    assert "cache read / prompt" not in short
+
+    help_text = "\n".join(frame(demo, View(theme="plain", help=True)))
+    assert "cache reads / all prompt tokens" in help_text
 
 
 def test_the_selected_total_stays_visible_on_a_full_height_bar() -> None:

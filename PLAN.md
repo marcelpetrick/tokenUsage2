@@ -65,8 +65,8 @@ Implemented in v0.1 (✓) and backlog (·):
   (e-mail, redactable), plan, today/week/month, 24 h sparkline, last activity,
   **live quota bars** (5 h and weekly) with reset countdown.
 - ✓ Timeline: stacked bars for the last N days / ISO weeks / months, coloured
-  by account, tool, backend, model or project; a cursor selects a bucket and scrolls
-  back through history.
+  by account, tool, backend, model or project with 20 colours before repetition;
+  a cursor selects a bucket and scrolls back through history.
 - ✓ Breakdown of the selected bucket by model, project, session, backend,
   account or tool: calls, fresh input, cache read, cache write, output, total,
   cost and share bar.
@@ -82,7 +82,9 @@ Implemented in v0.1 (✓) and backlog (·):
   `--demo` (synthetic data for screenshots and tests).
 - ✓ Standard-rate cost estimate with built-in provider rates and editable
   overrides (0.5.0, expanded in 0.13.0).
-- ✓ Cache efficiency trend: cache-read share per bucket (0.6.0).
+- ✓ Cache reuse trend: neutral cache-read / prompt-token share per bucket,
+  aligned below the timeline rather than presented as a health score (0.6.0,
+  clarified in 0.13.32).
 - ✓ Threshold notifications: quota ≥ 90 %, unusual burn rate (0.7.0).
 - ✓ Per-session drill-down (0.8.0).
 - ✓ CSV export of the current view (0.9.0).

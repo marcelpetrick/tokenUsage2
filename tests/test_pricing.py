@@ -21,6 +21,18 @@ def test_anthropic_cache_multipliers() -> None:
     assert anthropic(10, 50, cache_read=0.25).cache_read == 0.25
 
 
+def test_anthropic_long_prompt_tier_is_applied_per_request() -> None:
+    rates = anthropic(
+        0.1,
+        0.5,
+        long_context_threshold=100_000,
+        long_input_multiplier=5,
+        long_output_multiplier=5,
+    )
+    assert rates.cost(Usage(input=100_000, output=10)) == pytest.approx(0.010005)
+    assert rates.cost(Usage(input=100_001, output=10)) == pytest.approx(0.0500255)
+
+
 def test_cost_prices_every_part_of_the_split() -> None:
     usage = Usage(input=10, cache_read=1000, cache_write=100, cache_write_1h=40, output=50)
     # 10*5 + 1000*0.5 + 60*6.25 + 40*10 + 50*25 = 50 + 500 + 375 + 400 + 1250
@@ -43,9 +55,20 @@ def test_openai_prices_cache_writes_and_long_context_when_the_model_does() -> No
     [
         ("claude-opus-5", anthropic(5, 25)),
         ("claude-opus-5-5", anthropic(4, 20, cache_read=0.2)),
+        ("claude-sonnet-5-5", anthropic(2, 10, cache_read=0.1)),
         ("claude-sonnet-5", anthropic(2, 10)),
         ("claude-sonnet-4-6", anthropic(3, 15)),
         ("claude-haiku-4-5-20251001", anthropic(1, 5)),
+        (
+            "claude-haiku-5-5-20261009",
+            anthropic(
+                0.1,
+                0.5,
+                long_context_threshold=100_000,
+                long_input_multiplier=5,
+                long_output_multiplier=5,
+            ),
+        ),
         ("claude-fable-5-1", anthropic(10, 50, cache_read=0.25)),
         ("claude-fable-5", anthropic(10, 50)),
         ("claude-mythos-5-1", anthropic(10, 50, cache_read=0.25)),
@@ -64,6 +87,7 @@ def test_anthropic_list_prices(model: str, expected: Rates | None) -> None:
         ("gpt-6-sol", openai(2, 0.2, 10, cache_write=2.5, long_context=True)),
         ("gpt-6-luna", openai(0.1, 0.01, 0.5, cache_write=0.125, long_context=True)),
         ("gpt-5.6-sol", openai(4, 0.4, 20, cache_write=5, long_context=True)),
+        ("gpt-5.6-cyber", openai(12.5, 1.25, 75, cache_write=15.625)),
         ("gpt-5.6-terra", openai(2, 0.2, 12, cache_write=2.5, long_context=True)),
         ("gpt-5.6-luna", openai(0.2, 0.02, 1.2, cache_write=0.25, long_context=True)),
         ("gpt-rosalind-research", openai(5, 0.5, 25)),
@@ -109,5 +133,8 @@ def test_specific_globs_come_first() -> None:
     openai_patterns = [pattern for pattern, _ in OPENAI_PRICES]
     assert anthropic_patterns.index("claude-fable-5-1*") < anthropic_patterns.index(
         "claude-fable-5*"
+    )
+    assert anthropic_patterns.index("claude-sonnet-5-5*") < anthropic_patterns.index(
+        "claude-sonnet-5*"
     )
     assert openai_patterns.index("gpt-5.4-mini*") < openai_patterns.index("gpt-5.4*")
