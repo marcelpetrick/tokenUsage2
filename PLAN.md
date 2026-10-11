@@ -292,3 +292,29 @@ Compatibility evidence:
 - The complete release gate passes with 384 tests, 99.00% branch coverage,
   lint/format/ShellCheck, smoke rendering, package builds, a clean-wheel render
   and the installed 0.13.35 version check.
+
+## 13. Release communication and maintainer handoff (October 2026)
+
+The v0.13.35 release is public. Its communication material uses the narrower,
+verifiable category **local-first observability for coding agents** rather than
+implying semantic agent evaluation or prompt inspection.
+
+| Status | Work | Acceptance evidence |
+|--------|------|---------------------|
+| ☑ | Review the existing LinkedIn fact sheet and archived quick post without modifying either source document. | The review identifies the evergreen facts, the historical limitations of the old post and the audience-specific launch message. |
+| ☑ | Add release positioning, current launch copy, audience-specific hashtags and follow-up topics. | [`docs/LI_release_positioning_01335.md`](docs/LI_release_positioning_01335.md) and [`media/LI_release_post_01335.md`](media/LI_release_post_01335.md) are committed separately from the software release. |
+| ☑ | Preserve the review findings and claim boundaries as an auditable record. | [`docs/LI_review_findings_01335.md`](docs/LI_review_findings_01335.md) distinguishes verified, qualified, rejected and unprovable claims and links its repository and publishing evidence. |
+| ☑ | Add durable contributor guidance for future coding agents. | [`AGENTS.md`](AGENTS.md) records the product invariants, validation matrix, documentation/media workflow and atomic release discipline. |
+
+Communication invariants:
+
+1. Describe total and fresh throughput as trailing five-minute averages per
+   minute; total includes cache traffic and must not be equated with new work.
+2. Call `cache%` a cache-reuse share, not a health or quality score.
+3. Call cost a standard-rate estimate and keep unknown hosted prices visibly
+   unknown.
+4. Describe provider badges as public-status context, not authenticated
+   end-to-end checks of a user's API access.
+5. State the privacy boundary precisely: agent-tool sources are read-only,
+   tokenUsage2 retains its own usage metadata, and optional status checks are
+   the only default-disabled network feature.

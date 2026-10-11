@@ -94,7 +94,7 @@ def classify(path: str) -> str | None:
     if (
         path.startswith("docs/")
         or path.startswith("media/")
-        or path in {"README.md", "PLAN.md", "CHANGELOG.md", "review.md"}
+        or path in {"AGENTS.md", "README.md", "PLAN.md", "CHANGELOG.md", "review.md"}
     ):
         return "docs"
     return None

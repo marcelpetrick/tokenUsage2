@@ -26,6 +26,7 @@ _spec.loader.exec_module(history)
         ("tests/test_render.py", "tests"),
         ("scripts/profile_app.py", "tooling"),
         (".github/workflows/release.yml", "tooling"),
+        ("AGENTS.md", "docs"),
         ("README.md", "docs"),
         ("docs/history/loc-history.svg", None),
         ("media/tour.gif", None),
