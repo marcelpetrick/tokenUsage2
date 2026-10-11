@@ -33,6 +33,9 @@ continues in this repository.
 
 ## See tokenUsage2 in action
 
+Redacted live view with a minimal terminal:
+![Redacted tokenUsage2 live dashboard with accounts, project timeline, cache reuse, model breakdown and live feed](media/tokenUsage2_0.13.33.png)
+
 ### Periods, metrics and colour themes
 
 ![tokenUsage2 switches between daily, weekly and monthly periods, token metrics and colour themes](media/tokenUsage2-tour.gif)
