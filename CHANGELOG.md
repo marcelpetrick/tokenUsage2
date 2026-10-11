@@ -10,6 +10,26 @@ All notable changes to tokenUsage2. Versions follow semantic versioning; the
 archive schema version is noted whenever it changes, because an older build
 refuses a newer archive.
 
+## 0.13.34
+
+### Added
+
+- Restore interactive period, grouping, breakdown, metric, account, theme,
+  redaction, heatmap and refresh choices across launches from private XDG state.
+- Add `Shift+R` to restore the factory view and forget saved preferences without
+  touching hand-written configuration, discovery data or the usage archive.
+- Add an explicitly redacted live-dashboard screenshot to the README.
+
+### Changed
+
+- Let explicit interactive CLI options override restored preferences, including
+  `--no-redact`, while non-interactive output keeps stable factory defaults.
+
+### Quality
+
+- Cover private atomic state writes, corrupt and stale state, restart behavior,
+  CLI and `NO_COLOR` precedence, non-interactive isolation and factory reset.
+
 ## 0.13.33
 
 ### Fixed

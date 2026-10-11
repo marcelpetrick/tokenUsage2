@@ -111,6 +111,7 @@ provider_status.py → bounded background checks of official service components
 aggregate.py → buckets (DST-safe local midnights), tallies, account summaries
 render.py    → cell canvas → ANSI/plain frame, themes, panels, overlays
 tui.py       → alternate screen, cbreak keys, resize, refresh loop
+preferences.py → private atomic XDG view state and factory reset
 cli.py       → TUI, --once, --json, --csv, --doctor and --demo
 history_chart.py → reproducible Git-history metrics, SVG and current-count table
 ```
@@ -267,6 +268,7 @@ needed corrections are parser context, discovery and display-time pricing.
 | 0.13.31 | ☑ | Label both header throughput values explicitly as per-minute rates in wide and narrow layouts; simulate every provider-health severity mapping and refresh all maintained documentation. |
 | 0.13.32 | ☑ | Expand grouping palettes to 20 colours; define the neutral cache-read / prompt share; label cost charts correctly; and cover current provider model IDs, including Sonnet 5.5 cache pricing and Haiku 5.5's per-request long-prompt tier. |
 | 0.13.33 | ☑ | Complete the real-model audit by pricing explicit local OpenCode/Codex routes at zero while leaving unknown hosted providers visibly unpriced. |
+| 0.13.34 | ☑ | Persist interactive view choices in private XDG state, add a `Shift+R` factory reset and document the behavior with a redacted live screenshot. |
 
 Compatibility evidence:
 
@@ -283,6 +285,6 @@ Compatibility evidence:
 - On the 3.0 GiB local corpus (1,987 log files), repeated profiling observed
   5.6–23.3 s cold indexes depending on host load, 0.48–0.82 s warm starts,
   10–39 ms idle rescans and roughly 61–144 ms snapshot builds.
-- The complete release gate passes with 374 tests, 99.16% branch coverage,
+- The complete release gate passes with 381 tests, 99.00% branch coverage,
   lint/format/ShellCheck, smoke rendering, package builds, a clean-wheel render
-  and the installed 0.13.33 version check.
+  and the installed 0.13.34 version check.
