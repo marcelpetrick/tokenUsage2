@@ -12,7 +12,7 @@ import termios
 import time
 import tty
 from collections.abc import Callable, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime, tzinfo
 from pathlib import Path
 from typing import Protocol, TextIO
@@ -22,6 +22,7 @@ from tokenusage2.alerts import Alert, AlertTracker, evaluate, notify, typical_ra
 from tokenusage2.export import export
 from tokenusage2.ingest import Progress, ScanReport
 from tokenusage2.live import Source
+from tokenusage2.preferences import Preferences, reset_preferences, save_preferences
 from tokenusage2.render import THEME_NAMES, View, layout, render, render_message
 from tokenusage2.store import StoreBusyError
 from tokenusage2.version import __version__
@@ -112,6 +113,7 @@ def _cycle[T](options: Sequence[T], current: T) -> T:
 @dataclass(slots=True)
 class Controller:
     view: View
+    factory: View = field(default_factory=View)
 
     def handle(self, key: str, accounts: Sequence[str], page: int = 10) -> str | None:
         """Apply one key to the view; return ``quit`` or ``rescan`` when asked."""
@@ -120,6 +122,12 @@ class Controller:
             return "quit"
         if key == "r":
             return "rescan"
+        if key == "R":
+            Preferences.from_view(self.factory).apply(view)
+            view.cursor = 0
+            view.help = view.sources = view.paused = False
+            view.colors.clear()
+            return "reset"
         if key == "e":
             return "export"
         if key == "esc":
@@ -302,14 +310,18 @@ def run(
     screen: Screen | None = None,
     clock: Callable[[], float] = time.time,
     export_dir: Path | None = None,
+    preferences_path: Path | None = None,
+    factory: View | None = None,
 ) -> int:
     if screen is None:
         try:
             with Terminal() as terminal:
-                return _loop(source, view, tz, terminal, clock, export_dir)
+                return _loop(
+                    source, view, tz, terminal, clock, export_dir, preferences_path, factory
+                )
         except KeyboardInterrupt:
             return 0
-    return _loop(source, view, tz, screen, clock, export_dir)
+    return _loop(source, view, tz, screen, clock, export_dir, preferences_path, factory)
 
 
 def export_view(
@@ -334,8 +346,10 @@ def _loop(
     screen: Screen,
     clock: Callable[[], float],
     export_dir: Path | None = None,
+    preferences_path: Path | None = None,
+    factory: View | None = None,
 ) -> int:
-    controller = Controller(view)
+    controller = Controller(view, factory or View())
     width, height = screen.size()
     settings = source.alert_settings()
     tracker = AlertTracker()
@@ -439,6 +453,7 @@ def _loop(
             )
             drawn_second, dirty = int(now), False
         for pressed in screen.read_keys(0.2):
+            before = Preferences.from_view(view)
             action = controller.handle(pressed, [account.id for account in accounts], count)
             if action == "quit":
                 return 0
@@ -447,6 +462,13 @@ def _loop(
                     source, view, tz, now=clock(), count=count, directory=export_dir
                 )
                 notice_until = clock() + 10
+            if action == "reset" and preferences_path is not None:
+                try:
+                    reset_preferences(preferences_path)
+                    notice = "factory settings restored"
+                except OSError as error:
+                    notice = f"could not reset settings: {error.strerror}"
+                notice_until = clock() + 10
             if action == "rescan":
                 try:
                     source.rediscover()
@@ -454,4 +476,13 @@ def _loop(
                     busy = "archive busy: another tokenusage2 is writing to it — retrying"
                 report = refresh(report)
                 next_scan = clock() + view.interval
+            after = Preferences.from_view(view)
+            if after.interval != before.interval:
+                next_scan = clock() + view.interval
+            if action != "reset" and after != before and preferences_path is not None:
+                try:
+                    save_preferences(preferences_path, after)
+                except OSError as error:
+                    notice = f"could not save settings: {error.strerror}"
+                    notice_until = clock() + 10
             dirty = True

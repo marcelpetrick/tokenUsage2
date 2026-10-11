@@ -20,6 +20,7 @@ from tokenusage2.aggregate import GroupBy, Metric, Period
 from tokenusage2.config import AlertSettings
 from tokenusage2.demo import DemoSource
 from tokenusage2.ingest import ScanReport
+from tokenusage2.preferences import Preferences, load_preferences, save_preferences
 from tokenusage2.render import View
 from tokenusage2.store import StoreBusyError
 from tokenusage2.tui import (
@@ -110,6 +111,35 @@ def test_controller_maps_every_key() -> None:
     assert control.handle("unknown", []) is None
 
 
+def test_shift_r_restores_factory_view_settings() -> None:
+    view = View(
+        period=Period.MONTH,
+        group=GroupBy.PROJECT,
+        metric=Metric.COST,
+        detail=GroupBy.SESSION,
+        cursor=12,
+        theme="amber",
+        redact=True,
+        help=True,
+        sources=True,
+        heatmap=True,
+        paused=True,
+        interval=30,
+        account="x",
+        colors={"x": 3},
+    )
+    factory = View(theme="plain")
+    assert Controller(view, factory).handle("R", []) == "reset"
+    assert Preferences.from_view(view) == Preferences.from_view(factory)
+    assert (view.cursor, view.help, view.sources, view.paused, view.colors) == (
+        0,
+        False,
+        False,
+        False,
+        {},
+    )
+
+
 class FakeScreen:
     def __init__(self, batches: Sequence[object]) -> None:
         self.batches = list(batches)
@@ -155,6 +185,55 @@ def test_run_loop_draws_reacts_and_quits() -> None:
     assert any("PAUSED" in text for text in texts)
     assert {len(line) for line in screen.frames[-1]} == {100}
     assert view.cursor == 1
+
+
+def test_run_loop_saves_choices_and_factory_reset_forgets_them(tmp_path: Path) -> None:
+    path = tmp_path / "view.json"
+    source = DemoSource(BERLIN, clock=lambda: NOW, days=5)
+    view = View()
+    screen = FakeScreen([["w", "g", "b", "v", "h", "t", "x", "+", "a"], []])
+    assert (
+        run(
+            source,
+            view,
+            BERLIN,
+            screen=screen,
+            clock=lambda: NOW,
+            preferences_path=path,
+        )
+        == 0
+    )
+    assert load_preferences(path) == Preferences.from_view(view)
+    assert load_preferences(path) == Preferences(
+        period=Period.WEEK,
+        group=GroupBy.TOOL,
+        metric=Metric.FRESH,
+        detail=GroupBy.PROJECT,
+        theme="midnight",
+        redact=True,
+        heatmap=True,
+        interval=5.0,
+        account=source.accounts()[0].id,
+    )
+
+    save_preferences(path, Preferences(theme="amber", interval=30))
+    reset_view = View(theme="amber", interval=30, paused=True, cursor=7)
+    reset_screen = FakeScreen([["R"], []])
+    assert (
+        run(
+            source,
+            reset_view,
+            BERLIN,
+            screen=reset_screen,
+            clock=lambda: NOW,
+            preferences_path=path,
+            factory=View(theme="plain"),
+        )
+        == 0
+    )
+    assert not path.exists()
+    assert Preferences.from_view(reset_view) == Preferences(theme="plain")
+    assert any("factory settings restored" in "\n".join(frame) for frame in reset_screen.frames)
 
 
 def test_sources_overlay_honors_interactive_redaction() -> None:

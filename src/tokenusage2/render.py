@@ -166,6 +166,7 @@ HELP_LINES = (
     "t          theme (default, midnight, amber, plain)",
     "x          redact e-mail addresses",
     "r          rescan now (also re-runs discovery)",
+    "Shift+R    restore factory view settings and forget saved preferences",
     "p          pause live refresh        + / -   refresh interval",
     "? or F1    this help",
 )
@@ -181,6 +182,7 @@ HINTS = (
     ("s", "sources"),
     ("t", "theme"),
     ("x", "redact"),
+    ("R", "reset"),
     ("?", "help"),
 )
 

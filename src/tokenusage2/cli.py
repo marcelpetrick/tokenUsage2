@@ -34,6 +34,7 @@ from tokenusage2.demo import DemoSource
 from tokenusage2.export import TIMELINE_FIELDS, timeline_rows, to_csv
 from tokenusage2.ingest import ScanReport
 from tokenusage2.live import LiveSource, Source
+from tokenusage2.preferences import Preferences, default_preferences_path, load_preferences
 from tokenusage2.provider_status import ProviderStatus
 from tokenusage2.render import THEME_NAMES, View, mask, render
 from tokenusage2.store import Store, StoreBusyError, StoreError
@@ -59,25 +60,23 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--demo", action="store_true", help="use synthetic data (safe for screenshots)"
     )
-    parser.add_argument("--period", choices=[p.value for p in Period], default="day")
+    parser.add_argument("--period", choices=[p.value for p in Period])
     parser.add_argument(
         "--group",
         choices=[g.value for g in GroupBy],
-        default="account",
         help="what colours the timeline",
     )
     parser.add_argument(
         "--breakdown",
         choices=[g.value for g in GroupBy],
-        default="model",
         help="how the selected bucket is broken down",
     )
-    parser.add_argument("--metric", choices=[m.value for m in Metric], default="total")
+    parser.add_argument("--metric", choices=[m.value for m in Metric])
     parser.add_argument("--account", help="show only this account (label or id)")
     parser.add_argument(
         "--theme", choices=THEME_NAMES, help="colour theme (default: 'plain' when NO_COLOR is set)"
     )
-    parser.add_argument("--interval", type=float, default=2.0, help="refresh seconds")
+    parser.add_argument("--interval", type=float, help="refresh seconds")
     parser.add_argument("--archive", type=Path, help="archive database path")
     parser.add_argument(
         "--no-archive",
@@ -99,7 +98,12 @@ def build_parser() -> argparse.ArgumentParser:
         default="auto",
         help="colour for --once (auto: only on a terminal)",
     )
-    parser.add_argument("--redact", action="store_true", help="mask e-mail addresses")
+    parser.add_argument(
+        "--redact",
+        action=argparse.BooleanOptionalAction,
+        default=None,
+        help="mask e-mail addresses",
+    )
     provider_status = parser.add_mutually_exclusive_group()
     provider_status.add_argument(
         "--provider-status",
@@ -276,7 +280,7 @@ def main(
     except ZoneInfoNotFoundError, ValueError:
         print(f"tokenusage2: unknown time zone: {args.tz}", file=sys.stderr)
         return 2
-    if not math.isfinite(args.interval) or args.interval <= 0:
+    if args.interval is not None and (not math.isfinite(args.interval) or args.interval <= 0):
         print("tokenusage2: --interval must be a finite positive number", file=sys.stderr)
         return 2
     if any(value is not None and value <= 0 for value in (args.width, args.height)):
@@ -310,7 +314,15 @@ def main(
             print(f"tokenusage2: {error}", file=sys.stderr)
             return 2
     try:
-        return _run(args, source, env, tz, clock, default_exports(home, env))
+        return _run(
+            args,
+            source,
+            env,
+            tz,
+            clock,
+            default_exports(home, env),
+            default_preferences_path(home, env),
+        )
     except StoreBusyError as error:
         print(f"tokenusage2: {error}", file=sys.stderr)
         return 2
@@ -326,6 +338,41 @@ def _outdated(report: ScanReport) -> int:
     return 2
 
 
+def _initial_view(
+    args: argparse.Namespace,
+    env: Mapping[str, str],
+    preferences_path: Path,
+    *,
+    interactive: bool,
+) -> tuple[View, View, str | None]:
+    """Factory defaults, then saved choices, then explicit flags."""
+    factory = View(theme="plain" if env.get("NO_COLOR") else "default")
+    view = View()
+    Preferences.from_view(factory).apply(view)
+    saved = load_preferences(preferences_path) if interactive else Preferences.from_view(factory)
+    if interactive:
+        saved.apply(view)
+    if args.period is not None:
+        view.period = Period(args.period)
+    if args.group is not None:
+        view.group = GroupBy(args.group)
+    if args.metric is not None:
+        view.metric = Metric(args.metric)
+    if args.breakdown is not None:
+        view.detail = GroupBy(args.breakdown)
+    if args.theme is not None:
+        view.theme = args.theme
+    elif env.get("NO_COLOR"):
+        view.theme = "plain"
+    if args.redact is not None:
+        view.redact = args.redact
+    if args.interval is not None:
+        view.interval = args.interval
+    wanted_account = args.account if args.account is not None else saved.account
+    view.account = wanted_account
+    return view, factory, wanted_account
+
+
 def _run(
     args: argparse.Namespace,
     source: Source,
@@ -333,29 +380,28 @@ def _run(
     tz: tzinfo,
     clock: Callable[[], float],
     export_dir: Path,
+    preferences_path: Path,
 ) -> int:
-    try:
-        account = _account_id(source, args.account)
-    except LookupError:
-        labels = ", ".join(a.label for a in source.accounts()) or "none"
-        print(f"tokenusage2: unknown account {args.account!r} (known: {labels})", file=sys.stderr)
-        return 2
-    theme = args.theme or ("plain" if env.get("NO_COLOR") else "default")
-    view = View(
-        period=Period(args.period),
-        group=GroupBy(args.group),
-        metric=Metric(args.metric),
-        detail=GroupBy(args.breakdown),
-        theme=theme,
-        redact=args.redact,
-        interval=args.interval,
-        account=account,
+    interactive = not (args.doctor or args.json or args.once or args.csv)
+    view, factory, wanted_account = _initial_view(
+        args, env, preferences_path, interactive=interactive
     )
+    try:
+        view.account = _account_id(source, wanted_account)
+    except LookupError:
+        if args.account is None:
+            view.account = None  # a removed account must not prevent restart
+        else:
+            labels = ", ".join(a.label for a in source.accounts()) or "none"
+            print(
+                f"tokenusage2: unknown account {args.account!r} (known: {labels})", file=sys.stderr
+            )
+            return 2
 
     if args.doctor:
         report = source.scan()
         source.wait_provider_status()
-        print("\n".join(source.sources(args.redact)))
+        print("\n".join(source.sources(view.redact)))
         return _outdated(report)
     if args.json or args.once or args.csv:
         report = source.scan()
@@ -384,7 +430,7 @@ def _run(
             print(to_csv(timeline_rows(snapshot), TIMELINE_FIELDS), end="")
             return 0
         if args.json:
-            data = snapshot_json(snapshot, tz, args.redact, source.provider_statuses())
+            data = snapshot_json(snapshot, tz, view.redact, source.provider_statuses())
             data["alerts"] = [alert.text for alert in alerts]
             print(json.dumps(data, indent=2))
             return 0
@@ -411,4 +457,12 @@ def _run(
             file=sys.stderr,
         )
         return 2
-    return run(source, view, tz, clock=clock, export_dir=export_dir)
+    return run(
+        source,
+        view,
+        tz,
+        clock=clock,
+        export_dir=export_dir,
+        preferences_path=preferences_path,
+        factory=factory,
+    )

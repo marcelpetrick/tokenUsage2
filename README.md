@@ -119,7 +119,21 @@ window or burn episode; `--json` lists them.
 | `t` | theme: default, midnight, amber, plain |
 | `x` | redact e-mail addresses |
 | `r` | rescan now (re-runs discovery) · `p` pause · `+` `-` refresh interval |
+| `Shift+R` | restore factory view settings and forget saved preferences |
 | `q` | quit |
+
+Interactive choices are restored on the next launch: period, timeline grouping,
+breakdown, metric, account filter, theme, redaction, heatmap/feed view and refresh
+interval. They are written atomically to
+`$XDG_STATE_HOME/tokenusage2/view.json` (normally
+`~/.local/state/tokenusage2/view.json`) with private permissions. Cursor position,
+open overlays, pause state and notices are deliberately session-only. Explicit
+CLI options override saved choices; non-interactive `--once`, `--json`, `--csv`
+and `--doctor` keep stable factory defaults unless flags are supplied.
+
+`Shift+R` immediately restores the factory view and deletes this state file. It
+does not modify `config.toml`, discovered accounts, prices, alert thresholds or
+the usage archive.
 
 ## How accounts are found — nothing is hardcoded
 
@@ -270,7 +284,8 @@ tokenusage2 [--once | --json | --csv | --doctor] [--demo]
             [--metric total|fresh|output|cost] [--account LABEL_OR_ID]
             [--theme default|midnight|amber|plain] [--interval SECONDS]
             [--archive PATH] [--no-archive] [--config PATH] [--home DIR] [--tz ZONE]
-            [--width N] [--height N] [--color auto|always|never] [--redact]
+            [--width N] [--height N] [--color auto|always|never]
+            [--redact | --no-redact]
             [--provider-status | --no-provider-status]
             [--version]
 ```
@@ -289,8 +304,9 @@ tokenusage2 [--once | --json | --csv | --doctor] [--demo]
 
 ## Configuration (optional)
 
-`$XDG_CONFIG_HOME/tokenusage2/config.toml` — only needed for homes that cannot
-be discovered, or to rename and pin things:
+`$XDG_CONFIG_HOME/tokenusage2/config.toml` is the hand-written configuration —
+separate from the automatically saved view preferences. It is only needed for
+homes that cannot be discovered, or to rename and pin things:
 
 ```toml
 [discovery]

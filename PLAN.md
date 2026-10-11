@@ -85,6 +85,9 @@ Implemented in v0.1 (✓) and backlog (·):
 - ✓ Cache reuse trend: neutral cache-read / prompt-token share per bucket,
   aligned below the timeline rather than presented as a health score (0.6.0,
   clarified in 0.13.32).
+- ✓ Durable interactive view preferences in private XDG state, with CLI
+  precedence and a `Shift+R` factory reset that leaves user configuration and
+  usage data untouched (0.13.34).
 - ✓ Threshold notifications: quota ≥ 90 %, unusual burn rate (0.7.0).
 - ✓ Per-session drill-down (0.8.0).
 - ✓ CSV export of the current view (0.9.0).
