@@ -33,7 +33,7 @@ continues in this repository.
 
 ## See tokenUsage2 in action
 
-Redacted live view with a minimal terminal:
+Redacted live view captured with v0.13.33 in a minimal terminal:
 ![Redacted tokenUsage2 live dashboard with accounts, project timeline, cache reuse, model breakdown and live feed](media/tokenUsage2_0.13.33.png)
 
 ### Periods, metrics and colour themes
@@ -78,9 +78,8 @@ By hand: `python3.14 -m venv .venv && .venv/bin/pip install -e .`. Without
 installing anything: `PYTHONPATH=src python3.14 -m tokenusage2`.
 
 The first start indexes every transcript once into a local archive; every later
-start and refresh only reads what was appended. On the current 3.0 GiB reference
-corpus, cold indexing takes 5.6–23.3 s depending on host load and warm starts
-take 0.48–0.82 s.
+start and refresh only reads what was appended. The latest reference run covered
+2,135 logs (3.18 GiB): cold indexing took 21.7 s and an unchanged rescan 39 ms.
 
 ## What it shows
 
@@ -250,18 +249,20 @@ move aside so the next start rebuilds it.
 
 ## Performance
 
-Measured with [`scripts/profile_app.py`](scripts/profile_app.py) against the
-current real corpus: 1,987 Claude Code and Codex logs, about 3.0 GiB and 104,332
-normalised events, on Python 3.14. Ranges are repeated observations under
-different host loads; historical baselines remain in the changelog.
+Measured on 2026-10-11 with
+[`scripts/profile_app.py`](scripts/profile_app.py) against the current real
+corpus: 2,135 Claude Code and Codex logs, 3.18 GiB of source data and 113,430
+events in the retained archive, on Python 3.14. The values below are one
+reference run, not latency guarantees; historical ranges remain in the
+changelog.
 
-| Stage | Current range | Why steady-state work stays bounded |
-|-------|--------------:|-------------------------------------|
-| Cold index (first start) | 5.6–23.3 s | JSONL is streamed; irrelevant Codex lines are rejected from a 256-byte head |
-| Warm start (load archive) | 0.48–0.82 s | one archive load and one in-memory index build |
-| Idle rescan | 10–39 ms | append-only offsets, sampled checkpoints and incremental `/proc` scanning |
-| Snapshot · day / week / month | 61–144 ms | lifetime totals are maintained incrementally; only visible periods are walked |
-| Render 160 × 48 | 2–4 ms | fixed-size cell canvas; no network or archive work in rendering |
+| Stage | Latest measurement | Why steady-state work stays bounded |
+|-------|-------------------:|-------------------------------------|
+| Cold index (first start) | 21.7 s | JSONL is streamed; irrelevant Codex lines are rejected from a 256-byte head |
+| Warm start (load archive) | 1.85 s | one archive load and one in-memory index build |
+| Idle rescan | 39 ms | append-only offsets, sampled checkpoints and incremental `/proc` scanning |
+| Snapshot · day / week / month | 204–275 ms | lifetime totals are maintained incrementally; only visible periods are walked |
+| Render 160 × 48 | 6.5 ms | fixed-size cell canvas; no network or archive work in rendering |
 
 ## Compared with the neighbours
 

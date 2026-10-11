@@ -272,7 +272,7 @@ needed corrections are parser context, discovery and display-time pricing.
 
 Compatibility evidence:
 
-- Claude Code 2.1.295 transcript usage fields, statusline quota snapshots and
+- Claude Code 2.1.296 transcript usage fields, statusline quota snapshots and
   current model families remain covered. Claude 4.6+ long context uses standard
   rates except Haiku 5.5's published tier above 100K prompt tokens; service-tier,
   geography and non-token tool extras remain explicit standard-rate-estimate
@@ -280,11 +280,14 @@ Compatibility evidence:
 - Codex CLI 0.162.0 `token_count` records reconcile with
   `threads.tokens_used`. The parallel `token_usage_record` stream is still not
   added because it does not reconcile with that authoritative total.
+- OpenCode 1.15.4 message rows remain covered, including malformed-column
+  tolerance and explicit local-provider pricing.
 - Current Codex per-turn working directories and configurable SQLite state
   location are covered by focused regressions.
-- On the 3.0 GiB local corpus (1,987 log files), repeated profiling observed
-  5.6–23.3 s cold indexes depending on host load, 0.48–0.82 s warm starts,
-  10–39 ms idle rescans and roughly 61–144 ms snapshot builds.
+- On the current 3.18 GiB source corpus (2,135 log files), the 2026-10-11
+  reference run measured a 21.7 s cold index, 1.85 s warm start, 39 ms idle
+  rescan, 204–275 ms snapshots and a 6.5 ms 160 × 48 render. The retained
+  archive held 113,430 events.
 - The complete release gate passes with 381 tests, 99.00% branch coverage,
   lint/format/ShellCheck, smoke rendering, package builds, a clean-wheel render
   and the installed 0.13.34 version check.

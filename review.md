@@ -1,111 +1,76 @@
-Base: public `v0.13.30` @ `fae6abc`  Scope: full 0.13.31 release candidate
+# tokenUsage2 review — 0.13.35
+
+Base: public `v0.13.34` at `c59a544`
+
+Scope: regenerated product tours and every tracked Markdown document
 
 ## Findings
 
-No unresolved HIGH, MEDIUM or LOW code or architecture finding remains.
+No runtime Code or Architecture defect is introduced by this documentation-only
+release. The audit found six documentation and generated-media gaps; all are
+resolved in the release candidate:
 
-The formal `origin/master...HEAD` branch review covered the rate-label fix and
-its provider-state regression matrix. It found no Code or Architecture defect:
-both displayed throughput values carry their own `/min` unit in wide and
-70-column layouts, while the shared `5m avg` suffix states the sampling window.
+1. This report still described the `0.13.31` candidate and its obsolete test,
+   corpus and version evidence while the README called it the latest audit.
+2. README and PLAN performance figures described an older, smaller corpus.
+3. PLAN named Claude Code 2.1.295 although 2.1.296 is installed, and did not
+   identify the checked OpenCode version.
+4. The three GIFs and four MP4s predated durable view preferences and the
+   `Shift+R` footer/help text.
+5. The LinkedIn fact sheet omitted durable preferences and factory reset.
+6. The archived LinkedIn post lacked a document title and its dense prose made
+   the historical context unnecessarily hard to scan.
 
-The full Markdown audit found and repaired eight documentation/release gaps:
+The static live screenshot remains intentionally named for v0.13.33 and is now
+captioned as such. Its redactions were visually checked; it is historical media,
+not a claim that the older version is current.
 
-1. The latest-audit link pointed here while this report still described 0.13.29.
-2. The already-tagged 0.13.30 version would have suppressed a new release.
-3. The plan still described one burn rate rather than total and fresh rates.
-4. The plan still described one combined provider-health indicator.
-5. The LinkedIn fact sheet used the same stale singular-rate/status wording.
-6. The README heading hierarchy skipped levels around the media tour.
-7. The README did not show that each header number independently carries `/min`.
-8. Generated history/version documentation needed regeneration for 0.13.31.
+## Markdown audit
 
-All eight are fixed. Every local Markdown link resolves, headings advance one
-level at a time, code fences are balanced, and Markdown whitespace is clean.
+All seven tracked Markdown documents were read against the current CLI, source,
+release workflow and generated artifacts. The README synopsis matches
+`tokenusage2 --help`; preference precedence, private XDG state, `Shift+R`, rate
+units, cache-share semantics, provider-status colours, pricing limits and the
+13-stage pipeline are described consistently.
 
-The October compatibility pass found and repaired six concrete gaps:
+Every local Markdown link resolves, heading levels are ordered, code fences are
+balanced and whitespace is clean. All 21 unique external URLs returned HTTP 200
+on 2026-10-11. A regression test now enforces local links, heading hierarchy,
+balanced fences and trailing whitespace for root, `docs/` and `media/` Markdown.
 
-1. Current Claude Opus 5.5 and GPT-6-family requests could be unpriced or use
-   stale standard rates; OpenAI cache writes and the >272K tier were omitted.
-2. Codex attributed an entire resumed session to its initial working directory
-   even though current `turn_context` records carry a per-turn `cwd`.
-3. Codex reconciliation ignored the current `sqlite_home` configuration and
-   selected `state_9.sqlite` after `state_10.sqlite` lexicographically.
-4. `--interval nan`, `--interval inf` and non-positive output dimensions passed
-   argument validation and could freeze scanning or fail later in rendering.
-5. Every snapshot walked the complete event archive to correct `last_ts` for a
-   rare future timestamp, adding avoidable work to the hot display path.
-6. The dashboard could not distinguish a local ingestion problem from a Claude
-   or Codex service incident.
+Historical changelog and planning evidence remains historical rather than being
+rewritten as current data. `media/LI_quickpost.md` is explicitly labeled as an
+archived September 2026 post, and `docs/history/loc-current.md` remains generated
+exclusively by `scripts/history_chart.py`.
 
-All six are covered by focused regressions. Pricing remains deliberately a
-standard-rate estimate: fast/batch tiers, geography uplifts and non-token tool
-charges are not silently guessed. Unpriced models and retained unsplit totals
-continue to be marked incomplete instead of appearing free.
+## Current compatibility and performance evidence
 
-The documentation follow-up found three stale statements and repaired them:
-the top-level privacy summary described an unqualified offline application,
-the README still quoted the older 1.5 GB performance corpus, and the LinkedIn
-fact sheet omitted session grouping and provider health. CLI syntax,
-configuration examples, architecture, token semantics and local links now
-match the implemented 0.13.31 behavior.
+- Claude Code 2.1.296, Codex CLI 0.162.0 and OpenCode 1.15.4 were present during
+  this audit.
+- The source corpus contained 2,135 logs totaling 3.18 GiB; the retained archive
+  contained 113,430 events.
+- The 2026-10-11 reference run measured a 21.7 s cold index, 1.85 s warm start,
+  39 ms unchanged rescan, 204–275 ms snapshot builds and a 6.5 ms 160 × 48
+  render. These are observations, not performance guarantees.
 
-## Architecture and performance
+## Media verification
 
-The architecture remains appropriate for the workload: append-aware parsers
-feed an idempotent SQLite archive and an incremental in-memory index; snapshots
-aggregate only display windows while lifetime totals are maintained separately.
-No rewrite or new runtime dependency is warranted.
-
-Provider health is isolated behind an opt-in monitor. It contacts only fixed
-official HTTPS endpoints, sends no credentials or usage data, caps response
-size, validates the response schema, applies strict timeouts and performs every
-request on a daemon thread so provider latency cannot freeze the dashboard.
-Independent Claude and OpenAI bubbles map fully operational to green, partial
-issues and maintenance to yellow, complete tracked-component outages to red,
-and unknown/checking states to grey; synthetic responses cover every mapping.
-
-Project-history measurement is also isolated from the application. A
-standard-library generator reads immutable Git objects without checking out
-commits, excludes its own outputs from the count, produces a deterministic SVG
-and current-count table, and runs in `--check` mode in the shared quality gate.
-
-The main corpus contains 1,987 logs (about 3.0 GiB). Repeated runs observed
-5.6–23.3 s cold indexes depending on host load, 0.48–0.82 s warm starts,
-10–39 ms unchanged rescans, 61–144 ms day/week/month snapshots and 2–4 ms
-terminal renders. The remaining start-up cost is bounded by loading the archive
-and rebuilding the in-memory index; steady-state polling is already cheap.
-
-## Token-accounting coverage
-
-- Claude assistant usage records count fresh input, output, cache reads and both
-  cache-write TTL classes; duplicate streaming copies remain deduplicated by
-  request identity.
-- Codex `token_count` increments count input, cached input, output and reasoning
-  without double-counting the newer parallel record stream. Local totals match
-  Codex's own thread database.
-- OpenCode input/output/reasoning and cache read/write fields remain covered.
-- Local/custom models stay free only when a local route proves that fact;
-  unknown remote prices remain visibly unpriced.
-- The trailing five-minute window retains every token component. Its total rate
-  includes cache, while its fresh rate is uncached input plus output; each is
-  divided by five and rendered with its own `/min` unit.
+`scripts/record_gifs.py` rebuilt every tour from the real renderer and
+deterministic synthetic data. The GIFs use a 720 × 900 logical canvas and contain
+9 tour, 8 grouping and 9 exploration frames. Their matching H.264 MP4s are
+13.2 s, 11.8 s and 13.6 s; the combined LinkedIn cut is 38.6 s. Visual inspection
+confirmed readable layouts, fictional identities, active redaction and the
+current version in the dashboard header.
 
 ## Verification
 
-- All 12 mandatory local pipeline stages pass: 370 tests with 99.15% branch
-  coverage, Ruff lint/format, ShellCheck, smoke rendering, sdist/wheel builds,
-  generated-history verification, a clean-wheel render and the installed
-  0.13.31 version check.
-- The real archive holds 109,907 normalized events. Every event routed through
-  Anthropic or OpenAI resolves to a published standard rate, including 109
-  OpenAI requests in the >272K prompt tier.
-- `--doctor --redact` scans 2,071 files without parse errors and reconciles both
-  Codex accounts against `threads.tokens_used` at the displayed ±0.0%.
+- The focused Markdown regression passes.
+- Generated project-history files verify reproducibly.
+- The complete local and GitHub pipeline evidence is recorded in the release
+  handoff after the versioned build runs.
 
 ## Verdict
 
-The 0.13.31 release candidate preserves the existing accounting semantics while
-making both live rates unambiguous and the provider-state behavior exhaustively
-testable. Code, architecture, user, release and supporting documentation are
-synchronized; no review finding remains open.
+The documentation is current, concise and internally consistent, and every
+repository-owned animation has been regenerated from the current dashboard.
+No finding remains open for the `0.13.35` release.
