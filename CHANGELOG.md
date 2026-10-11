@@ -10,6 +10,25 @@ All notable changes to tokenUsage2. Versions follow semantic versioning; the
 archive schema version is noted whenever it changes, because an older build
 refuses a newer archive.
 
+## 0.13.35
+
+### Documentation
+
+- Regenerate all three GIF product tours, their matching MP4s and the combined
+  LinkedIn cut from the current renderer with synthetic, redacted data.
+- Re-audit every maintained Markdown document against the current CLI, source,
+  local corpus, installed agents and release workflow; replace the stale review
+  report and sharpen the archived LinkedIn copy.
+- Refresh the measured corpus and performance evidence for 2,135 source logs,
+  3.18 GiB and a retained archive of 113,430 events.
+
+### Quality
+
+- Enforce top-level and ordered headings, balanced code fences, resolvable local
+  links and clean trailing whitespace across root, `docs/` and `media/` Markdown.
+- Verify every external documentation URL, animation canvas/frame count, MP4
+  codec, dimensions and duration before release.
+
 ## 0.13.34
 
 ### Added

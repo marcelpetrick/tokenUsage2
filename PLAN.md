@@ -269,6 +269,7 @@ needed corrections are parser context, discovery and display-time pricing.
 | 0.13.32 | ☑ | Expand grouping palettes to 20 colours; define the neutral cache-read / prompt share; label cost charts correctly; and cover current provider model IDs, including Sonnet 5.5 cache pricing and Haiku 5.5's per-request long-prompt tier. |
 | 0.13.33 | ☑ | Complete the real-model audit by pricing explicit local OpenCode/Codex routes at zero while leaving unknown hosted providers visibly unpriced. |
 | 0.13.34 | ☑ | Persist interactive view choices in private XDG state, add a `Shift+R` factory reset and document the behavior with a redacted live screenshot. |
+| 0.13.35 | ☑ | Regenerate all GIF/MP4 tours from the current renderer and re-audit every Markdown surface with structural regression coverage. |
 
 Compatibility evidence:
 
@@ -288,6 +289,6 @@ Compatibility evidence:
   reference run measured a 21.7 s cold index, 1.85 s warm start, 39 ms idle
   rescan, 204–275 ms snapshots and a 6.5 ms 160 × 48 render. The retained
   archive held 113,430 events.
-- The complete release gate passes with 381 tests, 99.00% branch coverage,
+- The complete release gate passes with 384 tests, 99.00% branch coverage,
   lint/format/ShellCheck, smoke rendering, package builds, a clean-wheel render
-  and the installed 0.13.34 version check.
+  and the installed 0.13.35 version check.

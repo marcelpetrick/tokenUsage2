@@ -66,8 +66,10 @@ current version in the dashboard header.
 
 - The focused Markdown regression passes.
 - Generated project-history files verify reproducibly.
-- The complete local and GitHub pipeline evidence is recorded in the release
-  handoff after the versioned build runs.
+- All 12 mandatory local pipeline stages pass with 384 tests and 99.00% branch
+  coverage, Ruff lint/format, ShellCheck, smoke rendering, distribution builds,
+  a clean-wheel render and the installed 0.13.35 version check. GitHub evidence
+  is recorded in the release handoff after the push.
 
 ## Verdict
 
