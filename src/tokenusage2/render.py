@@ -10,10 +10,12 @@ a frame can be asserted on as plain strings in tests.
 """
 
 import math
+import random
 import unicodedata
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from datetime import datetime, tzinfo
+from functools import lru_cache
 
 from tokenusage2.aggregate import (
     METRIC_HELP,
@@ -167,7 +169,8 @@ HELP_LINES = (
     "x          redact e-mail addresses",
     "r          rescan now (also re-runs discovery)",
     "Shift+R    restore factory view settings and forget saved preferences",
-    "p          pause live refresh        + / -   refresh interval",
+    "p          shuffle category colours (saved across launches)",
+    "Space      pause live refresh        + / -   refresh interval",
     "? or F1    this help",
 )
 HINTS = (
@@ -180,6 +183,7 @@ HINTS = (
     ("a", "account"),
     ("h", "heatmap"),
     ("s", "sources"),
+    ("p", "palette"),
     ("t", "theme"),
     ("x", "redact"),
     ("R", "reset"),
@@ -358,6 +362,17 @@ class Canvas:
 # --- view state and layout ---------------------------------------------------
 
 
+@lru_cache(maxsize=32)
+def _palette_order(palette: int) -> tuple[int, ...]:
+    """Repeatable permutations; consecutive palettes change the first category too."""
+    if palette == 0:
+        return tuple(range(SERIES))
+    first = palette % SERIES
+    rest = [index for index in range(SERIES) if index != first]
+    random.Random(palette).shuffle(rest)
+    return (first, *rest)
+
+
 @dataclass(slots=True)
 class View:
     """Presentation state; the TUI mutates it from key presses."""
@@ -368,6 +383,7 @@ class View:
     detail: GroupBy = GroupBy.MODEL
     cursor: int = 0
     theme: str = "default"
+    palette: int = 0
     redact: bool = False
     help: bool = False
     sources: bool = False
@@ -381,7 +397,7 @@ class View:
         index = self.colors.get(name)
         if index is None:
             index = self.colors[name] = len(self.colors)
-        return f"s{index % SERIES}"
+        return f"s{_palette_order(self.palette)[index % SERIES]}"
 
 
 @dataclass(frozen=True, slots=True)

@@ -318,3 +318,28 @@ Communication invariants:
 5. State the privacy boundary precisely: agent-tool sources are read-only,
    tokenUsage2 retains its own usage metadata, and optional status checks are
    the only default-disabled network feature.
+
+## 14. Interactive category palettes (0.14.0)
+
+Plan reviewed against the renderer, keyboard controller and private preferences:
+
+1. Reassign `p` to explore reproducible shuffled arrangements of the existing
+   20 category colours; move pause/resume to `Space` and keep `t` for themes.
+2. Apply the palette consistently to timeline, legend and matching breakdown
+   without changing category identity, aggregation or archived events.
+3. Persist the palette in private view state, validate saved values, preserve
+   stable non-interactive defaults and restore palette zero with `Shift+R`.
+4. Cover keyboard controls, redraws, palette uniqueness/stability, persistence,
+   invalid state and reset; synchronize help, README, version and changelog.
+5. Run focused regressions and the mandatory local pipeline, then review the diff.
+
+Review: bounded cached permutations keep random generation outside the per-cell
+render path. Consecutive palettes change the first category's colour, retain all
+20 unique styles and leave the plain theme uncoloured. Existing state files
+without a palette field retain the original colours.
+
+Validation: all 90 focused tests passed. The full `./localPipeline.sh --noRun`
+gate passed all 12 required stages with 400 tests, 99.00% coverage, Ruff lint
+and formatting, ShellCheck 0.11.0, generated-history checks, demo rendering,
+package builds and a clean-wheel smoke check for 0.14.0. Final diff review
+found no additional issues; no archive or source-data changes are needed.

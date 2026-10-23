@@ -166,6 +166,8 @@ class Controller:
         elif key == "x":
             view.redact = not view.redact
         elif key == "p":
+            view.palette = (view.palette + 1) % (2**32)
+        elif key == " ":
             view.paused = not view.paused
         elif key in {"+", "="}:
             view.interval = next((i for i in INTERVALS if i > view.interval), INTERVALS[-1])

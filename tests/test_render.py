@@ -494,3 +494,31 @@ def test_the_selected_total_stays_visible_on_a_full_height_bar() -> None:
 def test_footer_shows_an_active_alert(demo: DemoSource) -> None:
     lines = frame(demo, View(theme="plain"), alert="codex 5h quota at 95%")
     assert lines[-1].rstrip().endswith("▲ codex 5h quota at 95%")
+
+
+def test_shuffled_palettes_are_stable_unique_and_change_on_each_press() -> None:
+    previous = None
+    permutations = set()
+    for palette in range(100):
+        view = View(palette=palette)
+        styles = tuple(view.series(f"category-{index}") for index in range(SERIES))
+        assert len(set(styles)) == SERIES
+        assert styles[0] != previous
+        assert view.series("category-0") == styles[0]
+        assert view.series("wraparound") == styles[0]
+        restored = View(palette=palette)
+        assert tuple(restored.series(f"category-{i}") for i in range(SERIES)) == styles
+        permutations.add(styles)
+        previous = styles[0]
+    assert len(permutations) == 100
+
+
+@pytest.mark.parametrize("theme", THEME_NAMES)
+def test_palette_changes_only_category_styles(demo: DemoSource, theme: str) -> None:
+    original = frame(demo, View(theme=theme))
+    shuffled = frame(demo, View(theme=theme, palette=123))
+    assert visible(original) == visible(shuffled)
+    if theme == "plain":
+        assert shuffled == original
+    else:
+        assert shuffled != original

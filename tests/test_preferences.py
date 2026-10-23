@@ -6,6 +6,8 @@ import json
 import stat
 from pathlib import Path
 
+import pytest
+
 from tokenusage2.aggregate import GroupBy, Metric, Period
 from tokenusage2.cli import _initial_view, build_parser
 from tokenusage2.preferences import (
@@ -26,6 +28,7 @@ def test_preferences_round_trip_privately_and_reset(tmp_path: Path) -> None:
         metric=Metric.COST,
         detail=GroupBy.PROJECT,
         theme="midnight",
+        palette=12345,
         redact=True,
         heatmap=True,
         interval=5.0,
@@ -88,6 +91,7 @@ def test_restart_restores_saved_choices_and_flags_override_them(tmp_path: Path) 
             metric=Metric.COST,
             detail=GroupBy.SESSION,
             theme="amber",
+            palette=12345,
             redact=True,
             heatmap=True,
             interval=10.0,
@@ -136,11 +140,13 @@ def test_restart_restores_saved_choices_and_flags_override_them(tmp_path: Path) 
         metric=Metric.OUTPUT,
         detail=GroupBy.ACCOUNT,
         theme="plain",
+        palette=12345,
         redact=False,
         heatmap=True,
         interval=1.0,
         account="cli-account",
     )
+    assert overridden.palette == 12345
     assert wanted == "cli-account"
 
 
@@ -152,3 +158,10 @@ def test_noninteractive_modes_keep_stable_factory_defaults(tmp_path: Path) -> No
     )
     assert Preferences.from_view(view) == Preferences()
     assert wanted is None
+
+
+@pytest.mark.parametrize("palette", [-1, 2**32, True, 1.5, "2", None, [], {}])
+def test_invalid_saved_palettes_use_original_colours(tmp_path: Path, palette: object) -> None:
+    path = tmp_path / "view.json"
+    path.write_text(json.dumps({"palette": palette, "theme": "amber"}))
+    assert load_preferences(path) == Preferences(theme="amber")

@@ -31,6 +31,17 @@ and no API keys.
 and moved here with its full history (see `CHANGELOG.md` 0.3.8); all work
 continues in this repository.
 
+## New in 0.14.0: find your colours with `p`
+
+Keep pressing **`p`** to try shuffled category palettes while the dashboard runs.
+The timeline, legend and matching breakdown change together, with 20 distinct
+colours before repetition. Stop on a combination you like: it is saved privately
+and restored on your next launch.
+
+**`t`** cycles the overall theme, **`Space`** now pauses/resumes refresh, and
+**`Shift+R`** restores the factory view. The plain theme stays uncoloured.
+Try it with `.venv/bin/tokenusage2 --demo`.
+
 ## See tokenUsage2 in action
 
 Redacted live view captured with v0.13.33 in a minimal terminal:
@@ -115,15 +126,19 @@ window or burn episode; `--json` lists them.
 | `h` | heatmap ↔ live feed |
 | `s` | sources overlay · `?` / `F1` help · `Esc` closes overlays |
 | `e` | export the timeline and the breakdown as CSV (to `$XDG_DATA_HOME/tokenusage2/exports`) |
+| `p` | shuffle category colours; keep pressing to explore palettes |
 | `t` | theme: default, midnight, amber, plain |
 | `x` | redact e-mail addresses |
-| `r` | rescan now (re-runs discovery) · `p` pause · `+` `-` refresh interval |
+| `r` | rescan now (re-runs discovery) · `Space` pause · `+` `-` refresh interval |
 | `Shift+R` | restore factory view settings and forget saved preferences |
 | `q` | quit |
 
 Interactive choices are restored on the next launch: period, timeline grouping,
-breakdown, metric, account filter, theme, redaction, heatmap/feed view and refresh
-interval. They are written atomically to
+breakdown, metric, account filter, theme, category palette, redaction,
+heatmap/feed view and refresh interval. Each press of `p` selects a repeatable shuffled arrangement of the
+20 category colours for the timeline, legend and matching breakdown. `t` changes
+the overall theme; the plain theme stays uncoloured. The selected palette stays
+stable during refreshes. Preferences are written atomically to
 `$XDG_STATE_HOME/tokenusage2/view.json` (normally
 `~/.local/state/tokenusage2/view.json`) with private permissions. Cursor position,
 open overlays, pause state and notices are deliberately session-only. Explicit

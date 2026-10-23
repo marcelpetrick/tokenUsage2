@@ -10,6 +10,26 @@ All notable changes to tokenUsage2. Versions follow semantic versioning; the
 archive schema version is noted whenever it changes, because an older build
 refuses a newer archive.
 
+## 0.14.0
+
+Press `p`, find your colours, keep your favourite. Explore category palettes
+instantly while the dashboard runs; your choice is restored next time.
+
+### Added
+
+- Press `p` to explore shuffled category palettes without restarting. Preserve
+  20 distinct colours, remember the choice privately across launches and restore
+  the original palette with `Shift+R`.
+
+### Changed
+
+- Move pause/resume from `p` to `Space`; `t` still cycles the overall theme.
+
+### Quality
+
+- Verify palette stability, 20-colour uniqueness, immediate redraw while paused,
+  preference persistence, invalid saved values and factory reset.
+
 ## 0.13.36
 
 ### Build

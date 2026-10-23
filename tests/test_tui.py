@@ -90,7 +90,7 @@ def test_controller_maps_every_key() -> None:
     control.handle("a", ["x", "y"])
     control.handle("a", ["x", "y"])
     assert view.account is None
-    for key in "htxp":
+    for key in "htx ":
         control.handle(key, [])
     assert (view.heatmap, view.theme, view.redact, view.paused) == (True, "midnight", True, True)
     control.handle("+", [])
@@ -126,6 +126,7 @@ def test_shift_r_restores_factory_view_settings() -> None:
         paused=True,
         interval=30,
         account="x",
+        palette=42,
         colors={"x": 3},
     )
     factory = View(theme="plain")
@@ -174,7 +175,7 @@ def test_run_loop_draws_reacts_and_quits() -> None:
 
     source = DemoSource(BERLIN, clock=clock, days=20)
     view = View(theme="plain")
-    screen = FakeScreen([["w"], ["left"], [], "resize", ["?"], ["esc"], ["s"], ["r"], ["p"], []])
+    screen = FakeScreen([["w"], ["left"], [], "resize", ["?"], ["esc"], ["s"], ["r"], [" "], []])
     assert run(source, view, BERLIN, screen=screen, clock=clock) == 0
     texts = ["\n".join(lines) for lines in screen.frames]
     assert any("discovering agent homes" in text for text in texts)
@@ -191,7 +192,7 @@ def test_run_loop_saves_choices_and_factory_reset_forgets_them(tmp_path: Path) -
     path = tmp_path / "view.json"
     source = DemoSource(BERLIN, clock=lambda: NOW, days=5)
     view = View()
-    screen = FakeScreen([["w", "g", "b", "v", "h", "t", "x", "+", "a"], []])
+    screen = FakeScreen([["w", "g", "b", "v", "h", "t", "p", "x", "+", "a"], []])
     assert (
         run(
             source,
@@ -210,6 +211,7 @@ def test_run_loop_saves_choices_and_factory_reset_forgets_them(tmp_path: Path) -
         metric=Metric.FRESH,
         detail=GroupBy.PROJECT,
         theme="midnight",
+        palette=1,
         redact=True,
         heatmap=True,
         interval=5.0,
@@ -425,3 +427,35 @@ def test_the_dashboard_says_when_a_newer_build_owns_the_archive() -> None:
     screen = FakeScreen([[]])
     assert run(source, View(theme="plain"), BERLIN, screen=screen, clock=lambda: NOW) == 0
     assert outdated in "\n".join(screen.frames[-1])
+
+
+def test_palette_key_changes_colours_without_pausing_and_wraps() -> None:
+    view = View()
+    control = Controller(view)
+    original = view.series("one")
+    control.handle("p", [])
+    assert view.palette == 1
+    assert view.series("one") != original
+    assert not view.paused
+    control.handle(" ", [])
+    control.handle("p", [])
+    assert view.paused
+    assert view.palette == 2
+    control.handle(" ", [])
+    assert not view.paused
+    view.palette = 2**32 - 1
+    control.handle("p", [])
+    assert view.palette == 0
+    assert view.series("one") == original
+
+
+def test_palette_key_redraws_a_paused_dashboard() -> None:
+    source = DemoSource(BERLIN, clock=lambda: NOW, days=5)
+    view = View(paused=True)
+    screen = FakeScreen([["p"], []])
+    assert run(source, view, BERLIN, screen=screen, clock=lambda: NOW) == 0
+    assert view.paused
+    assert view.palette == 1
+    paused_frames = [lines for lines in screen.frames if "PAUSED" in "\n".join(lines)]
+    assert len(paused_frames) >= 2
+    assert paused_frames[0] != paused_frames[-1]

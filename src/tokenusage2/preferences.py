@@ -24,6 +24,7 @@ class Preferences:
     metric: Metric = Metric.TOTAL
     detail: GroupBy = GroupBy.MODEL
     theme: str = "default"
+    palette: int = 0
     redact: bool = False
     heatmap: bool = False
     interval: float = 2.0
@@ -37,6 +38,7 @@ class Preferences:
             metric=view.metric,
             detail=view.detail,
             theme=view.theme,
+            palette=view.palette,
             redact=view.redact,
             heatmap=view.heatmap,
             interval=view.interval,
@@ -70,6 +72,7 @@ def load_preferences(path: Path) -> Preferences:
         return Preferences()
     defaults = Preferences()
     theme = raw.get("theme")
+    palette = raw.get("palette")
     interval = raw.get("interval")
     account = raw.get("account")
     return Preferences(
@@ -78,6 +81,11 @@ def load_preferences(path: Path) -> Preferences:
         metric=_enum(raw.get("metric"), Metric, defaults.metric),
         detail=_enum(raw.get("detail"), GroupBy, defaults.detail),
         theme=theme if isinstance(theme, str) and theme in THEMES else defaults.theme,
+        palette=(
+            palette
+            if isinstance(palette, int) and not isinstance(palette, bool) and 0 <= palette < 2**32
+            else defaults.palette
+        ),
         redact=raw.get("redact") if isinstance(raw.get("redact"), bool) else defaults.redact,
         heatmap=(raw.get("heatmap") if isinstance(raw.get("heatmap"), bool) else defaults.heatmap),
         interval=(
