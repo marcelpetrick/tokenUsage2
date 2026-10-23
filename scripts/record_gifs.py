@@ -97,7 +97,7 @@ STORIES = (
     Story(
         "tour",
         "One dashboard. Every time scale.",
-        "PERIODS · METRICS · THEMES",
+        "PERIODS · METRICS · PALETTES · THEMES",
         (
             Scene(None, "Start with today", "Live totals, quotas, timeline and request feed."),
             Scene("w", "Zoom out to weeks", "One key changes the complete aggregation."),
@@ -106,7 +106,14 @@ STORIES = (
             Scene("v", "Fresh tokens", "Separate new input and output from cache traffic."),
             Scene("v", "Output only", "Focus on generated output across every tool."),
             Scene("v", "Cost estimate", "Compare standard-rate estimates in the same view."),
-            Scene("t", "Midnight theme", "Change the palette without leaving the dashboard."),
+            Scene(
+                "p", "Press P. Find your colours.", "Shuffle category colours without restarting."
+            ),
+            Scene(
+                "p", "Try another palette", "Keep pressing P until you find a combination you like."
+            ),
+            Scene("p", "Keep your favourite", "Your chosen palette is saved for the next launch."),
+            Scene("t", "Midnight theme", "Change the overall theme with T."),
             Scene("t", "Amber theme", "A warmer high-contrast terminal palette.", 2.0),
         ),
     ),
