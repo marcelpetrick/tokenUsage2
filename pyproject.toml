@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 
 [build-system]
-requires = ["setuptools==84.0.0"]
+requires = ["setuptools==84.2.1"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -30,7 +30,7 @@ dynamic = ["version"]
 dependencies = []
 
 [project.optional-dependencies]
-dev = ["pytest==9.1.1", "pytest-cov==7.1.0", "ruff==0.16.9", "build==1.6.1"]
+dev = ["pytest==9.1.1", "pytest-cov==7.1.0", "ruff==0.17.2", "build==1.6.1"]
 
 [project.scripts]
 tokenusage2 = "tokenusage2.cli:main"
