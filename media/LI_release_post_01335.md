@@ -1,5 +1,9 @@
 # LinkedIn launch post — tokenUsage2 v0.13.35
 
+Historical 0.13.35 material: video durations and test counts below describe that
+release. The shared media files now show 0.14.0; see the
+[current palette announcement](LI_release_post_0140.md) for updated copy.
+
 Publish with the native 4:5 video `tokenUsage2-linkedin.mp4` on 11 October 2026.
 The copy below is ready to paste; the alternatives provide different hooks
 without changing the factual claims.

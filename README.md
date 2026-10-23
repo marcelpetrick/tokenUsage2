@@ -47,9 +47,9 @@ Try it with `.venv/bin/tokenusage2 --demo`.
 Redacted live view captured with v0.13.33 in a minimal terminal:
 ![Redacted tokenUsage2 live dashboard with accounts, project timeline, cache reuse, model breakdown and live feed](media/tokenUsage2_0.13.33.png)
 
-### Periods, metrics and colour themes
+### Periods, metrics, palettes and colour themes
 
-![tokenUsage2 switches between daily, weekly and monthly periods, token metrics and colour themes](media/tokenUsage2-tour.gif)
+![tokenUsage2 switches between daily, weekly and monthly periods, token metrics, shuffled palettes and colour themes](media/tokenUsage2-tour.gif)
 
 ### Timeline groupings, breakdowns and account filters
 
@@ -65,7 +65,7 @@ animations use LinkedIn's feed-friendly 4:5 format (720 × 900); matching
 [tour](media/tokenUsage2-tour.mp4), [groupings](media/tokenUsage2-groupings.mp4)
 and [exploration](media/tokenUsage2-explore.mp4) MP4s are included for platforms
 that handle video more reliably than animated GIFs. The three tours are also
-available as one [38.6-second LinkedIn cut](media/tokenUsage2-linkedin.mp4).
+available as one [42.8-second LinkedIn cut](media/tokenUsage2-linkedin.mp4).
 Reproduce all seven files with [`scripts/record_gifs.py`](scripts/record_gifs.py),
 or explore the same data interactively with `tokenusage2 --demo`.*
 

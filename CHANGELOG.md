@@ -25,6 +25,16 @@ instantly while the dashboard runs; your choice is restored next time.
 
 - Move pause/resume from `p` to `Space`; `t` still cycles the overall theme.
 
+### Documentation
+
+- Highlight palette exploration in the README and regenerate the product tours
+  with three consecutive `p` presses, plus GIF and MP4 versions for sharing.
+
+### Build
+
+- Include the dependency audit updates: setuptools 84.2.1 and Ruff 0.17.2,
+  exactly pinned. The other direct development tools are already current.
+
 ### Quality
 
 - Verify palette stability, 20-colour uniqueness, immediate redraw while paused,

@@ -1,5 +1,9 @@
 # LinkedIn release positioning and expanded fact bank — v0.13.35
 
+Historical 0.13.35 material: video durations and test counts below describe that
+release. The shared media files now show 0.14.0; see the
+[current palette announcement](../media/LI_release_post_0140.md) for updated copy.
+
 This companion reviews the existing LinkedIn material without replacing it and
 provides evidence, framing and reusable angles for the public v0.13.35 launch on
 11 October 2026.

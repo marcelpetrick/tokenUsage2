@@ -343,3 +343,21 @@ gate passed all 12 required stages with 400 tests, 99.00% coverage, Ruff lint
 and formatting, ShellCheck 0.11.0, generated-history checks, demo rendering,
 package builds and a clean-wheel smoke check for 0.14.0. Final diff review
 found no additional issues; no archive or source-data changes are needed.
+
+Release preparation for 0.14.0:
+
+- Audit every direct build/development pin against PyPI: setuptools 84.2.1 and
+  Ruff 0.17.2 replace 84.0.0 and 0.16.9 in a separate 0.13.36 dependency commit.
+  Pytest 9.1.1, pytest-cov 7.1.0 and build 1.6.1 remain current; no runtime
+  dependencies are introduced.
+- Promote palette exploration near the top of the README, in release notes and
+  the current fact sheet; retain the dated 0.13.35 launch copy as history.
+- Regenerate the synthetic tours through the production renderer, showing three
+  successive palette changes, and add dedicated 0.14.0 announcement copy.
+- Publish only 0.14.0 from the final master head after the full gate passes;
+  verify the release workflow, tag, notes and wheel/sdist artifacts afterward.
+
+Media verification: GIF frame counts are 12 / 8 / 9 for tour / groupings /
+exploration. All four MP4s are H.264 at 720 × 900; the combined cut is 42.8 s.
+The palette frame was visually inspected, and generation enforces fictional,
+redacted identities through the production renderer.
