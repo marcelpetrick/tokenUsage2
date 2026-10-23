@@ -10,6 +10,15 @@ All notable changes to tokenUsage2. Versions follow semantic versioning; the
 archive schema version is noted whenever it changes, because an older build
 refuses a newer archive.
 
+## Unreleased
+
+### Documentation
+
+- Synchronize current guidance with the public 0.14.0 release, replace the stale
+  documentation audit and record CI/release verification.
+- Add a documentation index, clarify historical benchmarks and publication
+  material, and align palette, privacy and cache-reuse descriptions.
+
 ## 0.14.0
 
 Press `p`, find your colours, keep your favourite. Explore category palettes

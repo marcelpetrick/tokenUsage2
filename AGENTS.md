@@ -37,6 +37,10 @@ Preserve these invariants:
 - Provider-status polling stays opt-in, bounded and outside the render path.
   Badges summarize official public status components; they do not prove a
   user's authenticated API path works.
+- `p` explores category palettes; `t` changes the overall theme and `Space`
+  pauses/resumes refresh. Preserve 20 distinct category colours before repetition,
+  consistent timeline/legend/breakdown styling and private palette persistence.
+  The plain theme stays uncoloured.
 - Interactive preferences may persist privately, but `Shift+R` must reset only
   view state and must never remove configuration, archives or source data.
 
@@ -94,6 +98,7 @@ pipeline's explicit skip rather than claiming that stage passed.
 - `src/tokenusage2/`: product code.
 - `tests/`: focused and regression coverage.
 - `scripts/`: reproducible history, profiling, screenshots and media.
-- `docs/`: architecture, generated history and factual/review material.
+- `docs/`: documentation index, generated history and factual/review material;
+  start with [`docs/README.md`](docs/README.md).
 - `media/`: screenshots, tours and publication copy.
 - `localPipeline.sh`: authoritative local/CI/release gate.

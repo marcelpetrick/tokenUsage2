@@ -10,6 +10,11 @@ A live, read-only terminal dashboard (in the spirit of btop, abtop and
 AgentWhileTrue) that shows how many tokens every local coding agent burns,
 per tool, per account and per backend, as daily, weekly and monthly views.
 
+Current release: [v0.14.0](https://github.com/marcelpetrick/tokenUsage2/releases/tag/v0.14.0),
+published on 23 October 2026. Press `p` to explore saved category palettes;
+`Space` pauses/resumes refresh and `t` changes the overall theme. Start with the
+[documentation index](docs/README.md) for current guides and historical records.
+
 ## 1. What [`tokenUsage`](https://github.com/marcelpetrick/codingWithGPT/tree/master/tokenUsage) does today (review)
 
 `tokenUsage` is a one-shot report pipeline:
@@ -56,7 +61,7 @@ cached part and is split accordingly.
 
 ## 3. Ideas — what the dashboard can show
 
-Implemented in v0.1 (✓) and backlog (·):
+Implemented across releases (✓) and backlog (·):
 
 - ✓ Header: clock, trailing five-minute total rate including cache and fresh
   input/output rate, each explicitly labelled `/min`, plus today / week / month /
@@ -88,6 +93,9 @@ Implemented in v0.1 (✓) and backlog (·):
 - ✓ Durable interactive view preferences in private XDG state, with CLI
   precedence and a `Shift+R` factory reset that leaves user configuration and
   usage data untouched (0.13.34).
+- ✓ Interactive category palettes: `p` explores shuffled arrangements of 20
+  colours, saved across launches; `Space` pauses/resumes and `t` changes themes
+  (0.14.0). The plain theme stays uncoloured.
 - ✓ Threshold notifications: quota ≥ 90 %, unusual burn rate (0.7.0).
 - ✓ Per-session drill-down (0.8.0).
 - ✓ CSV export of the current view (0.9.0).
@@ -109,7 +117,7 @@ projects.py  → display-time Git roots, Claude scratchpads and temporary labels
 pricing.py   → provider-gated standard rates plus configured overrides
 provider_status.py → bounded background checks of official service components
 aggregate.py → buckets (DST-safe local midnights), tallies, account summaries
-render.py    → cell canvas → ANSI/plain frame, themes, panels, overlays
+render.py    → cell canvas → ANSI/plain frame, themes, saved palette permutations, panels
 tui.py       → alternate screen, cbreak keys, resize, refresh loop
 preferences.py → private atomic XDG view state and factory reset
 cli.py       → TUI, --once, --json, --csv, --doctor and --demo
@@ -344,7 +352,7 @@ and formatting, ShellCheck 0.11.0, generated-history checks, demo rendering,
 package builds and a clean-wheel smoke check for 0.14.0. Final diff review
 found no additional issues; no archive or source-data changes are needed.
 
-Release preparation for 0.14.0:
+Completed release preparation for 0.14.0:
 
 - Audit every direct build/development pin against PyPI: setuptools 84.2.1 and
   Ruff 0.17.2 replace 84.0.0 and 0.16.9 in a separate 0.13.36 dependency commit.
@@ -354,10 +362,26 @@ Release preparation for 0.14.0:
   the current fact sheet; retain the dated 0.13.35 launch copy as history.
 - Regenerate the synthetic tours through the production renderer, showing three
   successive palette changes, and add dedicated 0.14.0 announcement copy.
-- Publish only 0.14.0 from the final master head after the full gate passes;
-  verify the release workflow, tag, notes and wheel/sdist artifacts afterward.
+- Published only 0.14.0 from master at `5693a8f` after the full gate passed.
+  [CI](https://github.com/marcelpetrick/tokenUsage2/actions/runs/39929687832) and
+  [release workflow](https://github.com/marcelpetrick/tokenUsage2/actions/runs/39929687857)
+  both succeeded. The public stable tag points to that commit; wheel/source
+  downloads and their GitHub SHA-256 digests were verified.
 
 Media verification: GIF frame counts are 12 / 8 / 9 for tour / groupings /
 exploration. All four MP4s are H.264 at 720 × 900; the combined cut is 42.8 s.
 The palette frame was visually inspected, and generation enforces fictional,
 redacted identities through the production renderer.
+
+
+## 15. Documentation synchronization after 0.14.0
+
+Audited all repository Markdown against the public release and current source.
+Added a current/historical documentation index, refreshed the documentation
+review, recorded successful release/CI runs, and aligned contributor guidance,
+publication facts, keyboard controls, privacy and cache-reuse descriptions.
+Historical release measurements and launch claims remain explicitly dated.
+
+Documentation checks: all three `tests/test_docs.py` tests pass and
+`git diff --check` is clean. This is documentation-only work; 0.14.0 remains
+the current software version and the public release artifacts remain unchanged.

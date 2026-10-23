@@ -31,6 +31,10 @@ and no API keys.
 and moved here with its full history (see `CHANGELOG.md` 0.3.8); all work
 continues in this repository.
 
+Latest stable release: [**v0.14.0 — press p, find your colours**](https://github.com/marcelpetrick/tokenUsage2/releases/tag/v0.14.0),
+published on 23 October 2026 with wheel and source downloads.
+See the [documentation index](docs/README.md) for current guides and historical material.
+
 ## New in 0.14.0: find your colours with `p`
 
 Keep pressing **`p`** to try shuffled category palettes while the dashboard runs.
@@ -85,6 +89,9 @@ runs every quality gate, builds and verifies the wheel, times each stage and
 ends with a verdict — see [Development](#development). Once it says
 `VERDICT: PASS`, `.venv/bin/tokenusage2` is all you run.
 
+To update an existing checkout, run `git pull --ff-only` followed by
+`./localPipeline.sh --noRun`, then restart `.venv/bin/tokenusage2`.
+
 By hand: `python3.14 -m venv .venv && .venv/bin/pip install -e .`. Without
 installing anything: `PYTHONPATH=src python3.14 -m tokenusage2`.
 
@@ -135,8 +142,8 @@ window or burn episode; `--json` lists them.
 
 Interactive choices are restored on the next launch: period, timeline grouping,
 breakdown, metric, account filter, theme, category palette, redaction,
-heatmap/feed view and refresh interval. Each press of `p` selects a repeatable shuffled arrangement of the
-20 category colours for the timeline, legend and matching breakdown. `t` changes
+heatmap/feed view and refresh interval. Each press of `p` selects a repeatable
+shuffled arrangement of the 20 category colours for the timeline, legend and matching breakdown. `t` changes
 the overall theme; the plain theme stays uncoloured. The selected palette stays
 stable during refreshes. Preferences are written atomically to
 `$XDG_STATE_HOME/tokenusage2/view.json` (normally
@@ -265,7 +272,7 @@ move aside so the next start rebuilds it.
 ## Performance
 
 Measured on 2026-10-11 with
-[`scripts/profile_app.py`](scripts/profile_app.py) against the current real
+[`scripts/profile_app.py`](scripts/profile_app.py) against the reference
 corpus: 2,135 Claude Code and Codex logs, 3.18 GiB of source data and 113,430
 events in the retained archive, on Python 3.14. The values below are one
 reference run, not latency guarantees; historical ranges remain in the
@@ -279,11 +286,14 @@ changelog.
 | Snapshot · day / week / month | 204–275 ms | lifetime totals are maintained incrementally; only visible periods are walked |
 | Render 160 × 48 | 6.5 ms | fixed-size cell canvas; no network or archive work in rendering |
 
-## Compared with the neighbours
+## Original design comparison
+
+This table records the original design context; it is not a current feature
+audit of the other projects. The tokenUsage2 column describes its current scope.
 
 | | [`tokenUsage`](https://github.com/marcelpetrick/codingWithGPT/tree/master/tokenUsage) | abtop | AgentWhileTrue | **tokenUsage2** |
 |-|-|-|-|-|
-| Purpose | one-shot HTML/PNG reports | live per-session monitor | resume agents after quota resets | live usage evaluation |
+| Purpose | one-shot HTML/PNG reports | live per-session monitor | resume agents after quota resets | live usage observability |
 | Data | Token Use binary + stats-cache + `threads.tokens_used` | open transcripts of running sessions | rollout quota + statusline bridge | all transcripts, own archive |
 | Codex accounts | `~/.codex` only | `~/.codex` only | per process via `CODEX_HOME` | every `CODEX_HOME`, found automatically |
 | Claude backends | not separated | not separated | n/a | Anthropic vs. each Ollama host / proxy |
@@ -403,8 +413,9 @@ and uploads coverage, stage logs and built distributions. Every push to
 [GitHub release](https://github.com/marcelpetrick/tokenUsage2/releases) with
 sdist, wheel and that version's changelog section as the notes
 ([`release.yml`](.github/workflows/release.yml)). Architecture and design
-rationale are in [`PLAN.md`](PLAN.md); the latest requested branch audit is in
-[`review.md`](review.md).
+rationale are in [`PLAN.md`](PLAN.md); the latest documentation audit and release verification are in
+[`review.md`](review.md). Current and archived documentation is indexed in
+[`docs/README.md`](docs/README.md).
 
 ## Project history
 

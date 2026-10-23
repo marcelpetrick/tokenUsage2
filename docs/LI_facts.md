@@ -1,8 +1,13 @@
 # tokenUsage2: LinkedIn fact finding
 
+Current product facts for [v0.14.0](https://github.com/marcelpetrick/tokenUsage2/releases/tag/v0.14.0),
+verified on 23 October 2026. Use the [palette announcement](../media/LI_release_post_0140.md)
+for current release copy; older launch material is listed in the
+[documentation index](README.md).
+
 - **What it is:** tokenUsage2 is a live, btop-style terminal dashboard for understanding how much Claude Code, Codex CLI and OpenCode are being used across local accounts and backends.
 - **Core technology:** It is written for Python 3.14 and deliberately uses only the Python standard library at runtime, including ANSI terminal control, `sqlite3`, JSON parsing and process inspection through `/proc`.
-- **Privacy model:** The application is read-only, runs locally and offline by default, and does not need API keys or send transcript data to a remote service. Optional provider-health checks send anonymous GET requests only to the official Claude and OpenAI status endpoints.
+- **Privacy model:** The application is read-only toward agent-tool directories, writes its own archive, exports and private preferences, runs locally and offline by default, and does not need API keys or send transcript data to a remote service. Optional provider-health checks send anonymous GET requests only to the official Claude and OpenAI status endpoints.
 - **Automatic discovery:** It finds tool homes from configuration, environment variables, running processes, shell startup files, default locations and a bounded home-directory scan, then resolves duplicate paths to one account.
 - **Data ingestion:** Claude Code JSONL transcripts and stats caches, Codex rollout JSONL files and OpenCode's SQLite database are incrementally ingested instead of being reread in full on every refresh.
 - **Correct accounting:** Tool-specific records are normalized into fresh input, cache reads, cache writes and output; stable event keys prevent copied homes, streaming updates and repeated cumulative counters from double-counting usage.
@@ -10,6 +15,6 @@
 - **Durable preferences:** Period, grouping, breakdown, metric, account, theme, category palette, redaction, heatmap and refresh choices survive restarts in private XDG state; `Shift+R` restores the factory view without touching configuration or usage history.
 - **Palette exploration (0.14.0):** Press `p` repeatedly to try shuffled arrangements of 20 category colours without restarting. The timeline, legend and matching breakdown stay aligned; your choice survives restarts. `t` cycles overall themes, `Space` pauses/resumes and `Shift+R` restores the factory view.
 - **Ways to explore:** The TUI switches among daily, weekly and monthly periods; total, fresh, output and estimated-cost metrics; and groupings by account, tool, backend, model, project or session.
-- **Operational context:** Alongside historical bars, tokenUsage2 shows separate five-minute total-token and fresh-token rates, live request activity, quota windows, cache efficiency, per-project or per-session breakdowns and a weekday-by-hour heatmap.
+- **Operational context:** Alongside historical bars, tokenUsage2 shows separate five-minute total-token and fresh-token rates, live request activity, quota windows, neutral cache-reuse share, per-project or per-session breakdowns and a weekday-by-hour heatmap.
 - **Operational health:** An opt-in background monitor checks the official Claude API, Claude Code, Codex API and Codex CLI status components without blocking rendering or sending credentials; independent Claude and OpenAI bubbles distinguish operational, partial-issue, complete-outage and unknown states.
-- **Engineering and demo quality:** The repository has a 95% branch-coverage gate, linting, formatting, ShellCheck, generated-history verification, package and clean-wheel smoke tests; its public screenshots and animations are rendered by the real dashboard from deterministic synthetic data with fictional, redacted identities.
+- **Engineering and demo quality:** The repository has a 95% branch-coverage gate, linting, formatting, ShellCheck, generated-history verification, package and clean-wheel smoke tests; its generated tours use the real renderer with deterministic synthetic data and fictional, redacted identities. The README separately labels its historical, redacted live screenshot.

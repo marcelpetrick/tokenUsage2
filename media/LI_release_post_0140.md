@@ -10,6 +10,11 @@ Release announcement copy for the palette feature. The refreshed
 [tokenUsage2 tour](tokenUsage2-tour.mp4) shows three consecutive palette changes;
 the [combined tour](tokenUsage2-linkedin.mp4) also covers grouping and exploration.
 
+Published on 23 October 2026 as a public stable
+[GitHub release](https://github.com/marcelpetrick/tokenUsage2/releases/tag/v0.14.0).
+The tour is 17.4 seconds; the combined cut is 42.8 seconds. Both use H.264 at
+720 × 900. [Release verification](../review.md) records the CI and artifact evidence.
+
 ## Suggested post
 
 ```text

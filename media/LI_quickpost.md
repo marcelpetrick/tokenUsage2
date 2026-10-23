@@ -3,6 +3,9 @@
 *This copy accompanies `tokenUsage2_breakdown_092026_models.png`. Its figures
 describe that historical snapshot rather than the current dashboard.*
 
+For the current release, see the [0.14.0 palette announcement](LI_release_post_0140.md)
+and [documentation index](../docs/README.md).
+
 Chart of the day: 𝐦𝐨𝐝𝐞𝐥 𝐮𝐬𝐚𝐠𝐞 𝐢𝐧 𝐒𝐞𝐩𝐭𝐞𝐦𝐛𝐞𝐫
 
 This shows a breakdown of September 2026: the models used, their providers and
