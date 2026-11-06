@@ -396,13 +396,13 @@ Status legend: ☐ pending · ◐ in progress · ☑ verified and committed.
 | ☑ | Inventory recent tool/model/backend combinations and price every model with definitive published standard rates. | `gpt-6.1-terra` was the only recent hosted model missing a definitive rate and now has its official standard/cache/long-context rates plus a regression; an unverifiable custom Gemma ID remains unpriced. Recent monthly usage now has no unpriced tokens. |
 | ☑ | Reconcile `claude`, `claude-dmo`, `codex` and `codex-dmo` against their native sources. | Every current Claude source key matches the archive; native cache ratios are 0.481/43 days and 0.522/44 days. `codex-dmo` matches exactly; `codex` differs by -353,400 tokens (-0.00617%) on the comparable sequence and separately retains 68,253,638 pre-compaction tokens. No persistent processing gap was found. |
 | ☑ | Update durable accounting guidance and all affected user documentation. | `AGENTS.md`, README, changelog, documentation index, fact sheet and this handoff define the exact native-counter semantics; focused pricing/documentation tests and Markdown checks pass. |
-| ◐ | Run the mandatory gate, review all diffs and publish the next patch release. | All 12 required local stages pass with 401 tests, 99.00% coverage, package builds and a clean-wheel 0.14.1 smoke check; commit, push and public workflow verification remain. |
-| ☐ | Deploy the released build locally. | The local executable reports the public version and a redacted doctor run completes against the real archive. |
+| ☑ | Run the mandatory gate, review all diffs and publish the next patch release. | Release commit `6db8750` passed all 12 local stages with 401 tests and 99.00% coverage. [CI run 42292402678](https://github.com/marcelpetrick/tokenUsage2/actions/runs/42292402678) and [release run 42292402624](https://github.com/marcelpetrick/tokenUsage2/actions/runs/42292402624) succeeded; public v0.14.1 wheel and source artifacts match their GitHub SHA-256 digests. |
+| ☑ | Deploy the released build locally. | The verified public wheel is installed in `.venv`; `.venv/bin/tokenusage2 --version` reports 0.14.1 and a redacted doctor scan completed with zero changed events, zero unparsable lines and no reported problem. |
 
-Resume here if this work is interrupted. Dependency commit `fa890f0` is done;
-the 0.14.1 pricing/version/documentation changes have passed the full local
-gate and are the current worktree. Review and commit them, regenerate project
-history through the documented commit/amend/check cycle, then push and verify
-the public workflows. Do not infer prices from model naming or subscription
-plans; use official provider rates only. Keep raw agent sources read-only and
-sanitize identities from diagnostics.
+Handoff: this section is complete. Dependency commit `fa890f0` and release
+commit `6db8750` are public; v0.14.1 is installed locally from its verified
+wheel. The next agent should start a new plan section for new work. Preserve the
+like-for-like reconciliation rules above, use official provider rates only,
+keep raw agent sources read-only and sanitize identities from diagnostics. A
+future `localPipeline.sh` run will reinstall the repository editable into
+`.venv`, replacing the currently deployed wheel as part of its normal setup.
