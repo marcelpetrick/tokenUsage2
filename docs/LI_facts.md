@@ -1,8 +1,8 @@
 # tokenUsage2: LinkedIn fact finding
 
-Current product facts for [v0.14.0](https://github.com/marcelpetrick/tokenUsage2/releases/tag/v0.14.0),
-verified on 23 October 2026. Use the [palette announcement](../media/LI_release_post_0140.md)
-for current release copy; older launch material is listed in the
+Current product facts for [v0.14.1](https://github.com/marcelpetrick/tokenUsage2/releases/tag/v0.14.1),
+verified on 6 November 2026. The [palette announcement](../media/LI_release_post_0140.md)
+is the latest full product post; older launch material is listed in the
 [documentation index](README.md).
 
 - **What it is:** tokenUsage2 is a live, btop-style terminal dashboard for understanding how much Claude Code, Codex CLI and OpenCode are being used across local accounts and backends.
@@ -11,6 +11,7 @@ for current release copy; older launch material is listed in the
 - **Automatic discovery:** It finds tool homes from configuration, environment variables, running processes, shell startup files, default locations and a bounded home-directory scan, then resolves duplicate paths to one account.
 - **Data ingestion:** Claude Code JSONL transcripts and stats caches, Codex rollout JSONL files and OpenCode's SQLite database are incrementally ingested instead of being reread in full on every refresh.
 - **Correct accounting:** Tool-specific records are normalized into fresh input, cache reads, cache writes and output; stable event keys prevent copied homes, streaming updates and repeated cumulative counters from double-counting usage.
+- **Native-counter reconciliation:** Claude's stats cache counts repeated transcript lines and is scaled only for retained cache-only days; Codex reconciliation accounts for compaction restarts. `--doctor` reports these boundaries per account instead of presenting unlike counters as a mismatch.
 - **Durable history:** A local SQLite archive preserves usage after source tools clean up old transcripts, while file offsets and checkpoints make warm refreshes incremental.
 - **Durable preferences:** Period, grouping, breakdown, metric, account, theme, category palette, redaction, heatmap and refresh choices survive restarts in private XDG state; `Shift+R` restores the factory view without touching configuration or usage history.
 - **Palette exploration (0.14.0):** Press `p` repeatedly to try shuffled arrangements of 20 category colours without restarting. The timeline, legend and matching breakdown stay aligned; your choice survives restarts. `t` cycles overall themes, `Space` pauses/resumes and `Shift+R` restores the factory view.

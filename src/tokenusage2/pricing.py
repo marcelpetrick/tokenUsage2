@@ -134,13 +134,14 @@ ANTHROPIC_PRICES: tuple[tuple[str, Rates], ...] = (
     ("claude-haiku-4-5*", anthropic(1, 5)),
 )
 
-#: OpenAI standard rates per model glob, USD per 1M tokens (as of 2026-10-09).
+#: OpenAI standard rates per model glob, USD per 1M tokens (as of 2026-11-06).
 #: Source: https://developers.openai.com/api/docs/pricing
 #: More specific names precede their families. Models without a final price,
 #: such as GPT-5.3-Codex-Spark, are deliberately absent and blocked below.
 OPENAI_PRICES: tuple[tuple[str, Rates], ...] = (
     ("gpt-6-astra*", openai(10, 1, 50, cache_write=12.5, long_context=True)),
     ("gpt-6.1-sol*", openai(2, 0.1, 10, cache_write=2.5, long_context=True)),
+    ("gpt-6.1-terra*", openai(1, 0.05, 5, cache_write=1.25, long_context=True)),
     ("gpt-6-sol*", openai(2, 0.2, 10, cache_write=2.5, long_context=True)),
     ("gpt-6-luna*", openai(0.1, 0.01, 0.5, cache_write=0.125, long_context=True)),
     ("gpt-5.6-sol*", openai(4, 0.4, 20, cache_write=5, long_context=True)),

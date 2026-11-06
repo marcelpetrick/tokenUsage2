@@ -10,7 +10,20 @@ All notable changes to tokenUsage2. Versions follow semantic versioning; the
 archive schema version is noted whenever it changes, because an older build
 refuses a newer archive.
 
-## Unreleased
+## 0.14.1
+
+### Fixed
+
+- Price OpenAI-routed `gpt-6.1-terra` usage at its published standard token
+  rates, including its 5% cache-read rate, 30-minute cache-write rate and
+  per-request long-context tier above 272K prompt tokens.
+
+### Build
+
+- Update the exact development pins from pytest 9.1.1 to 9.2.0 and Ruff 0.17.2
+  to 0.17.4.
+- Update GitHub Actions setup-python from 7.0.0 to 7.1.0 and upload-artifact
+  from 7.0.1 to 7.0.2; checkout 7.0.1 remains current.
 
 ### Documentation
 
@@ -18,6 +31,16 @@ refuses a newer archive.
   documentation audit and record CI/release verification.
 - Add a documentation index, clarify historical benchmarks and publication
   material, and align palette, privacy and cache-reuse descriptions.
+- Explain why Claude's native stats cache can be roughly twice the deduplicated
+  request total, why quota percentages are not token totals and how Codex
+  compaction affects native thread reconciliation.
+
+### Quality
+
+- Reconcile all four active Claude/Codex accounts against their current source
+  logs and native counters. Every current Claude source key is archived,
+  `codex-dmo` matches exactly and `codex` differs by only -0.00617% on the
+  comparable post-compaction sequence; no persistent accounting gap remains.
 
 ## 0.14.0
 

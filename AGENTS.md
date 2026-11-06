@@ -34,6 +34,10 @@ Preserve these invariants:
 - Cost is a standard-rate estimate. Unknown hosted prices remain visibly
   unpriced; incomplete mixed totals remain marked as lower bounds. Recognized
   local routes may be zero-priced.
+- Compare accounting sources only on like-for-like scope. Claude's stats cache
+  counts repeated transcript lines while archive events deduplicate requests;
+  Claude quota percentages are not raw token totals. Codex native thread totals
+  restart at compaction, so pre-compaction increments stay reported separately.
 - Provider-status polling stays opt-in, bounded and outside the render path.
   Badges summarize official public status components; they do not prove a
   user's authenticated API path works.
@@ -47,7 +51,8 @@ Preserve these invariants:
 ## Working method
 
 1. Read `PLAN.md`, the relevant README section and existing tests before
-   changing behavior.
+   changing behavior. Resume the newest incomplete plan section before starting
+   a parallel replacement effort.
 2. Preserve unrelated user changes and inspect the worktree before staging.
 3. Add a focused regression for every behavior fix. Prefer pure parser,
    aggregation and string-rendering tests over timing-dependent integration

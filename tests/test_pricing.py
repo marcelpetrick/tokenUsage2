@@ -84,6 +84,7 @@ def test_anthropic_list_prices(model: str, expected: Rates | None) -> None:
     [
         ("gpt-6-astra", openai(10, 1, 50, cache_write=12.5, long_context=True)),
         ("gpt-6.1-sol", openai(2, 0.1, 10, cache_write=2.5, long_context=True)),
+        ("gpt-6.1-terra", openai(1, 0.05, 5, cache_write=1.25, long_context=True)),
         ("gpt-6-sol", openai(2, 0.2, 10, cache_write=2.5, long_context=True)),
         ("gpt-6-luna", openai(0.1, 0.01, 0.5, cache_write=0.125, long_context=True)),
         ("gpt-5.6-sol", openai(4, 0.4, 20, cache_write=5, long_context=True)),

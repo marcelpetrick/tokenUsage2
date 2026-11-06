@@ -10,8 +10,8 @@ A live, read-only terminal dashboard (in the spirit of btop, abtop and
 AgentWhileTrue) that shows how many tokens every local coding agent burns,
 per tool, per account and per backend, as daily, weekly and monthly views.
 
-Current release: [v0.14.0](https://github.com/marcelpetrick/tokenUsage2/releases/tag/v0.14.0),
-published on 23 October 2026. Press `p` to explore saved category palettes;
+Current release: [v0.14.1](https://github.com/marcelpetrick/tokenUsage2/releases/tag/v0.14.1),
+published on 6 November 2026. Press `p` to explore saved category palettes;
 `Space` pauses/resumes refresh and `t` changes the overall theme. Start with the
 [documentation index](docs/README.md) for current guides and historical records.
 
@@ -385,3 +385,24 @@ Historical release measurements and launch claims remain explicitly dated.
 Documentation checks: all three `tests/test_docs.py` tests pass and
 `git diff --check` is clean. This is documentation-only work; 0.14.0 remains
 the current software version and the public release artifacts remain unchanged.
+
+## 16. Dependency, pricing and accounting audit (November 2026)
+
+Status legend: ☐ pending · ◐ in progress · ☑ verified and committed.
+
+| Status | Work | Acceptance evidence |
+|--------|------|---------------------|
+| ☑ | Audit every repository dependency against its authoritative registry and update stale exact pins. | Commit `fa890f0` updates pytest 9.2.0, Ruff 0.17.4, setup-python 7.1.0 and upload-artifact 7.0.2; the dependency gate passed all 12 required stages with 400 tests and 99.00% coverage. |
+| ☑ | Inventory recent tool/model/backend combinations and price every model with definitive published standard rates. | `gpt-6.1-terra` was the only recent hosted model missing a definitive rate and now has its official standard/cache/long-context rates plus a regression; an unverifiable custom Gemma ID remains unpriced. Recent monthly usage now has no unpriced tokens. |
+| ☑ | Reconcile `claude`, `claude-dmo`, `codex` and `codex-dmo` against their native sources. | Every current Claude source key matches the archive; native cache ratios are 0.481/43 days and 0.522/44 days. `codex-dmo` matches exactly; `codex` differs by -353,400 tokens (-0.00617%) on the comparable sequence and separately retains 68,253,638 pre-compaction tokens. No persistent processing gap was found. |
+| ☑ | Update durable accounting guidance and all affected user documentation. | `AGENTS.md`, README, changelog, documentation index, fact sheet and this handoff define the exact native-counter semantics; focused pricing/documentation tests and Markdown checks pass. |
+| ◐ | Run the mandatory gate, review all diffs and publish the next patch release. | All 12 required local stages pass with 401 tests, 99.00% coverage, package builds and a clean-wheel 0.14.1 smoke check; commit, push and public workflow verification remain. |
+| ☐ | Deploy the released build locally. | The local executable reports the public version and a redacted doctor run completes against the real archive. |
+
+Resume here if this work is interrupted. Dependency commit `fa890f0` is done;
+the 0.14.1 pricing/version/documentation changes have passed the full local
+gate and are the current worktree. Review and commit them, regenerate project
+history through the documented commit/amend/check cycle, then push and verify
+the public workflows. Do not infer prices from model naming or subscription
+plans; use official provider rates only. Keep raw agent sources read-only and
+sanitize identities from diagnostics.

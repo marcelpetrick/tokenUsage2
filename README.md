@@ -31,11 +31,20 @@ and no API keys.
 and moved here with its full history (see `CHANGELOG.md` 0.3.8); all work
 continues in this repository.
 
-Latest stable release: [**v0.14.0 — press p, find your colours**](https://github.com/marcelpetrick/tokenUsage2/releases/tag/v0.14.0),
-published on 23 October 2026 with wheel and source downloads.
+Latest stable release: [**v0.14.1 — current pricing and transparent reconciliation**](https://github.com/marcelpetrick/tokenUsage2/releases/tag/v0.14.1),
+published on 6 November 2026 with wheel and source downloads.
 See the [documentation index](docs/README.md) for current guides and historical material.
 
-## New in 0.14.0: find your colours with `p`
+## New in 0.14.1: current pricing and transparent reconciliation
+
+OpenAI-routed `gpt-6.1-terra` usage now has its published standard input,
+output, cached-input, cache-write and long-context rates. The source/accounting
+audit also confirms that all current Claude records reach the archive and both
+Codex homes reconcile with their native comparable totals. See
+[why native counters can differ](#why-native-counters-can-differ) for the exact
+boundaries.
+
+## Palette exploration from 0.14.0
 
 Keep pressing **`p`** to try shuffled category palettes while the dashboard runs.
 The timeline, legend and matching breakdown change together, with 20 distinct
@@ -215,6 +224,23 @@ Codex reports its provider per session (`model_provider`), OpenCode per message.
 | Codex CLI | the same events | `rate_limits` per account — live 5 h and weekly quota for each `CODEX_HOME`. |
 | OpenCode | `opencode.db`, table `message` | per assistant message, read past a watermark. A row whose columns do not hold what the schema promises is skipped, like any other unreadable record. |
 
+### Why native counters can differ
+
+Claude Code's `stats-cache.json` adds the usage attached to every transcript
+line. One response is commonly written once per content block, so the native
+cache total is often about twice the billed-request total. tokenUsage2 keeps one
+largest copy per `(message.id, requestId)` and uses the measured ratio only when
+scaling old cache-only days. On 6 November 2026 the measured whole-day ratios
+were 0.481 for `claude` across 43 days and 0.522 for `claude-dmo` across 44 days;
+every currently surviving Claude source key was present in the archive.
+
+Claude's 5-hour and weekly percentages are server-side subscription quota
+windows, not raw token totals, so they cannot be derived from or compared
+directly with the token columns. Codex's `threads.tokens_used` is comparable
+only for threads both sides still know and only after the latest compaction,
+because compaction restarts its cumulative counter. Use `s` or `--doctor` for
+the live, per-account reconciliation and retained-history explanation.
+
 All tools are normalised to *fresh input · cache read · cache write · output*
 (reasoning is a subset of output). Every request is attributed to its own
 timestamp and bucketed by local midnights, so 23- and 25-hour DST days stay
@@ -244,8 +270,8 @@ including cache writes and the higher full-request tier above 272K prompt tokens
 models without a final published rate show as `—`.
 The cost timeline uses dollar-scaled bars and a `Cost per …` title; token views
 retain token-scaled axes. Current built-ins cover the provider model IDs used by
-Claude Code and Codex/OpenCode, including per-request long-prompt tiers where
-the provider publishes them.
+Claude Code and Codex/OpenCode, including GPT-6.1 Terra and per-request
+long-prompt tiers where the provider publishes them.
 Model recognition itself is not allow-list based: the parsers retain every
 model ID reported by the tools. An unfamiliar model stays visible, but its cost
 is marked unpriced until a built-in or `[prices]` entry supplies a rate.
