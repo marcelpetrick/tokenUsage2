@@ -21,6 +21,7 @@ dependencies remain empty.
 | [Documentation review](../review.md) | Current documentation audit and verified public-release evidence |
 | [Contributor guidance](../AGENTS.md) | Product invariants, atomic commits and validation rules |
 | [Publication facts](LI_facts.md) | Current product claims and qualifications |
+| [LinkedIn content ideas](LI_content_ideas_0141.md) | Current deduplication story, post drafts, evidence and claim boundaries |
 | [0.14.0 announcement](../media/LI_release_post_0140.md) | Ready-to-share palette release copy and demo links |
 | [Generated project counts](history/loc-current.md) | Counts at the current documentation commit; generated with the history chart |
 

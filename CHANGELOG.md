@@ -10,6 +10,14 @@ All notable changes to tokenUsage2. Versions follow semantic versioning; the
 archive schema version is noted whenever it changes, because an older build
 refuses a newer archive.
 
+## Unreleased
+
+### Documentation
+
+- Add a LinkedIn content brief explaining the measured Claude stats-cache
+  duplication, tokenUsage2's request-level deduplication advantage and the
+  boundaries required for an accurate public comparison.
+
 ## 0.14.1
 
 ### Fixed
