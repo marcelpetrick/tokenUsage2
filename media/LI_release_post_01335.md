@@ -1,3 +1,19 @@
+𝐭𝐨𝐤𝐞𝐧𝐔𝐬𝐚𝐠𝐞𝟐 - make your 𝐭𝐨𝐤𝐞𝐧𝐦𝐚𝐱𝐱𝐢𝐧𝐠 observable
+
+In September I started to create a terminal-user-interface (TUI) as dashboard to check the summarized tokens spent on 𝐂𝐨𝐝𝐞𝐱 𝐂𝐋𝐈, 𝐂𝐥𝐚𝐮𝐝𝐞, 𝐎𝐩𝐞𝐧𝐂𝐨𝐝𝐞. It got the quite uncreative name tokenUsage2 after my first try in Summer was a static html-output for the same type of task.
+Over the past weeks I've refined and fine-tuned it, profiled and optimized until it runs with minimal resources. Added some quality-of-life features like "are the OpenAI or Claude APIs currently degraded, how many of your weekly tokens left, a heatmap, redacting the accounts, auto-discovery of used tools, palette-swaps, breakdowns of different types (in and output token, economic equivalent if used full-price API, detecting ollama-models, ..).
+
+So here we are: tokenUsage v0.14.1. (GitHub -> marcelpetrick -> tokenUsage2)
+https://github.com/marcelpetrick/tokenUsage2
+
+I am updating its dependencies at least once per week, and have fixed so far all known bugs. I also have to say, that it soaked up all features which made tools like 𝐚𝐛𝐭𝐨𝐩 useful.
+GitHub also offers a more "life" screenshot of the TUI. This GIF is due to privacy reasons an artist's impression ;)
+
+𝐅𝐮𝐧 𝐟𝐚𝐜𝐭: 𝐢𝐧 𝐎𝐜𝐭𝐨𝐛𝐞𝐫 𝐈 𝐮𝐬𝐞𝐝 𝐦𝐨𝐫𝐞 𝐭𝐨𝐤𝐞𝐧𝐬 𝐭𝐡𝐚𝐧 𝐨𝐯𝐞𝐫 𝐭𝐡𝐞 𝐩𝐫𝐞𝐯𝐢𝐨𝐮𝐬 𝐡𝐚𝐥𝐟 𝐲𝐞𝐚𝐫 𝐚𝐥𝐥𝐭𝐨𝐠𝐞𝐭𝐡𝐞𝐫 🤯
+
+
+--------
+
 # LinkedIn launch post — tokenUsage2 v0.13.35
 
 Historical 0.13.35 material: video durations and test counts below describe that
