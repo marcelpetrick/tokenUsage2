@@ -5,11 +5,10 @@
 # -----------------------------------------------------------------------------
 # tokenUsage2 releases
 #
-# Every commit bumps the version. A push to master whose version has no tag
-# yet becomes a GitHub release: the local pipeline runs, sdist and wheel are
-# built, and the tag v<version> plus a release are created, with that
-# version's CHANGELOG.md section as the notes. A push whose version is already
-# released does nothing.
+# A push to master whose version is not fully released runs the local pipeline,
+# builds sdist and wheel, and creates the tag and release. If a previous run
+# left a tag or release incomplete, missing assets are built from the tagged
+# commit and uploaded without replacing existing assets.
 #
 # Only the pushed head is released: when one push carries several version
 # bumps, the newest version is released and the older ones stay untagged.
@@ -46,32 +45,72 @@ jobs:
           cache: pip
           cache-dependency-path: pyproject.toml
 
-      - name: Read the version and look for its tag
+      - name: Inspect the tag and release assets
         id: version
-        run: |
-          version=$(python -c 'import runpy; print(runpy.run_path("src/tokenusage2/version.py")["__version__"])')
-          echo "version=${version}" >> "$GITHUB_OUTPUT"
-          if git rev-parse -q --verify "refs/tags/v${version}" >/dev/null; then
-            echo "released=true" >> "$GITHUB_OUTPUT"
-            echo "v${version} is already released; nothing to do."
-          else
-            echo "released=false" >> "$GITHUB_OUTPUT"
-          fi
-
-      - name: Run the local pipeline (setup, checks, build, wheel check)
-        if: steps.version.outputs.released == 'false'
-        run: ./localPipeline.sh --noRun
-
-      - name: Write the release notes from the changelog
-        if: steps.version.outputs.released == 'false'
-        run: python scripts/release_notes.py "${{ steps.version.outputs.version }}" > release-notes.md
-
-      - name: Create the tag and the GitHub release
-        if: steps.version.outputs.released == 'false'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          version=$(python -c 'import runpy; print(runpy.run_path("src/tokenusage2/version.py")["__version__"])')
+          echo "version=${version}" >> "$GITHUB_OUTPUT"
+          tag="v${version}"
+          if git rev-parse -q --verify "refs/tags/${tag}^{commit}" >/dev/null; then
+            tagged=true
+          else
+            tagged=false
+          fi
+          echo "tagged=${tagged}" >> "$GITHUB_OUTPUT"
+          status=$(curl --silent --show-error --location --output "$RUNNER_TEMP/release.json" \
+            --write-out '%{http_code}' -H "Authorization: Bearer $GH_TOKEN" \
+            -H 'Accept: application/vnd.github+json' \
+            "${GITHUB_API_URL}/repos/${GITHUB_REPOSITORY}/releases/tags/${tag}")
+          case "$status" in
+            200)
+              if [[ "$tagged" != true ]]; then
+                echo "Release exists but its tag is missing locally; refusing to modify it." >&2
+                exit 1
+              fi
+              state=$(python -c 'import json,sys; d=json.load(open(sys.argv[1])); v=sys.argv[2]; required={f"tokenusage2-{v}-py3-none-any.whl", f"tokenusage2-{v}.tar.gz"}; assets=d["assets"]; bad=[a["name"] for a in assets if a["name"] in required and a["state"] != "uploaded"]; assert not d["draft"] and not d["prerelease"], "Release is a draft or prerelease; resolve it manually"; assert not bad, f"Required release assets are not uploaded: {bad}"; names={a["name"] for a in assets}; print("complete" if required <= names else "incomplete")' "$RUNNER_TEMP/release.json" "$version")
+              ;;
+            404) state=missing ;;
+            *) echo "GitHub release lookup failed with HTTP ${status}." >&2; exit 1 ;;
+          esac
+          echo "state=${state}" >> "$GITHUB_OUTPUT"
+
+      - name: Check out the tagged commit for recovery
+        if: steps.version.outputs.tagged == 'true' && steps.version.outputs.state != 'complete'
+        run: git checkout --detach "v${{ steps.version.outputs.version }}^{commit}"
+
+      - name: Run the local pipeline (setup, checks, build, wheel check)
+        if: steps.version.outputs.state != 'complete'
+        run: ./localPipeline.sh --noRun
+
+      - name: Write the release notes from the changelog
+        if: steps.version.outputs.state == 'missing'
+        run: python scripts/release_notes.py "${{ steps.version.outputs.version }}" > release-notes.md
+
+      - name: Create the tag and the GitHub release
+        if: steps.version.outputs.state == 'missing'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          verify=()
+          if [[ '${{ steps.version.outputs.tagged }}' == true ]]; then
+            verify+=(--verify-tag)
+          fi
           gh release create "v${{ steps.version.outputs.version }}" dist/* \
             --target "${{ github.sha }}" \
             --title "tokenUsage2 ${{ steps.version.outputs.version }}" \
-            --notes-file release-notes.md
+            --notes-file release-notes.md "${verify[@]}"
+
+      - name: Upload only missing release assets
+        if: steps.version.outputs.state == 'incomplete'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          version='${{ steps.version.outputs.version }}'
+          for file in "dist/tokenusage2-${version}-py3-none-any.whl" "dist/tokenusage2-${version}.tar.gz"; do
+            name=${file##*/}
+            if ! python -c 'import json,sys; d=json.load(open(sys.argv[1])); sys.exit(not any(a["name"] == sys.argv[2] for a in d["assets"]))' "$RUNNER_TEMP/release.json" "$name"; then
+              gh release upload "v${version}" "$file"
+            fi
+          done
