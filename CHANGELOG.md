@@ -12,6 +12,13 @@ refuses a newer archive.
 
 ## Unreleased
 
+## 0.14.3
+
+### Documentation
+
+- Complete the full-state review handoff with the verified pipeline and release
+  status, and explain how to preserve archives with invalid event timestamps.
+
 ## 0.14.2
 
 ### Fixed

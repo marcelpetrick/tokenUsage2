@@ -31,7 +31,7 @@ and no API keys.
 and moved here with its full history (see `CHANGELOG.md` 0.3.8); all work
 continues in this repository.
 
-Latest stable release: [**v0.14.2 — accounting and reliability fixes**](https://github.com/marcelpetrick/tokenUsage2/releases/tag/v0.14.2),
+Latest stable release: [**v0.14.3 — review handoff**](https://github.com/marcelpetrick/tokenUsage2/releases/tag/v0.14.3),
 published on 8 November 2026 with wheel and source downloads.
 See the [documentation index](docs/README.md) for current guides and historical material.
 
@@ -303,6 +303,9 @@ disappeared are listed as archived. An archive that another tokenusage2 is
 writing to, that a newer build already migrated, or that is corrupt is reported
 as a single line on stderr with exit status 2; a corrupt one names the file to
 move aside so the next start rebuilds it.
+If an existing archive contains an invalid event timestamp, the dashboard
+reports an error and preserves the archive for maintainer-assisted recovery.
+Keep that archive: rebuilding from surviving sources can lose retained history.
 
 ## Performance
 

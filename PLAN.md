@@ -23,10 +23,14 @@ A live, read-only terminal dashboard (in the spirit of btop, abtop and
 AgentWhileTrue) that shows how many tokens every local coding agent burns,
 per tool, per account and per backend, as daily, weekly and monthly views.
 
-Current release: [v0.14.2](https://github.com/marcelpetrick/tokenUsage2/releases/tag/v0.14.2),
-published on 8 November 2026. Press `p` to explore saved category palettes;
+Release prepared: [v0.14.3](https://github.com/marcelpetrick/tokenUsage2/releases/tag/v0.14.3).
+Press `p` to explore saved category palettes;
 `Space` pauses/resumes refresh and `t` changes the overall theme. Start with the
 [documentation index](docs/README.md) for current guides and historical records.
+
+The 0.14.3 handoff corrects the review's stale next steps and documents how to
+preserve an archive with an invalid timestamp. The full local pipeline passed
+all 12 stages with 421 tests and 98.94% branch coverage.
 
 ## 1. What [`tokenUsage`](https://github.com/marcelpetrick/codingWithGPT/tree/master/tokenUsage) does today (review)
 

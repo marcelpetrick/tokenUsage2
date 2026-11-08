@@ -46,7 +46,11 @@ are excluded.
 12. **LOW — Code — `src/tokenusage2/config.py:203`.** Invalid UTF-8 config
     produced a traceback. It now becomes an actionable configuration error.
 
-## Next steps
+## Completion
 
-Focused regressions cover the repaired paths. Run the full shared pipeline,
-verify generated history and monitor CI before considering the repair complete.
+Focused regressions cover the repaired paths. The shared pipeline passed all
+12 stages with 421 tests and 98.94% branch coverage. CI and the release workflow
+passed, and v0.14.2 was published with both artifacts; see the
+[plan](../PLAN.md#full-state-review-78-november-2026) for the recorded runs.
+An archive that already contains an invalid timestamp is preserved and needs
+maintainer-assisted recovery; the parser repairs prevent new invalid records.
