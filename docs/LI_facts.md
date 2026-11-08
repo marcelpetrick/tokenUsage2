@@ -1,7 +1,7 @@
 # tokenUsage2: LinkedIn fact finding
 
-Current product facts for [v0.14.1](https://github.com/marcelpetrick/tokenUsage2/releases/tag/v0.14.1),
-verified on 6 November 2026. The [palette announcement](../media/LI_release_post_0140.md)
+Current product facts for [v0.14.2](https://github.com/marcelpetrick/tokenUsage2/releases/tag/v0.14.2),
+verified on 8 November 2026. The [palette announcement](../media/LI_release_post_0140.md)
 is the latest full product post; older launch material is listed in the
 [documentation index](README.md).
 

@@ -6,9 +6,9 @@ SPDX-License-Identifier: GPL-3.0-or-later
 
 # tokenUsage2 documentation
 
-Current stable release: [v0.14.1 — pricing and reconciliation](https://github.com/marcelpetrick/tokenUsage2/releases/tag/v0.14.1),
-published on 6 November 2026. It adds GPT-6.1 Terra pricing, documents native
-counter semantics and updates the pinned development/CI tools. Runtime
+Current stable release: [v0.14.2 — accounting and reliability](https://github.com/marcelpetrick/tokenUsage2/releases/tag/v0.14.2),
+published on 8 November 2026. It corrects all-time pricing and snapshot totals,
+synchronizes shared archives and hardens malformed-data handling. Runtime
 dependencies remain empty.
 
 ## Current guidance

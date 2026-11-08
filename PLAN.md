@@ -6,13 +6,15 @@ SPDX-License-Identifier: GPL-3.0-or-later
 
 # tokenUsage2 — plan
 
-## Active: full-state review (7 November 2026)
+## Full-state review (7–8 November 2026)
 
 Review source, architecture, tests and Markdown for up to twenty confirmed,
 ranked findings. The twelve confirmed findings and their repairs are recorded in
 [`docs/full_state_review_2026-11-07.md`](docs/full_state_review_2026-11-07.md).
 The local pipeline passed all 12 stages with 421 tests and 98.94% branch
-coverage; commit the changes, refresh generated history and verify CI.
+coverage. [CI](https://github.com/marcelpetrick/tokenUsage2/actions/runs/42497828837)
+and the [release workflow](https://github.com/marcelpetrick/tokenUsage2/actions/runs/42497828970)
+passed for `734d051`, publishing v0.14.2 with both artifacts.
 Already archived invalid timestamps are preserved and reported as actionable
 errors rather than discarded; those archives still need maintainer-assisted
 recovery before they can be displayed.
@@ -21,8 +23,8 @@ A live, read-only terminal dashboard (in the spirit of btop, abtop and
 AgentWhileTrue) that shows how many tokens every local coding agent burns,
 per tool, per account and per backend, as daily, weekly and monthly views.
 
-Current release: [v0.14.1](https://github.com/marcelpetrick/tokenUsage2/releases/tag/v0.14.1),
-published on 6 November 2026. Press `p` to explore saved category palettes;
+Current release: [v0.14.2](https://github.com/marcelpetrick/tokenUsage2/releases/tag/v0.14.2),
+published on 8 November 2026. Press `p` to explore saved category palettes;
 `Space` pauses/resumes refresh and `t` changes the overall theme. Start with the
 [documentation index](docs/README.md) for current guides and historical records.
 

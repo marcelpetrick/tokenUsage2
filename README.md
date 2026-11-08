@@ -31,11 +31,18 @@ and no API keys.
 and moved here with its full history (see `CHANGELOG.md` 0.3.8); all work
 continues in this repository.
 
-Latest stable release: [**v0.14.1 — current pricing and transparent reconciliation**](https://github.com/marcelpetrick/tokenUsage2/releases/tag/v0.14.1),
-published on 6 November 2026 with wheel and source downloads.
+Latest stable release: [**v0.14.2 — accounting and reliability fixes**](https://github.com/marcelpetrick/tokenUsage2/releases/tag/v0.14.2),
+published on 8 November 2026 with wheel and source downloads.
 See the [documentation index](docs/README.md) for current guides and historical material.
 
-## New in 0.14.1: current pricing and transparent reconciliation
+## New in 0.14.2: accounting and reliability
+
+All-time cost now respects each model's long-context threshold, future events
+stay out of current totals, and separate dashboards synchronize their shared
+archive. Unknown Claude routes remain unpriced until configured; malformed
+source records no longer abort ingestion.
+
+## Pricing and reconciliation from 0.14.1
 
 OpenAI-routed `gpt-6.1-terra` usage now has its published standard input,
 output, cached-input, cache-write and long-context rates. The source/accounting
