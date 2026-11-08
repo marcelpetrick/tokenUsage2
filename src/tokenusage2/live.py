@@ -106,7 +106,10 @@ class LiveSource:
             self.rediscover()
         else:
             self.processes = self.scanner.scan()
-        return self.ingestor.scan(progress)
+        report = self.ingestor.scan(progress)
+        if report.external_changes:
+            self._accounts = self._merge_accounts()
+        return report
 
     def events(self) -> list[Event]:
         return self.ingestor.index.events()

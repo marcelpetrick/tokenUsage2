@@ -12,11 +12,33 @@ refuses a newer archive.
 
 ## Unreleased
 
+## 0.14.2
+
+### Fixed
+
+- Ignore malformed Codex quota identifiers without aborting ingestion or
+  dropping an otherwise valid token record.
+- Keep Claude requests with unknown routes unpriced instead of assuming they
+  were answered by a free local backend.
+- Report invalid UTF-8 configuration files as configuration errors.
+- Preserve the correct per-model long-context tier in all-time cost estimates,
+  exclude future events from all-time totals, and separate colliding sessions
+  and model/backend breakdown rows.
+- Synchronize in-memory archive state after another dashboard commits changes.
+- Reject out-of-range source timestamps and token counts before archiving them.
+
+### Build
+
+- Check release assets and recover incomplete releases instead of treating an
+  existing tag as proof of a complete public release.
+
 ### Documentation
 
 - Add a LinkedIn content brief explaining the measured Claude stats-cache
   duplication, tokenUsage2's request-level deduplication advantage and the
   boundaries required for an accurate public comparison.
+- Correct the measured comparison's date scopes and avoid attributing the
+  entire difference to duplication without per-record evidence.
 
 ## 0.14.1
 

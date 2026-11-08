@@ -16,7 +16,7 @@ from datetime import date, datetime, time, timedelta, tzinfo
 from enum import StrEnum
 
 from tokenusage2.model import Account, Event, QuotaWindow, Tool, Usage
-from tokenusage2.pricing import Rates
+from tokenusage2.pricing import ANTHROPIC_PRICES, OPENAI_PRICES, Rates
 from tokenusage2.projects import project_name
 
 WINDOW_SECONDS = {"5h": 5 * 3600, "week": 7 * 86400}
@@ -24,6 +24,16 @@ RATE_SECONDS = 5 * 60
 RATE_MINUTES = RATE_SECONDS / 60
 #: Keeps date arithmetic in range however far back a cursor is pushed.
 MAX_CURSOR = 5000
+# All built-in pricing boundaries are retained separately for lifetime sums.
+_PRICE_THRESHOLDS = tuple(
+    sorted(
+        {
+            rates.long_context_threshold
+            for _, rates in (*ANTHROPIC_PRICES, *OPENAI_PRICES)
+            if rates.long_context_threshold is not None
+        }
+    )
+)
 
 
 class Period(StrEnum):
@@ -146,16 +156,17 @@ class Lifetime:
 
     tally: Tally = field(default_factory=Tally)
     last_ts: float | None = None
-    #: Per (tool, model, route, >272K prompt): all-time cost comes from these sums.
+    #: Per (tool, model, route, pricing tier): all-time cost comes from these sums.
     #: The tier split keeps request-level long-context pricing exact after aggregation.
-    models: dict[tuple[Tool, str, str, bool], Tally] = field(default_factory=dict)
+    models: dict[tuple[Tool, str, str, int], Tally] = field(default_factory=dict)
 
 
-def lifetime_key(event: Event) -> tuple[Tool, str, str, bool]:
+def lifetime_key(event: Event) -> tuple[Tool, str, str, int]:
     """The dimensions that can change one request's standard token rates."""
     usage = event.usage
-    long_context = usage.input + usage.cache_read + usage.cache_write > 272_000
-    return event.tool, event.model, event.route, long_context
+    prompt = usage.input + usage.cache_read + usage.cache_write
+    tier = bisect_left(_PRICE_THRESHOLDS, prompt)
+    return event.tool, event.model, event.route, tier
 
 
 def lifetimes_of(events: Iterable[Event]) -> dict[str, Lifetime]:
@@ -182,11 +193,15 @@ type Pricing = Callable[[Tool, str, str], Rates | None]
 def lifetime_cost(lifetime: Lifetime, pricing: Pricing) -> tuple[float, int]:
     """All-time cost and unpriced tokens of an account, from its per-model sums."""
     cost, unpriced = 0.0, 0
-    for (tool, model, route, long_context), tally in lifetime.models.items():
+    for (tool, model, route, tier), tally in lifetime.models.items():
         rates = pricing(tool, model, route)
         if rates is None:
             unpriced += tally.total
         else:
+            threshold = rates.long_context_threshold
+            long_context = threshold is not None and tier > bisect_left(
+                _PRICE_THRESHOLDS, threshold
+            )
             cost += rates.cost(tally, long_context=long_context)
             unpriced += tally.unsplit
     return cost, unpriced
@@ -354,6 +369,7 @@ def key_function(
     names: Mapping[str, str],
     backend: Callable[[Event], str] = logged_route,
     project_label: Callable[[str], str] = project_name,
+    session_labels: Mapping[tuple[str, str], str] | None = None,
 ) -> Callable[[Event], str]:
     """A grouping key specialised once per snapshot, not re-dispatched per event."""
     if group is GroupBy.ACCOUNT:
@@ -373,7 +389,13 @@ def key_function(
         return name
 
     if group is GroupBy.SESSION:
-        return lambda event: f"{project(event)} · {event.session[:8] or '-'}"
+
+        def session(event: Event) -> str:
+            name = project(event)
+            short = (session_labels or {}).get((name, event.session), event.session[:8] or "-")
+            return f"{name} · {short}"
+
+        return session
     return project
 
 
@@ -473,7 +495,23 @@ def build_snapshot(
     for index, start in enumerate(starts[:-1]):
         short, long = labels(period, start)
         buckets.append(Bucket(start, edges[index], edges[index + 1], short, long))
-    key_of = key_function(group, names, label, label_project)
+    session_labels: dict[tuple[str, str], str] = {}
+    if GroupBy.SESSION in (group, detail):
+        prefixes: dict[tuple[str, str], set[str]] = {}
+        session_projects: dict[str, str] = {}
+        for position in _slice(timestamps, edges[0], min(edges[-1], visible_end)):
+            event = events[position]
+            if event.project not in session_projects:
+                session_projects[event.project] = label_project(event.project)
+            project_name_ = session_projects[event.project]
+            prefix = event.session[:8] or "-"
+            prefixes.setdefault((project_name_, prefix), set()).add(event.session)
+        for (project_name_, prefix), sessions in prefixes.items():
+            for session_id in sessions:
+                session_labels[project_name_, session_id] = (
+                    (session_id or "(no session)") if len(sessions) > 1 else prefix
+                )
+    key_of = key_function(group, names, label, label_project, session_labels)
     for bucket in buckets:
         tallies = bucket.groups
         for position in _slice(timestamps, bucket.start_ts, min(bucket.end_ts, visible_end)):
@@ -495,19 +533,20 @@ def build_snapshot(
     ]
 
     selected = count - 1 - (cursor - window_back)
-    breakdown_rows: dict[str, BreakdownRow] = {}
+    breakdown_rows: dict[tuple[str, str], BreakdownRow] = {}
     if buckets:
         chosen = buckets[selected]
-        detail_of = key_function(detail, names, label, label_project)
+        detail_of = key_function(detail, names, label, label_project, session_labels)
         for position in _slice(timestamps, chosen.start_ts, min(chosen.end_ts, visible_end)):
             event = events[position]
-            key = detail_of(event)
+            name = detail_of(event)
+            key = (name, label(event) if detail is GroupBy.MODEL else "")
             row = breakdown_rows.get(key)
             if row is None:
                 extra = {GroupBy.MODEL: label(event), GroupBy.ACCOUNT: str(event.tool)}.get(
                     detail, ""
                 )
-                row = breakdown_rows[key] = BreakdownRow(key, extra, Tally())
+                row = breakdown_rows[key] = BreakdownRow(name, extra, Tally())
             row.tally.add(event.usage, rates_of(event))
             if row.first_ts is None:
                 row.first_ts = event.ts
@@ -544,10 +583,20 @@ def build_snapshot(
     if account_filter is not None:
         known = {account_filter: known[account_filter]} if account_filter in known else {}
     overall = {"today": Tally(), "week": Tally(), "month": Tally(), "all": Tally()}
+    future: dict[str, list[Event]] = {}
+    for event in events[visible_stop:]:
+        future.setdefault(event.account, []).append(event)
     for account_id, lifetime in known.items():
         all_time = lifetime.tally.copy()
         if priced:
             all_time.cost, all_time.unpriced = lifetime_cost(lifetime, price)
+        for event in future.get(account_id, ()):
+            usage = event.usage
+            rates = rates_of(event) if priced else None
+            all_time.remove(usage)
+            if priced and rates is not None:
+                all_time.cost -= rates.cost(usage)
+                all_time.unpriced += usage.total - usage.unsplit
         overall["all"].merge(all_time)
         row = rows.get(account_id)
         if row is not None:

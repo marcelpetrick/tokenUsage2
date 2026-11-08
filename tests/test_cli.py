@@ -306,8 +306,8 @@ def test_json_is_always_priced(
     assert code == 0
     # Anthropic costs 2,425 millionths; Sol 10,440; Astra 63,000.
     assert data["totals"]["all"]["cost"] == pytest.approx(75_865 / 1_000_000)
-    # Only the 5,000 retained Claude tokens lack a billable split; local qwen is free.
-    assert data["totals"]["all"]["unpriced"] == 5000
+    # Retained Claude tokens and qwen with an unknown route cannot be priced.
+    assert data["totals"]["all"]["unpriced"] == 5700
 
 
 def test_json_buckets_carry_their_cache_share(
@@ -376,6 +376,24 @@ def test_a_corrupt_archive_is_a_clear_error_not_a_traceback(
     assert (code, out) == (2, "")
     assert "file is not a database" in err
     assert "aside to rebuild it" in err
+
+
+def test_archived_invalid_timestamp_has_actionable_error_without_deletion(
+    home: FakeHome, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    archive = tmp_path / "archive.sqlite"
+    Store(archive).close()
+    with sqlite3.connect(archive) as connection:
+        connection.execute(
+            "INSERT INTO events VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            ("bad", -1e97, "opencode", "a", "m", "", "", "", 1, 0, 0, 0, 0, 0, 0),
+        )
+    code, out, err = call(["--once", "--archive", str(archive)], home.env, tmp_path, capsys)
+    assert (code, out) == (2, "")
+    assert "invalid timestamp" in err
+    assert "preserve the archive" in err
+    with sqlite3.connect(archive) as connection:
+        assert connection.execute("SELECT ts FROM events WHERE key = 'bad'").fetchone() == (-1e97,)
 
 
 def test_a_busy_archive_is_a_clear_error_not_a_traceback(

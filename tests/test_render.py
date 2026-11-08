@@ -446,7 +446,7 @@ def test_cost_view_shows_dollars(demo: DemoSource) -> None:
     assert "Cost per day" in text
     assert "Tokens per day" not in text
     assert "standard-rate estimate" in text
-    assert "today $" in text
+    assert "today ≥$" in text
     assert " cost" in text
 
 

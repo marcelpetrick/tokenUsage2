@@ -112,6 +112,41 @@ def test_unchanged_files_are_not_read_again(home: FakeHome, make: Factory) -> No
     assert not report.changed
 
 
+def test_separate_ingestors_refresh_their_cached_state(home: FakeHome, make: Factory) -> None:
+    archive = home.root / "shared.sqlite"
+    first = make(archive)
+    second = make(archive)
+    first.scan()
+
+    report = second.scan()
+    assert report.external_changes
+    assert report.changed
+    assert report.bytes_read == 0  # OpenCode may recheck its watermark row.
+    assert second.index.events() == first.index.events()
+    assert second.quotas == first.quotas
+    assert second.index.generation > 0
+
+    with home.codex_rollout.open("a") as handle:
+        handle.write(line(codex_tokens("2026-09-10T10:10:00Z", 4300, inp=900, out=100)))
+    second.scan()
+    generation = first.index.generation
+    report = first.scan()
+    assert report.external_changes
+    assert first.index.generation > generation
+    assert first.index.events() == second.index.events()
+    assert not first.scan().external_changes
+
+    # An external writer can replace a known event while our file offsets stay
+    # unchanged; do not leave the second process displaying the older copy.
+    existing = second.index.events()[0]
+    replacement = replace(existing, usage=Usage(input=10_000_000))
+    first.store.begin()
+    first.store.upsert_events([replacement])
+    first.store.commit()
+    assert second.scan().external_changes
+    assert second.index.get(existing.key) == replacement
+
+
 def test_appended_lines_are_read_incrementally(home: FakeHome, make: Factory) -> None:
     ingestor = make()
     ingestor.scan()

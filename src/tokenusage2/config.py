@@ -200,7 +200,7 @@ def load_config(path: Path | None, home: Path, env: Mapping[str, str]) -> Config
         return Config()
     try:
         data = tomllib.loads(target.read_text(encoding="utf-8"))
-    except (OSError, tomllib.TOMLDecodeError) as error:
+    except (OSError, UnicodeError, tomllib.TOMLDecodeError) as error:
         raise ConfigError(f"{target}: {error}") from error
     discovery = data.get("discovery", {})
     if not isinstance(discovery, dict):

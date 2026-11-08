@@ -37,7 +37,7 @@ from tokenusage2.live import LiveSource, Source
 from tokenusage2.preferences import Preferences, default_preferences_path, load_preferences
 from tokenusage2.provider_status import ProviderStatus
 from tokenusage2.render import THEME_NAMES, View, mask, render
-from tokenusage2.store import Store, StoreBusyError, StoreError
+from tokenusage2.store import Store, StoreError
 from tokenusage2.tui import bucket_count, data_span, run, status_text, take_snapshot
 from tokenusage2.version import __version__
 
@@ -309,7 +309,7 @@ def main(
                 clock,
                 provider_status=args.provider_status,
             )
-        except StoreBusyError as error:
+        except StoreError as error:
             store.close()
             print(f"tokenusage2: {error}", file=sys.stderr)
             return 2
@@ -323,7 +323,7 @@ def main(
             default_exports(home, env),
             default_preferences_path(home, env),
         )
-    except StoreBusyError as error:
+    except StoreError as error:
         print(f"tokenusage2: {error}", file=sys.stderr)
         return 2
     finally:

@@ -8,6 +8,15 @@ from dataclasses import dataclass
 from enum import StrEnum
 from pathlib import Path
 
+# Keep one year of headroom for conversion into any local timezone.
+MIN_EVENT_TIMESTAMP = -62_104_060_800.0  # 0002-01-01 UTC
+MAX_EVENT_TIMESTAMP = 253_370_764_800.0  # 9999-01-01 UTC (exclusive)
+
+
+def valid_event_timestamp(value: object) -> bool:
+    """Whether a timestamp can be rendered in any supported timezone."""
+    return type(value) in (int, float) and MIN_EVENT_TIMESTAMP <= value < MAX_EVENT_TIMESTAMP
+
 
 class Tool(StrEnum):
     CLAUDE = "claude"

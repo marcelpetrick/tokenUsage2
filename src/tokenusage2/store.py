@@ -18,7 +18,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from tokenusage2 import keys
-from tokenusage2.model import Account, Event, QuotaWindow, Tool, Usage
+from tokenusage2.model import Account, Event, QuotaWindow, Tool, Usage, valid_event_timestamp
 from tokenusage2.version import __version__
 
 SCHEMA_VERSION = 7
@@ -448,10 +448,17 @@ class Store:
             "cache_read, cache_write, output, reasoning, unsplit, cache_write_1h "
             "FROM events ORDER BY ts"
         )
-        return [
-            Event(r[0], r[1], _TOOLS[r[2]], r[3], r[4], r[5], r[6], r[7], Usage(*r[8:]))
-            for r in rows
-        ]
+        events = []
+        for r in rows:
+            if not valid_event_timestamp(r[1]):
+                raise StoreError(
+                    f"archive {self.path} contains an event with an invalid timestamp; "
+                    "preserve the archive and contact the maintainer for recovery"
+                )
+            events.append(
+                Event(r[0], r[1], _TOOLS[r[2]], r[3], r[4], r[5], r[6], r[7], Usage(*r[8:]))
+            )
+        return events
 
     def upsert_quotas(self, quotas: Iterable[QuotaWindow]) -> int:
         before = self.conn.total_changes

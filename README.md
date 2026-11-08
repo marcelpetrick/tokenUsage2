@@ -264,7 +264,9 @@ The `cost` metric (`v`) and the breakdown's cost column estimate what the tokens
 would cost at standard token rates — a list-price figure, not an invoice. Requests
 that Anthropic's API answered use Anthropic's published per-model input, output
 and cache rates; cache writes distinguish the 5-minute and 1-hour TTL. Requests
-a local backend answered cost nothing. OpenAI-routed Codex and OpenCode records
+an explicitly recognized local route answered cost nothing. Claude records
+without a known route remain unpriced unless a price override is configured.
+OpenAI-routed Codex and OpenCode records
 use the [published OpenAI token rates](https://developers.openai.com/api/docs/pricing),
 including cache writes and the higher full-request tier above 272K prompt tokens;
 models without a final published rate show as `—`.

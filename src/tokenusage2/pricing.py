@@ -169,8 +169,8 @@ class Pricer:
     """Rates for a request, from what its log says about the model and the route.
 
     Configured prices win. A request Anthropic's API answered uses the list
-    price of its model; a Claude Code request a local backend answered costs
-    nothing. Everything else stays unpriced until the config names it.
+    price of its model; explicitly recognized local routes cost nothing.
+    Everything else stays unpriced until the config names it.
     """
 
     def __init__(self, configured: Sequence[tuple[str, Rates]] = ()) -> None:
@@ -193,6 +193,6 @@ class Pricer:
             if any(fnmatchcase(model, pattern) for pattern in OPENAI_UNPRICED):
                 return None
             return _match(model, OPENAI_PRICES)
-        if tool is Tool.CLAUDE or route.casefold() in LOCAL_ROUTES:
+        if route.casefold() in LOCAL_ROUTES:
             return FREE
         return None

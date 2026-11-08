@@ -216,12 +216,14 @@ class ScanReport:
     errors: int = 0
     seconds: float = 0.0
     problems: list[str] = field(default_factory=list)
+    #: Another connection committed since this ingestor last saw the archive.
+    external_changes: bool = False
     #: Set when a newer tokenusage2 owns the archive; the scan then wrote nothing.
     outdated: str = ""
 
     @property
     def changed(self) -> bool:
-        return bool(self.events_changed or self.quota_updates)
+        return bool(self.events_changed or self.quota_updates or self.external_changes)
 
 
 def walk_jsonl(root: Path | str, prefix: str = "") -> Iterator[str]:
@@ -256,6 +258,8 @@ class Ingestor:
         self.env = env
         self.clock = clock
         self._merge_spellings(discovery.accounts)
+        # Freeze other writers while loading the initial cache and its version.
+        store.begin()
         self.index = EventIndex(store.load_events(), ordered=True)
         self.quotas = {(q.account, q.window): q for q in store.load_quotas()}
         self._files = store.load_file_states()
@@ -263,6 +267,8 @@ class Ingestor:
         #: Records one home already held for another, ``{account: {other: count}}``,
         #: counted once per record key however often a file is read again.
         self.duplicates = store.copy_counts()
+        self._data_version = store.conn.execute("PRAGMA data_version").fetchone()[0]
+        store.commit()
         self._copies_changed = False
         self.discovery = discovery
         self.set_discovery(discovery)
@@ -348,6 +354,18 @@ class Ingestor:
             self.store.rollback()
             report.outdated = outdated
             report.problems.append(outdated)
+        else:
+            version = self.store.conn.execute("PRAGMA data_version").fetchone()[0]
+            if version != self._data_version:
+                generation = self.index.generation
+                self.index = EventIndex(self.store.load_events(), ordered=True)
+                self.index.generation = generation + 1
+                self._files = self.store.load_file_states()
+                self.quotas = {(q.account, q.window): q for q in self.store.load_quotas()}
+                self.duplicates = self.store.copy_counts()
+                self._copies_changed = False
+                self._data_version = version
+                report.external_changes = True
         return not outdated
 
     def _finish(self, report: ScanReport, started: float) -> ScanReport:

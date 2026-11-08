@@ -114,7 +114,9 @@ def test_resolution_order() -> None:
     pricer = Pricer([("gpt-5*", custom), ("claude-opus-5", FREE)])
     assert pricer.rates(Tool.CODEX, "gpt-5.6-sol", "openai") is custom
     assert pricer.rates(Tool.CLAUDE, "claude-opus-5", "anthropic") is FREE
-    assert pricer.rates(Tool.CLAUDE, "north-mini:q4", "") is FREE
+    assert pricer.rates(Tool.CLAUDE, "north-mini:q4", "") is None
+    assert pricer.rates(Tool.CLAUDE, "custom", "api.vendor.com") is None
+    assert pricer.rates(Tool.CLAUDE, "local-model", "ollama") is FREE
     assert pricer.rates(Tool.CODEX, "gpt-6-astra", "openai") == openai(
         10, 1, 50, cache_write=12.5, long_context=True
     )

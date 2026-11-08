@@ -19,11 +19,13 @@ from pathlib import Path
 from typing import Protocol
 
 from tokenusage2 import keys
-from tokenusage2.model import Account, Event, QuotaWindow, Tool, Usage
+from tokenusage2.model import Account, Event, QuotaWindow, Tool, Usage, valid_event_timestamp
 
 CODEX_WINDOWS = {300: "5h", 10080: "week"}
 #: Codex's record type sits at byte ~60-92 of a line; 256 leaves ample margin.
 CODEX_HEAD = 256
+# Leave room for token components to be combined in SQLite's signed INTEGERs.
+MAX_TOKEN_COMPONENT = (2**63 - 1) // 5
 
 
 class Parser(Protocol):
@@ -37,8 +39,10 @@ class Parser(Protocol):
 def count(value: object) -> int:
     """A non-negative integer token count, tolerating junk."""
     if type(value) is int:  # the common case, and bool is excluded by the exact type
-        return value if value > 0 else 0
-    return max(0, int(value)) if type(value) is float and math.isfinite(value) else 0
+        return value if 0 < value <= MAX_TOKEN_COMPONENT else 0
+    if type(value) is float and math.isfinite(value) and 0 < value <= MAX_TOKEN_COMPONENT:
+        return int(value)
+    return 0
 
 
 def finite_number(value: object) -> bool:
@@ -60,7 +64,11 @@ def parse_ts(value: object) -> float | None:
         return None
     if moment.tzinfo is None:
         moment = moment.replace(tzinfo=UTC)
-    return moment.timestamp()
+    try:
+        stamp = moment.timestamp()
+    except OverflowError, OSError, ValueError:
+        return None
+    return stamp if valid_event_timestamp(stamp) else None
 
 
 def claude_route(request_id: str) -> str:
@@ -217,7 +225,7 @@ class CodexParser:
 
     def _rate_limits(self, limits: object, ts: float) -> None:
         # Only the newest account-level limits matter; build windows once, at the end.
-        if isinstance(limits, dict) and limits.get("limit_id") in {None, "codex"}:
+        if isinstance(limits, dict) and limits.get("limit_id") in (None, "codex"):
             self._limits, self._limits_ts = limits, ts
 
     @property
@@ -310,6 +318,8 @@ def parse_opencode_message(account: str, row_id: str, data: object) -> Event | N
         return None
     created = times.get("created")
     if not finite_number(created):
+        return None
+    if not valid_event_timestamp(created / 1000.0):
         return None
     cache = tokens.get("cache") if isinstance(tokens.get("cache"), dict) else {}
     fresh = count(tokens.get("input"))
@@ -412,6 +422,8 @@ def parse_stats_cache(
     events = []
     for when, models in stats_cache_days(data):
         if before is not None and when >= before:
+            continue
+        if not 2 <= when.year <= 9998:
             continue
         noon = datetime.combine(when, time(12), tzinfo=UTC).timestamp()
         for model, raw in models.items():

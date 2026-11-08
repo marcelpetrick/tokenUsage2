@@ -27,6 +27,13 @@ def test_explicit_missing_file_is_an_error(tmp_path: Path) -> None:
         load_config(tmp_path / "nope.toml", tmp_path, {})
 
 
+def test_invalid_utf8_is_reported_as_config_error(tmp_path: Path) -> None:
+    path = tmp_path / "config.toml"
+    path.write_bytes(b"\xff")
+    with pytest.raises(ConfigError):
+        load_config(path, tmp_path, {})
+
+
 def test_default_path_honours_xdg(tmp_path: Path) -> None:
     assert default_config_path(tmp_path, {}) == tmp_path / ".config/tokenusage2/config.toml"
     assert default_config_path(tmp_path, {"XDG_CONFIG_HOME": "/x"}) == Path(

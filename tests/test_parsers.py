@@ -12,6 +12,7 @@ from conftest import NOW, claude_line, codex_meta, codex_tokens, codex_turn
 from tokenusage2.discover import BackendMap
 from tokenusage2.model import Event, Tool, Usage
 from tokenusage2.parsers import (
+    MAX_TOKEN_COMPONENT,
     ClaudeParser,
     CodexParser,
     cache_write_1h,
@@ -96,6 +97,17 @@ def test_codex_usage_splits_cached_input() -> None:
         {"input_tokens": 10, "cached_input_tokens": 50, "cache_write_input_tokens": 5}
     )
     assert (clamped.input, clamped.cache_read, clamped.cache_write) == (0, 10, 0)
+
+
+@pytest.mark.parametrize("limit_id", [[], {}])
+def test_codex_ignores_malformed_limit_id_without_dropping_usage(limit_id: object) -> None:
+    parser = CodexParser("acct", {}, "thread")
+    record = codex_tokens("2026-09-10T10:00:05Z", 1100, inp=1000, cached=600, out=100)
+    record["payload"]["rate_limits"] = {"limit_id": limit_id}
+    event = parser.feed(encode(record))
+    assert event is not None
+    assert event.usage.total == 1100
+    assert parser.quotas == []
 
 
 def test_codex_parser_carries_context_and_collapses_repeats() -> None:
@@ -243,7 +255,7 @@ def test_an_opencode_row_that_is_not_text_is_skipped() -> None:
 
 
 def test_opencode_rejects_non_finite_or_unrepresentable_timestamps() -> None:
-    for created in (float("nan"), float("inf"), float("-inf"), 10**1000):
+    for created in (float("nan"), float("inf"), float("-inf"), 10**1000, -1e100, 1e100):
         data = {
             "role": "assistant",
             "time": {"created": created},
@@ -259,6 +271,8 @@ def test_stats_cache_backfill_only_before_the_first_transcript() -> None:
             {"date": "2026-09-10", "tokensByModel": {"claude-opus-5": 9999}},
             {"date": "bad", "tokensByModel": {}},
             {"date": "2026-09-02", "tokensByModel": {"zero": 0}},
+            {"date": "0001-01-01", "tokensByModel": {"ancient": 3}},
+            {"date": "9999-01-01", "tokensByModel": {"future": 3}},
             "junk",
         ]
     }
@@ -343,6 +357,8 @@ def test_parse_ts_and_count() -> None:
     assert parse_ts("2026-09-10T08:00:00") == parse_ts("2026-09-10T08:00:00Z")
     assert parse_ts("nope") is None
     assert parse_ts(5) is None
+    assert parse_ts("0001-01-01T00:00:00+14:00") is None
+    assert parse_ts("9999-12-31T23:59:59-14:00") is None
     assert (
         count(True),
         count(-3),
@@ -352,6 +368,10 @@ def test_parse_ts_and_count() -> None:
         count(float("-inf")),
         count(float("nan")),
     ) == (0, 0, 2, 0, 0, 0, 0)
+    assert count(MAX_TOKEN_COMPONENT) == MAX_TOKEN_COMPONENT
+    assert count(MAX_TOKEN_COMPONENT + 1) == 0
+    assert count(10**30) == 0
+    assert count(1e100) == 0
 
 
 def test_non_finite_token_counts_do_not_abort_a_parser() -> None:

@@ -160,6 +160,50 @@ def test_breakdowns_and_groupings() -> None:
     assert snap(events, group=GroupBy.PROJECT).groups == ["alpha"]
 
 
+def test_model_breakdown_keeps_distinct_backends_separate() -> None:
+    hosted = ev(at(0, 9), model="same-model", backend="anthropic", usage=Usage(input=10))
+    local = ev(at(0, 10), model="same-model", backend="ollama", usage=Usage(input=20))
+    snapshot = snap([hosted, local], group=GroupBy.MODEL, detail=GroupBy.MODEL)
+    rows = snapshot.breakdown
+    assert {(row.name, row.extra, row.tally.total) for row in rows} == {
+        ("same-model", "anthropic", 10),
+        ("same-model", "ollama", 20),
+    }
+    assert {row.name for row in rows} == set(snapshot.groups)
+
+
+def test_session_breakdown_disambiguates_matching_eight_character_prefixes() -> None:
+    first = ev(at(0, 9), usage=Usage(input=10))
+    second = ev(at(0, 10), usage=Usage(input=20))
+    first.session, second.session = "abcdef12-first", "abcdef12-second"
+    snapshot = snap([first, second], group=GroupBy.SESSION, detail=GroupBy.SESSION)
+    assert set(snapshot.groups) == {"alpha · abcdef12-first", "alpha · abcdef12-second"}
+    assert {row.tally.total for row in snapshot.breakdown} == {10, 20}
+
+
+def test_session_disambiguation_only_uses_the_visible_timeline() -> None:
+    older = ev(at(30), usage=Usage(input=30))
+    current = ev(at(0), usage=Usage(input=10))
+    older.session, current.session = "abcdef12-older", "abcdef12-current"
+    snapshot = snap([older, current], count=1, group=GroupBy.SESSION, detail=GroupBy.SESSION)
+    assert snapshot.groups == ["alpha · abcdef12"]
+    assert [row.name for row in snapshot.breakdown] == snapshot.groups
+
+
+def test_session_labels_resolve_each_visible_project_once_not_entire_history() -> None:
+    events = [ev(at(30), usage=Usage(input=1)) for _ in range(500)]
+    events.extend(ev(at(0), usage=Usage(input=1)) for _ in range(50))
+    calls: list[str] = []
+
+    def project(path: str) -> str:
+        calls.append(path)
+        return "alpha"
+
+    snap(events, count=1, recent=0, group=GroupBy.SESSION, detail=GroupBy.SESSION, project=project)
+    # One lookup for prefix disambiguation and one per grouping function.
+    assert len(calls) == 3
+
+
 def test_project_resolver_is_used_for_projects_sessions_and_recent_events() -> None:
     event = ev(at(0))
     event.project = "/work/repo/src"
@@ -197,6 +241,14 @@ def test_lifetime_cost_keeps_short_and_long_context_requests_in_separate_tiers()
     )
     # $0.20 for the short request + $1.20 for the >272K request at 2x input.
     assert snapshot.all.cost == pytest.approx(1.4)
+
+
+def test_lifetime_cost_uses_haiku_long_context_threshold() -> None:
+    short = ev(at(1), model="claude-haiku-5-5", usage=Usage(input=100_000))
+    long = ev(at(0), model="claude-haiku-5-5", usage=Usage(input=150_000))
+    snapshot = snap([short, long], metric=Metric.COST, pricing=Pricer().rates)
+    assert snapshot.all.cost == pytest.approx(0.085)
+    assert snapshot.accounts[0].all.cost == pytest.approx(0.085)
 
 
 def test_account_filter() -> None:
@@ -338,12 +390,29 @@ def test_future_events_do_not_enter_current_views() -> None:
     assert snapshot.buckets[-1].total.total == 150
     assert sum(item.tally.total for item in snapshot.breakdown) == 150
     assert (snapshot.today.total, snapshot.week.total, snapshot.month.total) == (150, 150, 150)
-    assert snapshot.all.total == 650
+    assert snapshot.all.total == 150
+    assert row.all.total == 150
     assert snapshot.rate == 30
     assert sum(row.hourly) == 150
     assert sum(map(sum, snapshot.heatmap)) == 150
     assert [event.key for event in snapshot.recent] == [exact.key, present.key]
     assert row.last_ts == snapshot.last_ts == NOW
+
+
+def test_future_events_do_not_enter_all_time_costs_or_unpriced_counts() -> None:
+    past = ev(NOW, model="claude-haiku-5-5", usage=Usage(input=150_000))
+    future = ev(NOW + 1, model="claude-haiku-5-5", usage=Usage(input=200_000))
+    unknown = ev(NOW + 2, model="unknown", usage=Usage(input=100))
+    snapshot = snap(
+        [past, future, unknown],
+        metric=Metric.COST,
+        pricing=Pricer().rates,
+        lifetimes=lifetimes_of([past, future, unknown]),
+    )
+    assert snapshot.all.total == 150_000
+    assert snapshot.all.cost == pytest.approx(0.075)
+    assert snapshot.all.unpriced == 0
+    assert snapshot.accounts[0].all.cost == pytest.approx(0.075)
 
 
 def test_cost_view_prices_buckets_totals_and_lifetimes() -> None:
@@ -358,7 +427,7 @@ def test_cost_view_prices_buckets_totals_and_lifetimes() -> None:
     assert (cost.today.cost, cost.all.cost, cost.all.unpriced) == (
         pytest.approx(5.0),
         pytest.approx(5.0),
-        5,
+        15,
     )
     row = next(r for r in cost.accounts if r.id == "a")
     assert row.all.cost == pytest.approx(5.0)
@@ -371,6 +440,7 @@ def test_cost_view_prices_buckets_totals_and_lifetimes() -> None:
         "gpt": 0.0,
     }
     assert next(r for r in tokens.breakdown if r.name == "gpt").tally.unpriced == 5
+    assert next(r for r in tokens.breakdown if r.name == "north").tally.unpriced == 10
     assert snap(events, pricing=rates, priced=True).all.cost == pytest.approx(5.0)
     assert snap(events, metric=Metric.COST).all.unpriced == sum(e.usage.total for e in events)
 
