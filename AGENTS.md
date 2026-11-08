@@ -27,6 +27,9 @@ Preserve these invariants:
 - Keep raw archived events append-preserving. Resolve labels and pricing at
   display time when possible; do not destructively migrate history for a
   presentation change.
+- Multiple running dashboards may share an archive. Detect other connections'
+  commits under the write lock and refresh cached events, file offsets, quotas
+  and account metadata before applying further updates.
 - Total throughput includes cache; fresh throughput is fresh input plus output.
   Both header rates are trailing five-minute averages expressed per minute.
 - `cache%` is cache reads divided by prompt tokens. It is a neutral reuse ratio,

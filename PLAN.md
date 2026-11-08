@@ -6,6 +6,17 @@ SPDX-License-Identifier: GPL-3.0-or-later
 
 # tokenUsage2 — plan
 
+## Active: full-state review (7 November 2026)
+
+Review source, architecture, tests and Markdown for up to twenty confirmed,
+ranked findings. The twelve confirmed findings and their repairs are recorded in
+[`docs/full_state_review_2026-11-07.md`](docs/full_state_review_2026-11-07.md).
+The local pipeline passed all 12 stages with 421 tests and 98.94% branch
+coverage; commit the changes, refresh generated history and verify CI.
+Already archived invalid timestamps are preserved and reported as actionable
+errors rather than discarded; those archives still need maintainer-assisted
+recovery before they can be displayed.
+
 A live, read-only terminal dashboard (in the spirit of btop, abtop and
 AgentWhileTrue) that shows how many tokens every local coding agent burns,
 per tool, per account and per backend, as daily, weekly and monthly views.
