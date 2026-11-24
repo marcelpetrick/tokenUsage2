@@ -84,9 +84,10 @@ offsets, quotas and account metadata before applying further updates.
 
 ## Level 3: components
 
-Arrows point from a module to the modules it imports. `model.py` (plain data
-types) and `keys.py` (record-key spelling) are shared by most modules and are
-omitted for readability.
+Arrows point from a module to the main modules it imports; the diagram shows
+the dependency direction, not every import. `model.py` (plain data types),
+`keys.py` (record-key spelling), `store.py` and `version.py` are used by many
+modules, and their arrows are omitted for readability.
 
 ```mermaid
 flowchart LR
