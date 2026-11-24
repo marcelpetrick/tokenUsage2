@@ -455,8 +455,9 @@ tested mutants are detected (killed or timed out). Tests that check repository
 files rather than the package are excluded from that run. A run from scratch is
 slow, so the stage is opt-in and not part of CI; later runs reuse the results
 kept in the ignored `mutants/` directory. Reference run on 24 November 2026
-(10,935 mutants of the 0.15.0 sources, 20 CPU threads, 48 minutes): 75.14 %
-(8,199 killed, 18 timed out, 2,713 survived, 5 without covering tests).
+(the 0.15.0 sources: 10,935 mutants from scratch in 48 minutes on 20 CPU
+threads, then 211 new About-overlay mutants incrementally): 75.17 % of 11,146
+(8,361 killed, 18 timed out, 2,762 survived, 5 without covering tests).
 
 CI ([`.github/workflows/tokenUsage2.yml`](.github/workflows/tokenUsage2.yml))
 runs `./localPipeline.sh --noRun` on Python 3.14 for every push and pull
