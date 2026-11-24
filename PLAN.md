@@ -423,3 +423,20 @@ like-for-like reconciliation rules above, use official provider rates only,
 keep raw agent sources read-only and sanitize identities from diagnostics. A
 future `localPipeline.sh` run will reinstall the repository editable into
 `.venv`, replacing the currently deployed wheel as part of its normal setup.
+
+## 17. Quota truthfulness, coverage and mutation gates (November 2026)
+
+Status legend: ☐ pending · ◐ in progress · ☑ verified and committed.
+
+| Status | Work | Acceptance evidence |
+|--------|------|---------------------|
+| ☑ | Update stale exact dependency pins. | Commit `9c52fe0` updates Ruff 0.17.4 to 0.17.6; every other pin and action was already current. The gate passed all 12 stages. |
+| ☑ | Stop presenting a rolled quota window as 0% used. A provider reset timestamp alone does not prove the window is available; show the window as reset with unknown usage until a newer observation arrives. | Real case (24 November 2026): the newest Codex `codex` limit record (14:19Z) reported 80% weekly use resetting at 16:35Z; later turns logged only a window-less `premium` limit. The dashboard then showed `0% reset` while Codex refused work. Commit `f11c628` renders `?% reset`, exports `used_percent: null` and `rolled: true`, and adds view, cell and JSON regressions. |
+| ☑ | Raise the coverage gate to at least 99% for lines and 99% for branches, each enforced separately. | Commit `15c6196`: `scripts/quality_gates.py` checks `coverage.xml`; lines 99.33% → 99.55%, branches 97.74% → 99.27% (1229/1238). |
+| ☑ | Add mutation testing with a common, exactly pinned Python framework and a mutation-score bar of at least 60%. | mutmut 3.8.1, opt-in `./localPipeline.sh --mutation`. Reference run: 10,935 mutants, 48 minutes on 20 CPU threads, score 75.14% (8,199 killed, 18 timeouts, 2,713 survived, 5 without tests). Too slow for every CI push, so it is not part of CI. |
+| ☑ | Add a C4-style architecture document with Mermaid diagrams and a fuller README badge set. | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md): context, container, component, refresh and quota flows; all five diagrams render with Mermaid CLI. New badges: mutation gate, pytest and last commit. |
+| ◐ | Release 0.15.0 (minor bump), full gate, branch review, local deployment; commit without pushing. | `./localPipeline.sh --noRun --mutation` passes; the built wheel is installed in `.venv`. |
+
+Handoff: surviving mutants are the next quality lever. List them with
+`.venv/bin/mutmut results` and strengthen tests module by module before raising
+the 60% bar. Keep the rule that a passed reset time never implies free quota.

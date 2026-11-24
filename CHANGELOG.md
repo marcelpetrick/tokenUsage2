@@ -12,7 +12,7 @@ refuses a newer archive.
 
 ## Unreleased
 
-## 0.14.4
+## 0.15.0
 
 ### Fixed
 
@@ -23,9 +23,24 @@ refuses a newer archive.
   Previously a Codex account could show free weekly quota while Codex itself
   refused work.
 
+### Quality
+
+- Require at least 99% line coverage and 99% branch coverage, each checked
+  separately, instead of a 95% combined total. New focused tests cover the
+  previously untested paths, and leaked test database connections are closed.
+- Add opt-in mutation testing with mutmut (`./localPipeline.sh --mutation`),
+  gated at a mutation score of at least 60%.
+
+### Documentation
+
+- Add [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) with C4-style context,
+  container and component diagrams plus refresh and quota flows in Mermaid.
+- Add README badges for the mutation gate, pytest and the latest commit.
+
 ### Dependencies
 
-- Update the Ruff development pin from 0.17.4 to 0.17.6.
+- Update the Ruff development pin from 0.17.4 to 0.17.6 and add mutmut 3.8.1
+  to the development extras.
 
 ## 0.14.3
 
