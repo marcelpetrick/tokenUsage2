@@ -18,6 +18,7 @@ from tokenusage2.render import (
     SERIES,
     THEME_NAMES,
     THEMES,
+    Canvas,
     Column,
     View,
     amount,
@@ -525,3 +526,13 @@ def test_palette_changes_only_category_styles(demo: DemoSource, theme: str) -> N
         assert shuffled == original
     else:
         assert shuffled != original
+
+
+def test_canvas_clips_text_left_of_the_screen() -> None:
+    canvas = Canvas(4, 1)
+    assert canvas.put(-2, 0, "abcdef") == 4
+    assert "".join(canvas.chars[0]) == "cdef"
+
+
+def test_fixed_columns_keep_their_widths_without_a_flexible_column() -> None:
+    assert fit_columns([Column("a", 3), Column("b", 4)], 20) == [(0, 3), (1, 4)]

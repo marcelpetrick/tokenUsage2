@@ -7,6 +7,7 @@ import runpy
 import shutil
 import sqlite3
 import sys
+from contextlib import closing
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from zoneinfo import TZPATH, ZoneInfoNotFoundError
@@ -385,7 +386,7 @@ def test_archived_invalid_timestamp_has_actionable_error_without_deletion(
 ) -> None:
     archive = tmp_path / "archive.sqlite"
     Store(archive).close()
-    with sqlite3.connect(archive) as connection:
+    with closing(sqlite3.connect(archive)) as connection, connection:
         connection.execute(
             "INSERT INTO events VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             ("bad", -1e97, "opencode", "a", "m", "", "", "", 1, 0, 0, 0, 0, 0, 0),
@@ -394,7 +395,7 @@ def test_archived_invalid_timestamp_has_actionable_error_without_deletion(
     assert (code, out) == (2, "")
     assert "invalid timestamp" in err
     assert "preserve the archive" in err
-    with sqlite3.connect(archive) as connection:
+    with closing(sqlite3.connect(archive)) as connection:
         assert connection.execute("SELECT ts FROM events WHERE key = 'bad'").fetchone() == (-1e97,)
 
 
@@ -481,3 +482,20 @@ def test_json_reports_a_rolled_quota_as_unknown_not_free() -> None:
         ("week", None, True, None),
     ]
     assert exported[0]["resets_at"] is not None
+
+
+def test_a_saved_account_that_vanished_does_not_block_the_dashboard(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    state = tmp_path / ".local" / "state" / "tokenusage2"
+    state.mkdir(parents=True)
+    (state / "view.json").write_text(json.dumps({"account": "removed-account"}))
+    started = []
+    monkeypatch.setattr(sys.stdin, "isatty", lambda: True)
+    monkeypatch.setattr(sys.stdout, "isatty", lambda: True)
+    monkeypatch.setattr(
+        "tokenusage2.cli.run", lambda source, view, *args, **kwargs: started.append(view) or 0
+    )
+    code, _, err = call(["--demo"], {"HOME": str(tmp_path)}, tmp_path, capsys)
+    assert (code, err) == (0, "")
+    assert [view.account for view in started] == [None]

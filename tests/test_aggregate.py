@@ -464,3 +464,27 @@ def test_breakdown_by_session_shows_first_and_last_request() -> None:
     assert "alpha · abcdef12" in snap(events, group=GroupBy.SESSION).groups
     retained = [request(at(0, 8), "", "(retained daily total)")]
     assert snap(retained, detail=GroupBy.SESSION).breakdown[0].name.endswith(" · -")
+
+
+def test_events_of_unlisted_accounts_count_in_totals_but_get_no_row() -> None:
+    stray = ev(NOW - 60, "z", usage=Usage(input=70))
+    listed = ev(NOW - 120, usage=Usage(input=30))
+    snapshot = snap([listed, stray], lifetimes=lifetimes_of([listed, stray]))
+    assert {row.id for row in snapshot.accounts} >= {"a"}
+    assert "z" not in {row.id for row in snapshot.accounts}
+    assert (snapshot.today.total, snapshot.all.total) == (100, 100)
+    assert snapshot.rate_window.calls == 2
+
+
+def test_future_dated_accounts_fall_back_to_their_newest_visible_request() -> None:
+    events = [
+        ev(NOW - 300, "a"),
+        ev(NOW - 200, "b"),
+        ev(NOW - 100, "b"),
+        ev(NOW + 600, "a"),
+        ev(NOW + 600, "b"),
+    ]
+    rows = {row.id: row for row in snap(events).accounts}
+    assert (rows["a"].last_ts, rows["b"].last_ts) == (NOW - 300, NOW - 100)
+    only_future = {row.id: row for row in snap([ev(NOW + 600, "a")]).accounts}
+    assert only_future["a"].last_ts is None

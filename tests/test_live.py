@@ -42,3 +42,21 @@ def test_live_source_rediscovers_and_tracks_running_and_archived_homes(
         assert "ARCHIVED (no longer on disk, history kept)" in source.sources()
     finally:
         source.close()
+
+
+def test_live_source_refreshes_accounts_after_another_dashboard_commits(
+    home: FakeHome, tmp_path: Path
+) -> None:
+    archive = tmp_path / "shared.sqlite"
+    proc = tmp_path / "proc"
+    first, second = (
+        LiveSource(Store(archive), home.root, home.env, Config(), BERLIN, proc, clock=lambda: NOW)
+        for _ in range(2)
+    )
+    try:
+        first.scan()
+        assert second.scan().external_changes
+        assert {a.id for a in second.accounts()} == {a.id for a in first.accounts()}
+    finally:
+        first.close()
+        second.close()

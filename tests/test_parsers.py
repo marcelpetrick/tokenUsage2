@@ -416,3 +416,12 @@ def test_stats_cache_scale_leaves_out_days_cleanup_has_cut() -> None:
         ],
     }
     assert stats_cache_scale(data, [request(day, total) for day, total in held.items()]) == (0.5, 3)
+
+
+def test_codex_context_without_thread_id_or_model_keeps_fallbacks() -> None:
+    parser = CodexParser("codex:a", {}, "fallback-thread")
+    parser.feed(json.dumps({"type": "session_meta", "payload": {"cwd": "/w"}}).encode())
+    parser.feed(json.dumps({"type": "turn_context", "payload": {"cwd": ""}}).encode())
+    assert parser.ctx["thread"] == "fallback-thread"
+    assert parser.ctx["cwd"] == "/w"
+    assert "model" not in parser.ctx

@@ -148,6 +148,7 @@ def test_alert_settings(tmp_path: Path) -> None:
         "[alerts]\nquota_percent = true",
         "[alerts]\nquota_percent = nan",
         "[alerts]\nburn_floor = inf",
+        f"[alerts]\nburn_floor = {10**400}",
         "[alerts]\nsiren = true",
     ],
 )

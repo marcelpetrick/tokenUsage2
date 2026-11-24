@@ -7,7 +7,7 @@
 #
 # Runs exactly the verification that runs locally: ./localPipeline.sh --noRun.
 # The script sets up .venv with the pinned development tools, verifies generated
-# history, runs ruff, ShellCheck, pytest with the branch-coverage gate and a demo
+# history, runs ruff, ShellCheck, pytest with the 99% line and branch gates and a demo
 # smoke run, builds sdist and wheel, installs the wheel into a clean venv and
 # checks the installed command; every stage is timed and a verdict closes the
 # run. --noRun suppresses the final interactive dashboard launch.

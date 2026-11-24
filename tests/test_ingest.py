@@ -1059,3 +1059,12 @@ def test_retained_totals_derived_by_a_newer_rule_are_left_alone(
     ingestor.store.commit()
     ingestor.scan()
     assert retained(ingestor, CLAUDE) == 700
+
+
+def test_statusline_snapshots_from_other_tools_are_ignored(home: FakeHome, make: Factory) -> None:
+    (home.root / ".claude" / "abtop-rate-limits.json").write_text(
+        json.dumps({"source": "codex", "five_hour": {"used_percentage": 99}})
+    )
+    ingestor = make()
+    ingestor.scan()
+    assert not [key for key in ingestor.quotas if key[0].startswith("claude:")]

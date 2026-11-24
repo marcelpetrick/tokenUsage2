@@ -6,6 +6,7 @@ import json
 from urllib.request import Request
 
 from tokenusage2.provider_status import (
+    MAX_RESPONSE,
     Health,
     ProviderStatus,
     ProviderStatusMonitor,
@@ -181,3 +182,11 @@ def test_badges_problems_and_report_lines() -> None:
     assert status_problem((bad,)) == "Codex outage: CLI: outage"
     assert "checked 2s ago" in status_lines((good,), 11)[0]
     assert "checks disabled" in status_lines((), 11)[0]
+
+
+def test_malformed_components_and_oversized_responses_stay_unknown() -> None:
+    skipped = parse_summary(ENDPOINT, {"components": ["CLI", None]}, 3.0)
+    assert skipped.health is Health.UNKNOWN
+    huge = FakeResponse(b" " * (MAX_RESPONSE + 1))
+    oversized = fetch_status(ENDPOINT, 1, opener=lambda request, timeout: huge, clock=lambda: 4.0)
+    assert (oversized.health, oversized.detail) == (Health.UNKNOWN, "response too large")

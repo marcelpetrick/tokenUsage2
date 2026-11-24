@@ -165,3 +165,9 @@ def test_invalid_saved_palettes_use_original_colours(tmp_path: Path, palette: ob
     path = tmp_path / "view.json"
     path.write_text(json.dumps({"palette": palette, "theme": "amber"}))
     assert load_preferences(path) == Preferences(theme="amber")
+
+
+def test_a_non_object_preferences_file_uses_defaults(tmp_path: Path) -> None:
+    path = tmp_path / "preferences.json"
+    path.write_text("[1, 2]")
+    assert load_preferences(path) == Preferences()

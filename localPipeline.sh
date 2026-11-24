@@ -22,7 +22,7 @@ readonly ROOT_DIR
 readonly VENV_DIR="${ROOT_DIR}/.venv"
 readonly VENV_PYTHON="${VENV_DIR}/bin/python"
 readonly APP="${VENV_DIR}/bin/tokenusage2"
-readonly COVERAGE_GATE=95
+readonly COVERAGE_GATE=99
 
 RUN_APP=true
 FIX=false
@@ -50,7 +50,7 @@ From a fresh clone to a verified, runnable tokenusage2:
    5. Ruff lint      ruff check
    6. Ruff format    ruff format --check
    7. ShellCheck     this script, when shellcheck is installed
-   8. Tests          pytest with a 95 % branch-coverage gate
+   8. Tests          pytest; lines and branches each need 99 % coverage
    9. Smoke run      render one --demo frame
   10. Build          sdist and wheel into dist/
   11. Wheel check    install the wheel into a clean throwaway venv and run it
@@ -269,8 +269,12 @@ stage_tests() {
     local code=$? result coverage
     result="$(grep -E '^=+ .*(passed|failed|error).* =+$' "${LOG_DIR}/pytest.log" | tail -n 1)"
     result="$(sed -E 's/^=+ | =+$//g' <<<"${result}")"
-    coverage="$(grep -Eo 'Total coverage: [0-9.]+%' "${LOG_DIR}/pytest.log" | tail -n 1)"
-    DETAILS="${result:-no pytest summary}; ${coverage:-no coverage total} (gate ${COVERAGE_GATE}%)"
+    # pytest-cov gates the combined total; lines and branches must each pass too.
+    if ! coverage="$("${VENV_PYTHON}" "${ROOT_DIR}/scripts/quality_gates.py" coverage \
+        "${ROOT_DIR}/coverage.xml" --bar "${COVERAGE_GATE}" 2>&1)" && [[ ${code} -eq 0 ]]; then
+        code=1
+    fi
+    DETAILS="${result:-no pytest summary}; ${coverage:-no coverage report}"
     return "${code}"
 }
 

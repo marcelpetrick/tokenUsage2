@@ -25,4 +25,7 @@ def test_demo_is_deterministic_and_keeps_ticking() -> None:
     assert not first.archived()
     assert "demo mode" in first.sources()[0]
     first.rediscover()
-    assert any(e.usage.unsplit for e in DemoSource(BERLIN, clock=clock, days=80).events())
+    long = DemoSource(BERLIN, clock=clock, days=80)
+    assert any(e.usage.unsplit for e in long.events())
+    for source in (first, second, long):
+        source.close()

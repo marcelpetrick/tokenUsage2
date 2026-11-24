@@ -88,3 +88,16 @@ def test_claude_reconciliation_shows_its_sources_and_the_stats_cache_scale() -> 
     assert reconcile(account, events) == sources
     assert reconcile(account, []) is None
     assert reconcile(Account("opencode:x", Tool.OPENCODE, Path("/x"), "o"), events) is None
+
+
+def test_codex_reconciliation_ignores_a_non_text_sqlite_home(tmp_path: Path) -> None:
+    account_home = tmp_path / "codex"
+    account_home.mkdir()
+    (account_home / "config.toml").write_text("sqlite_home = 42\n")
+    with closing(sqlite3.connect(account_home / "state_5.sqlite")) as connection, connection:
+        connection.execute("CREATE TABLE threads (id TEXT, tokens_used INTEGER)")
+        connection.execute("INSERT INTO threads VALUES ('t', 100)")
+    account = Account("codex:x", Tool.CODEX, account_home, "x")
+    assert reconcile(account, [increment("codex:t:100", 100)]) == (
+        "parsed 100 vs Codex threads.tokens_used 100 (+0.0%)"
+    )

@@ -196,3 +196,14 @@ def test_claude_identity_variants(tmp_path: Path) -> None:
         '{"oauthAccount": {"emailAddress": "a@b.c", "userRateLimitTier": "default_claude_max_20x"}}'
     )
     assert claude_identity(profile, tmp_path) == ("a@b.c", "max 20x")
+
+
+def test_claude_identity_skips_files_without_an_account(tmp_path: Path) -> None:
+    home = tmp_path / "home"
+    claude = home / ".claude"
+    claude.mkdir(parents=True)
+    (home / ".claude.json").write_text('{"theme": "dark"}')
+    (claude / ".claude.json").write_text(
+        '{"oauthAccount": {"emailAddress": "dev@example.test", "userRateLimitTier": "team_plan"}}'
+    )
+    assert claude_identity(claude, home) == ("dev@example.test", "team plan")
