@@ -270,7 +270,9 @@ class Bucket:
 @dataclass(slots=True)
 class QuotaView:
     window: str
-    used: float
+    # None once the window rolled: a reset time alone does not say how much of
+    # the new window is already spent, so the usage is unknown until observed.
+    used: float | None
     resets_at: float | None
     observed_at: float
     source: str
@@ -426,7 +428,7 @@ def quota_view(quota: QuotaWindow, now: float) -> QuotaView:
     rolled = quota.resets_at is not None and quota.resets_at <= now
     return QuotaView(
         window=quota.window,
-        used=0.0 if rolled else quota.used_percent,
+        used=None if rolled else quota.used_percent,
         resets_at=None if rolled else quota.resets_at,
         observed_at=quota.observed_at,
         source=quota.source,

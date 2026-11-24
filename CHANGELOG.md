@@ -12,6 +12,21 @@ refuses a newer archive.
 
 ## Unreleased
 
+## 0.14.4
+
+### Fixed
+
+- A quota window whose reset time has passed no longer shows as `0%` used. A
+  reset time alone does not prove how much of the new window is spent, so the
+  bar now shows `?% reset` until the agent logs a newer observation. JSON
+  exports report `used_percent: null` and `rolled: true` for such windows.
+  Previously a Codex account could show free weekly quota while Codex itself
+  refused work.
+
+### Dependencies
+
+- Update the Ruff development pin from 0.17.4 to 0.17.6.
+
 ## 0.14.3
 
 ### Documentation

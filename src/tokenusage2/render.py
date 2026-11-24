@@ -533,16 +533,14 @@ ACCOUNT_COLUMNS = (
 def quota_cell(view: QuotaView | None, now: float) -> list[Fragment]:
     if view is None:
         return [("—", "dim")]
+    if view.used is None:
+        # The window rolled after the last observation: usage is unknown, not 0%.
+        return [("░" * 8, "dim"), ("   ?%", "dim"), (" reset", "dim")]
     used = max(0.0, min(100.0, view.used))
     filled = round(used / 100 * 8)
     level = "ok" if used < 60 else "warn" if used < 85 else "bad"
     stale = now - view.observed_at > 3600
-    if view.rolled:
-        countdown = "reset"
-    elif view.resets_at is not None:
-        countdown = duration(view.resets_at - now)
-    else:
-        countdown = ""
+    countdown = duration(view.resets_at - now) if view.resets_at is not None else ""
     return [
         ("█" * filled, level),
         ("░" * (8 - filled), "dim"),

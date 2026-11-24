@@ -50,7 +50,7 @@ def evaluate(snapshot: Snapshot, settings: AlertSettings, typical: float) -> lis
     alerts = []
     for row in snapshot.accounts:
         for quota in row.quotas:
-            if quota.rolled or quota.used < settings.quota_percent:
+            if quota.used is None or quota.used < settings.quota_percent:
                 continue
             window = int(quota.resets_at) if quota.resets_at else "open"
             alerts.append(

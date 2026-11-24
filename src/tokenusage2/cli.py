@@ -226,6 +226,7 @@ def snapshot_json(
                     {
                         "window": q.window,
                         "used_percent": q.used,
+                        "rolled": q.rolled,
                         "resets_at": _iso(q.resets_at, tz),
                         "observed_at": _iso(q.observed_at, tz),
                         "source": q.source,

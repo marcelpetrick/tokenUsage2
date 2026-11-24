@@ -7,7 +7,7 @@ import runpy
 import shutil
 import sqlite3
 import sys
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from zoneinfo import TZPATH, ZoneInfoNotFoundError
 
@@ -15,9 +15,11 @@ import pytest
 
 from conftest import NOW, FakeHome
 from tokenusage2 import store as store_module
-from tokenusage2.cli import main, resolve_tz
+from tokenusage2.aggregate import build_snapshot
+from tokenusage2.cli import main, resolve_tz, snapshot_json
 from tokenusage2.ingest import ScanReport
 from tokenusage2.live import LiveSource
+from tokenusage2.model import Account, QuotaWindow, Tool
 from tokenusage2.store import Store, StoreBusyError
 from tokenusage2.version import __version__
 
@@ -462,3 +464,20 @@ def test_a_newer_build_owning_the_archive_exits_with_its_reason(
     code, _, err = call([mode, "--no-archive"], home.env, tmp_path, capsys)
     assert code == 2
     assert f"tokenusage2: {OUTDATED}" in err
+
+
+def test_json_reports_a_rolled_quota_as_unknown_not_free() -> None:
+    # Regression: Codex logged 80% weekly use resetting before "now", then only a
+    # window-less limit record. The export must not claim 0% for that window.
+    account = Account("c", Tool.CODEX, Path("/c"), "codex")
+    quotas = [
+        QuotaWindow("c", "week", 80.0, NOW - 60, NOW - 3600, "codex rollout"),
+        QuotaWindow("c", "5h", 40.0, NOW + 3600, NOW - 3600, "codex rollout"),
+    ]
+    snapshot = build_snapshot([], [account], quotas, now=NOW, tz=UTC)
+    exported = snapshot_json(snapshot, UTC, redact=True)["accounts"][0]["quotas"]
+    assert [(q["window"], q["used_percent"], q["rolled"], q["resets_at"]) for q in exported] == [
+        ("5h", 40.0, False, exported[0]["resets_at"]),
+        ("week", None, True, None),
+    ]
+    assert exported[0]["resets_at"] is not None

@@ -338,8 +338,11 @@ def test_fit_columns_keeps_priorities_and_flexes() -> None:
 
 def test_quota_cell_states() -> None:
     assert quota_cell(None, NOW) == [("—", "dim")]
-    rolled = quota_cell(QuotaView("5h", 0.0, None, NOW, "x", True), NOW)
-    assert "reset" in "".join(text for text, _ in rolled)
+    rolled = quota_cell(QuotaView("5h", None, None, NOW, "x", True), NOW)
+    assert "".join(text for text, _ in rolled) == "░░░░░░░░   ?% reset"
+    assert {style for _, style in rolled} == {"dim"}
+    fresh = quota_cell(QuotaView("5h", 40.0, NOW + 60, NOW, "x", False), NOW)
+    assert sum(len(text) for text, _ in rolled) == sum(len(text) for text, _ in fresh)
     high = quota_cell(QuotaView("5h", 92.0, NOW + 3900, NOW - 7200, "x", False), NOW)
     assert high[0][1] == "bad"
     assert high[2][1] == "dim"

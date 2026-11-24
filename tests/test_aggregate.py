@@ -295,7 +295,7 @@ def test_quota_windows_roll_over_and_sort() -> None:
     ]
     row = next(r for r in snap([], quotas).accounts if r.id == "a")
     assert [(q.window, q.used, q.rolled) for q in row.quotas] == [
-        ("5h", 0.0, True),
+        ("5h", None, True),
         ("week", 50, False),
     ]
 
