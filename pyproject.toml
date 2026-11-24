@@ -30,7 +30,7 @@ dynamic = ["version"]
 dependencies = []
 
 [project.optional-dependencies]
-dev = ["pytest==9.2.0", "pytest-cov==7.1.0", "ruff==0.17.6", "build==1.6.1"]
+dev = ["pytest==9.2.0", "pytest-cov==7.1.0", "ruff==0.17.6", "build==1.6.1", "mutmut==3.8.1"]
 
 [project.scripts]
 tokenusage2 = "tokenusage2.cli:main"
@@ -80,3 +80,17 @@ select = ["E", "F", "W", "I", "N", "UP", "B", "A", "C4", "PT", "RET", "SIM", "PT
 # exactly what the terminal should show, not look-alikes of ASCII letters.
 "src/tokenusage2/render.py" = ["RUF001"]
 "tests/*" = ["RUF001"]
+
+[tool.mutmut]
+source_paths = ["src/tokenusage2/"]
+pytest_add_cli_args_test_selection = ["tests/"]
+# These tests check repository files (Markdown, scripts, workflows), not the
+# package; they cannot kill a source mutant and need files mutmut does not copy.
+pytest_add_cli_args = [
+    "--ignore=tests/test_docs.py",
+    "--ignore=tests/test_history_chart.py",
+    "--ignore=tests/test_pipeline_script.py",
+    "--ignore=tests/test_quality_gates.py",
+    "--ignore=tests/test_release_notes.py",
+    "--ignore=tests/test_release_workflow.py",
+]

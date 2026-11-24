@@ -23,8 +23,10 @@ readonly VENV_DIR="${ROOT_DIR}/.venv"
 readonly VENV_PYTHON="${VENV_DIR}/bin/python"
 readonly APP="${VENV_DIR}/bin/tokenusage2"
 readonly COVERAGE_GATE=99
+readonly MUTATION_GATE=60
 
 RUN_APP=true
+MUTATION=false
 FIX=false
 VERBOSE=false
 REPORT_DIR=""
@@ -40,7 +42,7 @@ PASSED=0
 
 usage() {
     cat <<'EOF'
-Usage: ./localPipeline.sh [--noRun] [--fix] [--verbose] [--report-dir PATH]
+Usage: ./localPipeline.sh [--noRun] [--mutation] [--fix] [--verbose] [--report-dir PATH]
 
 From a fresh clone to a verified, runnable tokenusage2:
    1. Interpreter    find Python 3.14+ (override with PYTHON=/path/to/python)
@@ -52,16 +54,20 @@ From a fresh clone to a verified, runnable tokenusage2:
    7. ShellCheck     this script, when shellcheck is installed
    8. Tests          pytest; lines and branches each need 99 % coverage
    9. Smoke run      render one --demo frame
-  10. Build          sdist and wheel into dist/
-  11. Wheel check    install the wheel into a clean throwaway venv and run it
-  12. Binary         .venv/bin/tokenusage2 reports the expected version
-  13. Launch         start the live dashboard (skipped with --noRun or no TTY)
+  10. Mutation       mutmut score of at least 60 % (opt-in with --mutation)
+  11. Build          sdist and wheel into dist/
+  12. Wheel check    install the wheel into a clean throwaway venv and run it
+  13. Binary         .venv/bin/tokenusage2 reports the expected version
+  14. Launch         start the live dashboard (skipped with --noRun or no TTY)
 
 Every stage is timed; a summary and a verdict close the run. The exit status
 is 0 only when every mandatory stage passed. Afterwards, run the dashboard
 with .venv/bin/tokenusage2.
 
   --noRun        everything except launching the dashboard (what CI runs)
+  --mutation     also run mutation testing; slow (about 50 minutes on 20 CPU
+                 threads from scratch), so it is opt-in. mutmut reuses earlier
+                 results kept in mutants/
   --fix          apply ruff lint and format fixes before checking
   --verbose      stream every stage's output, not only the failing ones
   --report-dir   keep the stage logs there (default: a temporary directory,
@@ -278,6 +284,20 @@ stage_tests() {
     return "${code}"
 }
 
+stage_mutation() {
+    local stats="${ROOT_DIR}/mutants/mutmut-cicd-stats.json"
+    if ! capture mutation "${VENV_DIR}/bin/mutmut" run --max-children "$(nproc)"; then
+        DETAILS="mutmut run failed"
+        return 1
+    fi
+    if ! capture mutation-stats "${VENV_DIR}/bin/mutmut" export-cicd-stats; then
+        DETAILS="mutmut could not export its statistics"
+        return 1
+    fi
+    DETAILS="$("${VENV_PYTHON}" "${ROOT_DIR}/scripts/quality_gates.py" mutation "${stats}" \
+        --bar "${MUTATION_GATE}" 2>&1)"
+}
+
 stage_smoke() {
     if ! capture smoke "${VENV_PYTHON}" -m tokenusage2 --demo --once --color never --tz UTC \
         --width 120 --height 40; then
@@ -348,6 +368,7 @@ parse_arguments() {
     while (($#)); do
         case "$1" in
             --noRun) RUN_APP=false ;;
+            --mutation) MUTATION=true ;;
             --fix) FIX=true ;;
             --verbose) VERBOSE=true ;;
             --report-dir)
@@ -454,6 +475,14 @@ main() {
             skip_stage "${entry%%:*}" "the dependencies are not installed"
         fi
     done
+
+    if [[ "${MUTATION}" != true ]]; then
+        skip_stage "Mutation" "opt-in: --mutation"
+    elif [[ "${ready}" == true ]]; then
+        run_stage "Mutation" stage_mutation || gates=false
+    else
+        skip_stage "Mutation" "the dependencies are not installed"
+    fi
 
     if [[ "${ready}" == true && "${gates}" == true ]]; then
         run_stage "Build" stage_build && built=true

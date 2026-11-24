@@ -12,9 +12,12 @@ SPDX-License-Identifier: GPL-3.0-or-later
 [![Python 3.14](https://img.shields.io/badge/Python-3.14-3776AB.svg?logo=python&logoColor=white)](https://www.python.org/)
 [![Runtime dependencies: none](https://img.shields.io/badge/runtime%20dependencies-none-2ea44f.svg)](pyproject.toml)
 [![Coverage gate: 99% lines and branches](https://img.shields.io/badge/coverage%20gate-99%25%20lines%20%26%20branches-2ea44f.svg)](localPipeline.sh)
+[![Mutation gate: 60% with mutmut](https://img.shields.io/badge/mutation%20gate-60%25%20mutmut-2ea44f.svg)](#development)
+[![Tested with pytest](https://img.shields.io/badge/tested%20with-pytest-0A9EDC.svg?logo=pytest&logoColor=white)](https://docs.pytest.org/)
 [![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
 [![Platform: Linux](https://img.shields.io/badge/platform-Linux-555.svg?logo=linux&logoColor=white)](#requirements)
 [![License: GPL v3 or later](https://img.shields.io/badge/license-GPLv3%20or%20later-blue.svg)](LICENSE)
+[![Last commit](https://img.shields.io/github/last-commit/marcelpetrick/tokenUsage2/master)](https://github.com/marcelpetrick/tokenUsage2/commits/master)
 
 A live, btop-style terminal dashboard for the tokens your coding agents burn —
 **Claude Code, Codex CLI and OpenCode**, across **every local account and
@@ -426,22 +429,34 @@ timeout_seconds = 2          # 0.1–10 per official status endpoint
 ```bash
 ./localPipeline.sh                    # set up, check, build, verify, then launch
 ./localPipeline.sh --noRun            # the same without the launch (what CI and releases run)
+./localPipeline.sh --noRun --mutation # additionally gate on the mutmut mutation score (slow)
 ./localPipeline.sh --fix              # apply ruff lint and format fixes first
 ./localPipeline.sh --verbose          # stream every stage's output, not only failures
 ./localPipeline.sh --report-dir build/pipeline-logs   # keep every stage log plus summary.txt
 .venv/bin/python scripts/profile_app.py   # time and cProfile every stage on your real data
 ```
 
-The pipeline's thirteen stages: find Python 3.14 → create or reuse `.venv` →
+The pipeline's fourteen stages: find Python 3.14 → create or reuse `.venv` →
 install the project editable with the pinned tools → verify the generated
 project-history chart → ruff lint → ruff format check → ShellCheck on the script
 itself (skipped when it is not installed) → pytest, where line coverage and
-branch coverage must each reach 99 % → one `--demo` frame → sdist and wheel → install that wheel into a clean
-throwaway venv and run it → check that `.venv/bin/tokenusage2` reports the
-current version → launch. A failing stage
+branch coverage must each reach 99 % → one `--demo` frame → mutation testing
+(opt-in) → sdist and wheel → install that wheel into a clean throwaway venv and
+run it → check that `.venv/bin/tokenusage2` reports the current version →
+launch. A failing stage
 prints the tail of its log and skips the stages that depend on it. Every stage
 is timed, and the run ends with a summary and a verdict; the exit status is 0
 only on `PASS`.
+
+Mutation testing uses [mutmut](https://github.com/boxed/mutmut), pinned in the
+development extras. It injects small faults into `src/tokenusage2/` and reruns
+the tests that cover each one; the stage requires that at least 60 % of the
+tested mutants are detected (killed or timed out). Tests that check repository
+files rather than the package are excluded from that run. A run from scratch is
+slow, so the stage is opt-in and not part of CI; later runs reuse the results
+kept in the ignored `mutants/` directory. Reference run on 24 November 2026
+(10,935 mutants of the 0.15.0 sources, 20 CPU threads, 48 minutes): 75.14 %
+(8,199 killed, 18 timed out, 2,713 survived, 5 without covering tests).
 
 CI ([`.github/workflows/tokenUsage2.yml`](.github/workflows/tokenUsage2.yml))
 runs `./localPipeline.sh --noRun` on Python 3.14 for every push and pull
@@ -450,8 +465,9 @@ and uploads coverage, stage logs and built distributions. Every push to
 `master` whose version has no tag yet also becomes a
 [GitHub release](https://github.com/marcelpetrick/tokenUsage2/releases) with
 sdist, wheel and that version's changelog section as the notes
-([`release.yml`](.github/workflows/release.yml)). Architecture and design
-rationale are in [`PLAN.md`](PLAN.md); the latest documentation audit and release verification are in
+([`release.yml`](.github/workflows/release.yml)). The C4-style architecture
+diagrams are in [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md), and the design
+rationale is in [`PLAN.md`](PLAN.md); the latest documentation audit and release verification are in
 [`review.md`](review.md). Current and archived documentation is indexed in
 [`docs/README.md`](docs/README.md).
 

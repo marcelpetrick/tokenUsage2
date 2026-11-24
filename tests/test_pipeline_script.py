@@ -42,6 +42,8 @@ def test_help_lists_every_stage() -> None:
         "ShellCheck",
         "Tests",
         "Smoke run",
+        "Mutation",
+        "--mutation",
         "Build",
         "Wheel check",
         "Binary",
