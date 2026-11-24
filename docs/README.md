@@ -17,6 +17,7 @@ dependencies remain empty.
 |---|---|
 | [README](../README.md) | Install, upgrade, keyboard controls, sources, accounting, privacy and development |
 | [Plan and architecture](../PLAN.md) | Implemented features, module responsibilities, historical work and release evidence |
+| [Architecture](ARCHITECTURE.md) | C4-style context, container and component diagrams plus refresh and quota flows |
 | [Changelog](../CHANGELOG.md) | Versioned changes and unreleased documentation corrections |
 | [Documentation review](../review.md) | Current documentation audit and verified public-release evidence |
 | [Contributor guidance](../AGENTS.md) | Product invariants, atomic commits and validation rules |
