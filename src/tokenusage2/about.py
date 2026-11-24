@@ -10,6 +10,7 @@ URLs and pinned development tools stay in one place: ``pyproject.toml``.
 
 import platform
 import re
+import textwrap
 from collections.abc import Sequence
 from functools import cache
 from importlib import metadata
@@ -20,6 +21,22 @@ from tokenusage2.version import __version__
 PROJECT_URL = "https://github.com/marcelpetrick/tokenUsage2"
 AUTHOR = "Marcel Petrick"
 LICENSE = "GPL-3.0-or-later"
+# The overlay must stay readable on the smallest supported terminal (70
+# columns): its box, borders and padding leave 62 columns for text.
+WIDTH = 62
+LABEL = 10  # fits the issues URL on one line
+
+
+def _field(label: str, text: str) -> list[str]:
+    """``text`` wrapped under a fixed-width label, never wider than ``WIDTH``."""
+    return textwrap.wrap(
+        text,
+        WIDTH,
+        initial_indent=label.ljust(LABEL),
+        subsequent_indent=" " * LABEL,
+        break_on_hyphens=False,
+        break_long_words=False,  # a URL must stay whole to be usable
+    )
 
 
 def _author(meta: PackageMetadata) -> str:
@@ -58,23 +75,27 @@ def about_lines(meta: PackageMetadata | None, python: str) -> list[str]:
     tools = _dev_tools(meta) if meta is not None else []
     project = urls.get("source", PROJECT_URL)
     issues = urls.get("issues", f"{project}/issues")
+    tool_list = ", ".join(tools) if tools else "see pyproject.toml"
     return [
         f"tokenUsage2 {__version__}",
-        "Local usage observability for Claude Code, Codex CLI and OpenCode.",
+        *textwrap.wrap("Local usage observability for Claude Code, Codex CLI and OpenCode.", WIDTH),
         "",
-        f"Prepared by   {author}",
-        f"Project page  {project}",
-        f"Issues        {issues}",
+        *_field("Author", author),
+        *_field("Project", project),
+        *_field("Issues", issues),
         "",
-        f"Licence       {licence} (GNU General Public License v3 or later).",
-        "              Free software: you may share and change it under that licence.",
-        "              It comes with ABSOLUTELY NO WARRANTY.",
+        *_field("Licence", f"{licence} (GNU GPL v3 or later)"),
+        *_field("", "Free software: you may share and change it under that licence."),
+        *_field("", "It comes with ABSOLUTELY NO WARRANTY."),
         "",
-        f"Runtime       Python {python}, standard library only; no third-party packages.",
-        "Dev tools     " + (", ".join(tools) if tools else "see pyproject.toml"),
+        *_field("Runtime", f"Python {python}, standard library only; no third-party packages."),
+        *_field("Dev tools", tool_list),
         "",
-        "Agent files are read-only inputs. Prompts, responses and credentials are",
-        "never stored or shown. Costs are standard-rate estimates, not invoices.",
+        *textwrap.wrap(
+            "Agent files are read-only inputs. Prompts, responses and credentials are never "
+            "stored or shown. Costs are standard-rate estimates, not invoices.",
+            WIDTH,
+        ),
     ]
 
 
