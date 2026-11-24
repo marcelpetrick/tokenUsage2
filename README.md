@@ -150,7 +150,7 @@ window or burn episode; `--json` lists them.
 | `v` | metric: total incl. cache → fresh → output → standard-rate cost estimate |
 | `a` | filter to one account (cycles, then back to all) |
 | `h` | heatmap ↔ live feed |
-| `s` | sources overlay · `?` / `F1` help · `Esc` closes overlays |
+| `s` | sources overlay · `i` about (author, licence, dependencies, project page) · `?` / `F1` help · `Esc` closes overlays |
 | `e` | export the timeline and the breakdown as CSV (to `$XDG_DATA_HOME/tokenusage2/exports`) |
 | `p` | shuffle category colours; keep pressing to explore palettes |
 | `t` | theme: default, midnight, amber, plain |

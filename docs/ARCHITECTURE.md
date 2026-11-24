@@ -116,6 +116,7 @@ flowchart LR
         aggregate["aggregate.py<br/>buckets, tallies, quota views"]
         alerts["alerts.py<br/>quota and burn alerts"]
         render["render.py<br/>canvas, themes, panels"]
+        about["about.py<br/>About overlay from package metadata"]
         pricing["pricing.py<br/>standard-rate estimate"]
         projects["projects.py<br/>display-time project names"]
         pstatus["provider_status.py<br/>opt-in status checks"]
@@ -132,7 +133,7 @@ flowchart LR
     ingest --> parsers & store & discover
     aggregate --> pricing & projects
     alerts --> aggregate & config
-    render --> aggregate & pstatus
+    render --> aggregate & pstatus & about
     config --> pricing
 ```
 

@@ -17,6 +17,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, tzinfo
 from functools import lru_cache
 
+from tokenusage2.about import installed_about_lines
 from tokenusage2.aggregate import (
     METRIC_HELP,
     AccountRow,
@@ -171,6 +172,7 @@ HELP_LINES = (
     "Shift+R    restore factory view settings and forget saved preferences",
     "p          shuffle category colours (saved across launches)",
     "Space      pause live refresh        + / -   refresh interval",
+    "i          about: author, licence, dependencies and project page",
     "? or F1    this help",
 )
 HINTS = (
@@ -188,6 +190,7 @@ HINTS = (
     ("x", "redact"),
     ("R", "reset"),
     ("?", "help"),
+    ("i", "about"),
 )
 
 
@@ -387,6 +390,7 @@ class View:
     redact: bool = False
     help: bool = False
     sources: bool = False
+    about: bool = False
     heatmap: bool = False
     paused: bool = False
     interval: float = 2.0
@@ -1008,6 +1012,8 @@ def render(
         draw_overlay(canvas, "Keys", HELP_LINES)
     elif view.sources:
         draw_overlay(canvas, "Sources", sources)
+    elif view.about:
+        draw_overlay(canvas, "About", installed_about_lines())
     return canvas.lines(theme)
 
 

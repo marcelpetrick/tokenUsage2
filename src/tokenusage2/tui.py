@@ -125,17 +125,19 @@ class Controller:
         if key == "R":
             Preferences.from_view(self.factory).apply(view)
             view.cursor = 0
-            view.help = view.sources = view.paused = False
+            view.help = view.sources = view.about = view.paused = False
             view.colors.clear()
             return "reset"
         if key == "e":
             return "export"
         if key == "esc":
-            view.help = view.sources = False
+            view.help = view.sources = view.about = False
         elif key in {"?", "f1"}:
-            view.help, view.sources = not view.help, False
+            view.help, view.sources, view.about = not view.help, False, False
         elif key == "s":
-            view.sources, view.help = not view.sources, False
+            view.sources, view.help, view.about = not view.sources, False, False
+        elif key == "i":
+            view.about, view.help, view.sources = not view.about, False, False
         elif key in PERIOD_KEYS:
             if PERIOD_KEYS[key] is not view.period:
                 view.period, view.cursor = PERIOD_KEYS[key], 0

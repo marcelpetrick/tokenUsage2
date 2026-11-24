@@ -14,6 +14,13 @@ refuses a newer archive.
 
 ## 0.15.0
 
+### Added
+
+- Press `i` for an About overlay: version, author, project and issue pages,
+  the GPL-3.0-or-later licence with its no-warranty notice, the Python runtime
+  (standard library only) and the pinned development tools. The text comes from
+  the installed package metadata.
+
 ### Fixed
 
 - A quota window whose reset time has passed no longer shows as `0%` used. A

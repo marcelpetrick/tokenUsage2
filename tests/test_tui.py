@@ -108,6 +108,20 @@ def test_controller_maps_every_key() -> None:
     assert not view.help
     control.handle("esc", [])
     assert not view.sources
+    control.handle("i", [])
+    assert view.about
+    control.handle("?", [])
+    assert (view.help, view.about) == (True, False)
+    control.handle("i", [])
+    assert (view.about, view.help) == (True, False)
+    control.handle("s", [])
+    assert (view.sources, view.about) == (True, False)
+    control.handle("i", [])
+    control.handle("i", [])
+    assert not view.about
+    control.handle("i", [])
+    control.handle("esc", [])
+    assert not view.about
     assert control.handle("unknown", []) is None
 
 
@@ -122,6 +136,7 @@ def test_shift_r_restores_factory_view_settings() -> None:
         redact=True,
         help=True,
         sources=True,
+        about=True,
         heatmap=True,
         paused=True,
         interval=30,
@@ -132,8 +147,9 @@ def test_shift_r_restores_factory_view_settings() -> None:
     factory = View(theme="plain")
     assert Controller(view, factory).handle("R", []) == "reset"
     assert Preferences.from_view(view) == Preferences.from_view(factory)
-    assert (view.cursor, view.help, view.sources, view.paused, view.colors) == (
+    assert (view.cursor, view.help, view.sources, view.about, view.paused, view.colors) == (
         0,
+        False,
         False,
         False,
         False,

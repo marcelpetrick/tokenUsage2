@@ -205,6 +205,15 @@ def test_overlays(demo: DemoSource) -> None:
     assert "rescan now" in help_text
     sources = "\n".join(frame(demo, View(theme="plain", sources=True), sources=["hello sources"]))
     assert "hello sources" in sources
+    about_text = "\n".join(frame(demo, View(theme="plain", about=True)))
+    assert "About" in about_text
+    assert "GPL-3.0-or-later" in about_text
+    assert "https://github.com/marcelpetrick/tokenUsage2" in about_text
+    assert "i about" in about_text  # the footer advertises the key
+    # Help wins over About, so two overlays never draw on top of each other.
+    both = "\n".join(frame(demo, View(theme="plain", help=True, about=True)))
+    assert "rescan now" in both
+    assert "ABSOLUTELY NO WARRANTY" not in both
 
 
 def test_heatmap_replaces_the_feed(demo: DemoSource) -> None:

@@ -135,6 +135,7 @@ pricing.py   → provider-gated standard rates plus configured overrides
 provider_status.py → bounded background checks of official service components
 aggregate.py → buckets (DST-safe local midnights), tallies, account summaries
 render.py    → cell canvas → ANSI/plain frame, themes, saved palette permutations, panels
+about.py     → About overlay text from the installed package metadata
 tui.py       → alternate screen, cbreak keys, resize, refresh loop
 preferences.py → private atomic XDG view state and factory reset
 cli.py       → TUI, --once, --json, --csv, --doctor and --demo
