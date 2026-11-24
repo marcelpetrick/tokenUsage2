@@ -23,8 +23,8 @@ A live, read-only terminal dashboard (in the spirit of btop, abtop and
 AgentWhileTrue) that shows how many tokens every local coding agent burns,
 per tool, per account and per backend, as daily, weekly and monthly views.
 
-Release prepared: [v0.14.3](https://github.com/marcelpetrick/tokenUsage2/releases/tag/v0.14.3).
-Press `p` to explore saved category palettes;
+Release prepared: [v0.15.0](https://github.com/marcelpetrick/tokenUsage2/releases/tag/v0.15.0)
+(section 17). Press `i` for the About overlay and `p` to explore saved category palettes;
 `Space` pauses/resumes refresh and `t` changes the overall theme. Start with the
 [documentation index](docs/README.md) for current guides and historical records.
 

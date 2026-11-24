@@ -34,8 +34,8 @@ and no API keys.
 and moved here with its full history (see `CHANGELOG.md` 0.3.8); all work
 continues in this repository.
 
-Latest stable release: [**v0.14.3 — review handoff**](https://github.com/marcelpetrick/tokenUsage2/releases/tag/v0.14.3),
-published on 8 November 2026 with wheel and source downloads.
+Latest stable release: [**v0.15.0 — truthful quotas and stronger gates**](https://github.com/marcelpetrick/tokenUsage2/releases/tag/v0.15.0),
+published on 24 November 2026 with wheel and source downloads.
 See the [documentation index](docs/README.md) for current guides and historical material.
 
 ## New in 0.14.2: accounting and reliability

@@ -6,9 +6,10 @@ SPDX-License-Identifier: GPL-3.0-or-later
 
 # tokenUsage2 documentation
 
-Current stable release: [v0.14.3 — review handoff](https://github.com/marcelpetrick/tokenUsage2/releases/tag/v0.14.3),
-published on 8 November 2026. It corrects all-time pricing and snapshot totals,
-synchronizes shared archives and hardens malformed-data handling. Runtime
+Current stable release: [v0.15.0 — truthful quotas and stronger gates](https://github.com/marcelpetrick/tokenUsage2/releases/tag/v0.15.0),
+published on 24 November 2026. A quota window past its reset time now shows as
+unknown instead of free, `i` opens an About overlay, line and branch coverage
+must each reach 99%, and opt-in mutation testing is gated at 60%. Runtime
 dependencies remain empty.
 
 ## Current guidance
